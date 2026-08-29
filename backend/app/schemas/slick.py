@@ -1,19 +1,21 @@
-from typing import Optional, List, Any
+from typing import Optional, Any, Dict
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 class Slick(BaseModel):
-    id: str = Field(..., description="Unique slick detection identifier")
-    investigation_id: str
+    id: str = Field(..., description="Unique detection identifier")
+    investigation_id: Optional[str] = None
     source_scene_id: str
     
     detected_at: datetime
     
-    # Geometry could be represented as GeoJSON polygon dictionaries
-    geometry: Any = Field(..., description="GeoJSON representation of the slick polygon")
-    
+    geometry: Any = Field(..., description="GeoJSON representation of the candidate polygon")
     area_sq_km: float = Field(..., description="Estimated surface area in square kilometers")
-    confidence: float = Field(..., description="Detection model confidence score (0-1)")
     
-    classification: str = Field(default="UNKNOWN", description="Classification of the slick (e.g. MINERAL_OIL, BIOGENIC, LOOKALIKE)")
-    thickness_estimate: Optional[float] = Field(default=None, description="Estimated thickness in microns, if available")
+    # We explicitly avoid "confidence" and use baseline threshold metrics
+    classification: str = Field(default="BASELINE_CANDIDATE", description="Classification of the slick (e.g. BASELINE_CANDIDATE, MINERAL_OIL, LOOKALIKE)")
+    
+    baseline_score: Optional[float] = Field(default=None, description="Raw severity score or signal strength difference")
+    threshold_info: Optional[Dict[str, Any]] = Field(default=None, description="Metadata about the threshold parameters used")
+    
+    supporting_metrics: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Other structural or radiometric metrics")
