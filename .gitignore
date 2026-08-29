@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Python environments
+.venv/
+venv/
+
+# Environment/secrets
+.env
+.env.*
+!.env.example
+
+# Next.js
+.next/
+out/
+
+# Logs
+*.log
+
+# AQUILA generated scientific data
+backend/data/csiro_synthetic/
+backend/data/scenes/*.tif
