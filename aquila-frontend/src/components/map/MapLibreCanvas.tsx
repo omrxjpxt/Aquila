@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import maplibregl, { Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -41,7 +41,7 @@ export function MapLibreCanvas({
       ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
       : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
-    const map = new maplibregl.Map({
+    const map = new MapLibreMap({
       container: mapContainer.current,
       style: styleUrl,
       center: center,
