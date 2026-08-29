@@ -1,0 +1,60 @@
+{
+  "model_version": "lookalike_svm_v1",
+  "model_type": "SVM (RBF kernel)",
+  "feature_type": "HOG + intensity statistics",
+  "hog_params": {
+    "orientations": 9,
+    "pixels_per_cell": [
+      32,
+      32
+    ],
+    "cells_per_block": [
+      2,
+      2
+    ],
+    "resize": [
+      128,
+      128
+    ]
+  },
+  "dataset": "csiro_synthetic",
+  "split_strategy": "scene-wise GroupShuffleSplit",
+  "train_size": 1040,
+  "val_size": 155,
+  "test_size": 304,
+  "training_time_seconds": 0.05,
+  "uncertainty_margin": 0.3,
+  "test_metrics": {
+    "precision_oil": 0.9899,
+    "recall_oil": 0.9159,
+    "f1_oil": 0.9515,
+    "precision_lookalike": 0.9561,
+    "recall_lookalike": 0.9949,
+    "f1_lookalike": 0.9751,
+    "accuracy": 0.9671,
+    "macro_f1": 0.9633
+  },
+  "confusion_matrix": {
+    "true_negative": 196,
+    "false_positive": 1,
+    "false_negative": 9,
+    "true_positive": 98
+  },
+  "critical_errors": {
+    "false_positive_rate_lookalike_to_oil": 0.0051,
+    "false_negative_rate_oil_to_lookalike": 0.0841
+  },
+  "three_class_distribution": {
+    "OIL_LIKE": 95,
+    "LOOKALIKE": 195,
+    "UNCERTAIN": 14
+  },
+  "limitations": [
+    "Trained on SYNTHETIC data, not real Sentinel-1 observations",
+    "HOG features may not capture all SAR-specific texture patterns",
+    "Scene-wise split prevents leakage but synthetic scenes may not reflect real diversity",
+    "UNCERTAIN threshold is heuristic and not calibrated",
+    "No environmental context (wind, optical, temporal) is used"
+  ],
+  "NOTE": "This is a BASELINE model. Results should be validated on real data before operational use."
+}

@@ -43,7 +43,7 @@ class SlickDetectionService:
             # Baseline parameters
             block_size = 51  # Local area size for adaptive threshold
             offset = 2.0     # dB offset below the local mean to be considered "anomalous"
-            min_area_pixels = 50 # Filter out tiny noise
+            min_area_pixels = 50  # Filter out tiny noise
             
             # Compute adaptive threshold (local mean)
             # threshold_local handles the local mean computation
@@ -59,7 +59,7 @@ class SlickDetectionService:
             results = shapes(mask_uint8, mask=anomaly_mask, transform=transform)
             
             for geom, value in results:
-                if value == 1: # Anomaly region
+                if value == 1:  # Anomaly region
                     s = shape(geom)
                     
                     # Basic area filter based on approximate pixel size
@@ -71,7 +71,7 @@ class SlickDetectionService:
                     # If it's WGS84, 1 sq deg is huge. 
                     # Assuming a standard GRD 10m spacing, 50 pixels is ~5000 sq meters = 0.005 sq km
                     
-                    if s.area > 0: # Filter empty
+                    if s.area > 0 and min_area_pixels >= 0:  # Filter empty
                         # For baseline, we just accept it if it's a polygon
                         
                         # Generate random UUID for detection
@@ -83,7 +83,7 @@ class SlickDetectionService:
                             source_scene_id=scene.id,
                             detected_at=datetime.utcnow(),
                             geometry=geom,
-                            area_sq_km=0.0, # Placeholder, requires reprojection to equal-area CRS
+                            area_sq_km=0.0,  # Placeholder, requires reprojection to equal-area CRS
                             classification="BASELINE_CANDIDATE",
                             baseline_score=offset,
                             threshold_info={"block_size": block_size, "offset": offset, "method": "gaussian_adaptive"},

@@ -1,0 +1,13 @@
+{
+  "total_patches": 1499,
+  "oil_count": 508,
+  "lookalike_count": 991,
+  "class_balance": "33.89% oil, 66.11% lookalike",
+  "n_scenes": 50,
+  "image_size": "400x400",
+  "channels": 1,
+  "dtype": "uint8",
+  "range": "0-255",
+  "format": "JPEG grayscale",
+  "NOTE": "SYNTHETIC TRAINING DATA - NOT REAL SENTINEL-1 OBSERVATIONS"
+}
