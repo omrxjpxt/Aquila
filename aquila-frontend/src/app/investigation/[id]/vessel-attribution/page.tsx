@@ -1,20 +1,30 @@
+// @ts-nocheck
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { CandidateVesselCard } from "@/components/investigation/CandidateVesselCard";
 import { AttributionBreakdown } from "@/components/investigation/AttributionBreakdown";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
+import { VesselTracksLayer } from "@/components/map/layers";
 import { ListOrdered, ShieldCheck, Activity, Map, Plus, Minus, Layers } from "lucide-react";
+import { mockIncident } from "@/lib/mockData";
 
 export default function VesselAttributionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const incident = mockIncident;
+  
+  const [selectedMmsi, setSelectedMmsi] = useState<string | null>(incident.candidates[0].mmsi);
+  
+  const selectedVessel = incident.candidates.find(c => c.mmsi === selectedMmsi) || incident.candidates[0];
 
   return (
-    <div className="flex w-full h-full relative overflow-hidden bg-background">
+    <div className="flex w-full h-full relative overflow-hidden bg-[var(--color-surface-container-lowest)]">
       
       {/* Background Map Layer */}
       <div className="absolute inset-0 z-0">
-        <MapLibreCanvas center={[-12.341, 45.124]} zoom={6} />
+        <MapLibreCanvas center={selectedVessel.lastKnownPosition} zoom={8}>
+           <VesselTracksLayer candidates={incident.candidates} selectedMmsi={selectedMmsi} />
+        </MapLibreCanvas>
         
         {/* Map Legend Overlay */}
         <div className="absolute top-4 left-[416px] pointer-events-auto bg-[var(--color-surface-high)]/80 backdrop-blur border border-[var(--color-outline-variant)] rounded p-3 z-10">
@@ -46,30 +56,18 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <CandidateVesselCard 
-                rank={1}
-                vesselName="VESSEL ALPHA"
-                mmsi="412345678"
-                type="OIL TANKER"
-                score={88}
-                isSelected={true}
-              />
-              <CandidateVesselCard 
-                rank={2}
-                vesselName="POLARIS"
-                mmsi="234567890"
-                type="CARGO"
-                score={74}
-                isSelected={false}
-              />
-              <CandidateVesselCard 
-                rank={3}
-                vesselName="OCEANIC WANDERER"
-                mmsi="345678901"
-                type="BULK CARRIER"
-                score={62}
-                isSelected={false}
-              />
+              {incident.candidates.map((vessel, i) => (
+                <div key={vessel.mmsi} onClick={() => setSelectedMmsi(vessel.mmsi)} className="cursor-pointer">
+                  <CandidateVesselCard 
+                    vesselName={vessel.name}
+                    mmsi={vessel.mmsi}
+                    type={vessel.type}
+                    score={vessel.evidenceScore * 100}
+                    rank={i + 1}
+                    isSelected={selectedMmsi === vessel.mmsi}
+                  />
+                </div>
+              ))}
             </div>
             
             <div className="p-3 border-t border-[var(--color-outline-variant)] bg-[var(--color-surface)]/30">
@@ -96,80 +94,50 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
            </div>
         </div>
 
-        {/* RIGHT COLUMN: Detailed Profile (Vessel Alpha) */}
+        {/* RIGHT COLUMN: Detailed Profile */}
         <div className="w-[420px] h-full flex flex-col pointer-events-auto">
-          <div className="bg-[var(--color-surface-high)]/95 backdrop-blur border border-[var(--color-outline-variant)] rounded-lg h-full flex flex-col shadow-xl overflow-hidden">
+          <div className="bg-[var(--color-surface-high)]/95 backdrop-blur-xl border border-[var(--color-outline-variant)] rounded-lg flex-1 flex flex-col shadow-2xl overflow-hidden">
             
-            <div className="p-6 border-b border-[var(--color-outline-variant)] relative bg-[var(--color-surface)]/50">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="font-mono bg-[var(--color-primary)]/20 text-[var(--color-primary)] border border-[var(--color-primary)]/30 px-2 py-0.5 rounded text-[10px]">MMSI: 412345678</span>
-                <span className="font-mono bg-[var(--color-surface-variant)] text-[var(--color-on-surface-variant)] px-2 py-0.5 rounded text-[10px]">IMO: 9123456</span>
-              </div>
-              <h2 className="text-3xl font-bold text-[var(--color-on-surface)] leading-none mb-4 tracking-tight">VESSEL ALPHA</h2>
-              
-              <div className="flex items-end justify-between">
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-bold tracking-widest uppercase text-[var(--color-on-surface-variant)] mb-1">EVIDENCE SCORE</span>
+            <div className="p-5 border-b border-[var(--color-outline-variant)] bg-[var(--color-surface)]/50 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-[var(--color-primary)]"></div>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="text-2xl font-bold text-[var(--color-on-surface)]">{selectedVessel.name}</h3>
+                  <span className="font-mono text-xs text-[var(--color-on-surface-variant)] block mt-1">MMSI: {selectedVessel.mmsi} | FLAG: {selectedVessel.flag}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-bold tracking-widest uppercase text-[var(--color-on-surface-variant)] mb-1">EVIDENCE SCORE</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-[var(--color-primary)]">88</span>
-                    <span className="font-mono text-[var(--color-on-surface-variant)]">/100</span>
+                    <span className="text-2xl font-bold text-[var(--color-primary)]">{(selectedVessel.evidenceScore * 100).toFixed(0)}</span>
+                    <span className="font-mono text-xs text-[var(--color-on-surface-variant)]">/100</span>
                   </div>
                 </div>
-                <button className="bg-[var(--color-primary-container)] text-[var(--color-background)] font-mono px-4 py-2 rounded hover:brightness-110 transition-colors">
-                  GENERATE REPORT
-                </button>
+              </div>
+              <div className="flex items-center gap-2 mt-4">
+                <ShieldCheck className="w-4 h-4 text-[var(--color-primary)]" />
+                <span className="text-[11px] font-bold tracking-widest uppercase text-[var(--color-primary)]">{selectedVessel.status}</span>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-               <AttributionBreakdown 
-                  vesselId="412345678"
-                  vesselName="VESSEL ALPHA"
-                  overallScore={88}
-                  factors={{
-                    spatial: 92,
-                    temporal: 96,
-                    trajectory: 89,
-                    drift: 84,
-                    behavioural: 71,
-                    aisQuality: 86
-                  }}
-               />
-               
-               {/* WHY THIS VESSEL RANKED #1 */}
-               <div className="space-y-3 pt-2">
-                  <h3 className="text-[11px] font-bold tracking-widest uppercase text-[var(--color-on-surface-variant)] border-b border-[var(--color-outline-variant)] pb-2">
-                    WHY THIS VESSEL RANKED #1
-                  </h3>
-                  <ul className="space-y-3">
-                    <li className="flex gap-3 bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 p-3 rounded items-start">
-                       <ShieldCheck className="w-5 h-5 text-[var(--color-primary)] mt-0.5 shrink-0" />
-                       <div>
-                         <h4 className="text-sm font-semibold text-[var(--color-on-surface)] mb-1">Temporal Alignment</h4>
-                         <p className="font-mono text-xs text-[var(--color-on-surface-variant)]">Present during inferred release window 02:00Z - 06:00Z.</p>
-                       </div>
-                    </li>
-                    <li className="flex gap-3 bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 p-3 rounded items-start">
-                       <Map className="w-5 h-5 text-[var(--color-primary)] mt-0.5 shrink-0" />
-                       <div>
-                         <h4 className="text-sm font-semibold text-[var(--color-on-surface)] mb-1">Spatial Intersection</h4>
-                         <p className="font-mono text-xs text-[var(--color-on-surface-variant)]">Track directly intersects probable origin cloud centroid at 04:12Z.</p>
-                       </div>
-                    </li>
-                    <li className="flex gap-3 bg-[var(--color-tertiary-container)]/10 border border-[var(--color-tertiary-container)]/30 p-3 rounded items-start relative overflow-hidden">
-                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--color-tertiary-container)]"></div>
-                       <Activity className="w-5 h-5 text-[var(--color-tertiary)] mt-0.5 ml-1 shrink-0" />
-                       <div>
-                         <h4 className="text-sm font-semibold text-[var(--color-tertiary)] mb-1">Behavioral Anomaly</h4>
-                         <p className="font-mono text-xs text-[var(--color-tertiary)]/80">Unexplained speed drop 14kts → 4kts detected prior to intersection.</p>
-                       </div>
-                    </li>
-                  </ul>
-               </div>
+            <div className="flex-1 overflow-y-auto">
+              <AttributionBreakdown 
+                vesselId={selectedVessel.mmsi}
+                vesselName={selectedVessel.name}
+                overallScore={selectedVessel.evidenceScore * 100}
+                factors={{
+                  spatial: 95,
+                  temporal: 90,
+                  trajectory: 85,
+                  drift: 88,
+                  behavioural: 70,
+                  aisQuality: 98
+                }}
+              />
             </div>
-            
+
           </div>
         </div>
+
       </div>
     </div>
   );

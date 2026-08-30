@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, createContext, useContext } from "react";
 import { Map as MapLibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { clsx } from "clsx";
@@ -8,6 +8,13 @@ import { twMerge } from "tailwind-merge";
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
+}
+
+// Map context so child layers can access the map instance
+export const MapContext = createContext<MapLibreMap | null>(null);
+
+export function useMap() {
+  return useContext(MapContext);
 }
 
 interface MapLibreCanvasProps {
@@ -18,6 +25,7 @@ interface MapLibreCanvasProps {
   bearing?: number;
   onMapLoaded?: (map: MapLibreMap) => void;
   darkTheme?: boolean;
+  children?: React.ReactNode;
 }
 
 export function MapLibreCanvas({
@@ -27,11 +35,12 @@ export function MapLibreCanvas({
   pitch = 0,
   bearing = 0,
   onMapLoaded,
-  darkTheme = true
+  darkTheme = true,
+  children
 }: MapLibreCanvasProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -54,7 +63,7 @@ export function MapLibreCanvas({
     mapRef.current = map;
 
     map.on("load", () => {
-      setIsLoaded(true);
+      setMapInstance(map);
       if (onMapLoaded) {
         onMapLoaded(map);
       }
@@ -63,26 +72,30 @@ export function MapLibreCanvas({
     return () => {
       map.remove();
       mapRef.current = null;
+      setMapInstance(null);
     };
   }, [bearing, center, darkTheme, onMapLoaded, pitch, zoom]);
+
+  // Update map parameters if they change
+  useEffect(() => {
+    if (mapInstance) {
+      mapInstance.setCenter(center);
+      mapInstance.setZoom(zoom);
+      mapInstance.setPitch(pitch);
+      mapInstance.setBearing(bearing);
+    }
+  }, [mapInstance, center, zoom, pitch, bearing]);
 
   return (
     <div className={cn("relative w-full h-full", className)}>
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[var(--color-surface-lowest)] z-10">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-8 h-8 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-[var(--color-on-surface-variant)] text-sm font-mono uppercase tracking-widest">
-              Initializing Engine...
-            </span>
-          </div>
-        </div>
-      )}
-      
       {/* Scanline overlay for aesthetic */}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] z-0 opacity-10"></div>
+
+      <MapContext.Provider value={mapInstance}>
+        {mapInstance && children}
+      </MapContext.Provider>
     </div>
   );
 }

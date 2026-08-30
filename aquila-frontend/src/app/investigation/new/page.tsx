@@ -1,6 +1,8 @@
 "use client";
 
 import { Satellite, MapPin, Clock, Radar, RadioTower, Waves, Camera, Play, FolderOpen, Target, UploadCloud } from "lucide-react";
+import Link from "next/link";
+import { mockIncident } from "@/lib/mockData";
 
 export default function NewInvestigationPage() {
   return (
@@ -151,10 +153,10 @@ export default function NewInvestigationPage() {
 
             {/* Actions Stack */}
             <div className="flex flex-col gap-3 mt-auto pt-4">
-              <button className="w-full bg-[var(--color-primary-container)] text-[var(--color-background)] text-[11px] font-bold tracking-widest uppercase py-4 rounded hover:bg-[var(--color-primary)] transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(40,199,217,0.2)]">
+              <Link href={`/investigation/${mockIncident.id}`} className="w-full bg-[var(--color-primary-container)] text-[var(--color-background)] text-[11px] font-bold tracking-widest uppercase py-4 rounded hover:bg-[var(--color-primary)] transition-colors flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(40,199,217,0.2)]">
                 <Play className="w-4 h-4" fill="currentColor" />
                 START INVESTIGATION
-              </button>
+              </Link>
               <button className="w-full bg-transparent border border-[var(--color-outline-variant)] text-[var(--color-on-surface)] text-[11px] font-bold tracking-widest uppercase py-3 rounded hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors flex items-center justify-center gap-2">
                 <FolderOpen className="w-4 h-4" />
                 LOAD HISTORICAL CASE
