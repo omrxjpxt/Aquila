@@ -1,124 +1,136 @@
 "use client";
 
-import { Plus, Minus, Layers, Crosshair, Radar, AlertTriangle, Ship, Activity, Settings, Filter, ChevronRight } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer, OriginRegionLayer } from "@/components/map/layers";
+import { SlickLayer } from "@/components/map/layers";
 import { mockIncident } from "@/lib/mockData";
 import Link from "next/link";
 import { useState } from "react";
+import { AlertTriangle, MapPin, Clock, Search, Radar } from "lucide-react";
 
 export default function CommandCenterPage() {
   const [showSlick, setShowSlick] = useState(true);
 
   return (
-    <div className="flex-grow flex flex-col relative h-full bg-[var(--color-surface-container-lowest)] overflow-hidden">
-      
-      {/* Main Content Area */}
-      <main className="flex-grow relative overflow-hidden flex w-full h-full">
-        
-        {/* Map Container */}
-        <div className="flex-grow relative h-full bg-[var(--color-surface-container-lowest)] overflow-hidden">
-          
-          <MapLibreCanvas center={mockIncident.centerCoord} zoom={8}>
-            <SlickLayer center={mockIncident.centerCoord} visible={showSlick} />
-          </MapLibreCanvas>
-          
-          {/* Floating Overlays Container (Left/Bottom) */}
-          <div className="absolute inset-0 p-4 pointer-events-none flex flex-col justify-between z-20">
-            
-            {/* Top Section: System Health Indicator Bar */}
-            <div className="flex gap-4 pointer-events-auto bg-[var(--color-surface-container-low)]/90 backdrop-blur border border-[var(--color-outline-variant)] rounded p-3 font-mono text-[11px] uppercase items-center w-fit shadow-md">
-              <div className="flex items-center gap-3 px-4 border-r border-[var(--color-outline-variant)]">
-                <span className="text-[var(--color-on-surface-variant)]">Active Incidents</span>
-                <span className="text-[var(--color-error)] font-bold text-sm">1</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 border-r border-[var(--color-outline-variant)]">
-                <span className="text-[var(--color-on-surface-variant)]">High Priority</span>
-                <span className="text-[var(--color-error)] font-bold text-sm">1</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 border-r border-[var(--color-outline-variant)]">
-                <span className="text-[var(--color-on-surface-variant)]">Active Investigations</span>
-                <span className="text-[var(--color-primary)] font-bold text-sm">1</span>
-              </div>
-              <div className="flex items-center gap-3 px-4">
-                <span className="text-[var(--color-on-surface-variant)]">Vessels Tracked (24H)</span>
-                <span className="text-[var(--color-secondary)] font-bold text-sm">145</span>
-              </div>
+    <div className="flex-1 h-full relative bg-surface-lowest overflow-hidden flex">
+      {/* Map Canvas (Centerpiece) */}
+      <div className="flex-1 h-full relative bg-[#eef4f8] overflow-hidden">
+        <MapLibreCanvas center={mockIncident.incident.centerCoord} zoom={8}>
+          <SlickLayer center={mockIncident.incident.centerCoord} visible={showSlick} />
+        </MapLibreCanvas>
+
+        {/* Metrics Bar (Overlay on Map) */}
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10 pointer-events-auto">
+          <div className="bg-surface/90 backdrop-blur border border-outline-variant px-4 py-2 rounded shadow-sm flex items-center gap-3">
+            <div className="p-1.5 bg-error/10 rounded">
+              <AlertTriangle className="w-4 h-4 text-error" />
             </div>
-            
-            {/* Map Controls (Floating Top Right relative to map) */}
-            <div className="absolute top-4 right-4 flex flex-col gap-2 pointer-events-auto">
-              <button className="w-8 h-8 bg-[var(--color-surface-lowest)]/90 backdrop-blur border border-[var(--color-outline-variant)] rounded flex items-center justify-center text-[var(--color-on-surface)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors shadow-sm">
-                <Plus className="w-4 h-4" />
-              </button>
-              <button className="w-8 h-8 bg-[var(--color-surface-lowest)]/90 backdrop-blur border border-[var(--color-outline-variant)] rounded flex items-center justify-center text-[var(--color-on-surface)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors shadow-sm">
-                <Minus className="w-4 h-4" />
-              </button>
-              <div className="h-px w-full bg-[var(--color-outline-variant)] my-1"></div>
-              <button 
-                onClick={() => setShowSlick(!showSlick)}
-                className={`w-8 h-8 bg-[var(--color-surface-lowest)]/90 backdrop-blur border rounded flex items-center justify-center transition-colors shadow-sm ${showSlick ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-outline-variant)] text-[var(--color-on-surface-variant)]'}`}
-              >
-                <Layers className="w-4 h-4" />
-              </button>
-              <button className="w-8 h-8 bg-[var(--color-surface-lowest)]/90 backdrop-blur border border-[var(--color-outline-variant)] rounded flex items-center justify-center text-[var(--color-on-surface)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors shadow-sm">
-                <Crosshair className="w-4 h-4" />
-              </button>
-            </div>
-            
-            {/* Lower Section: Health & Feed */}
-            <div className="flex gap-4 pointer-events-auto w-full max-w-[900px]">
-              
-              {/* Active Investigations */}
-              <div className="flex-grow bg-[var(--color-surface-container-low)]/95 backdrop-blur border border-[var(--color-outline-variant)] rounded-lg flex flex-col overflow-hidden h-48 shadow-lg">
-                <div className="px-4 py-3 border-b border-[var(--color-outline-variant)] bg-[var(--color-surface)]/50 flex justify-between items-center">
-                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--color-on-surface)] uppercase">Active Investigations</h3>
-                </div>
-                <div className="p-2 overflow-y-auto flex flex-col gap-1 flex-grow">
-                  <Link href={`/investigation/${mockIncident.id}`} className="flex items-center justify-between p-3 hover:bg-[var(--color-surface-container-highest)] rounded cursor-pointer transition-colors border-l-2 border-[var(--color-error)]">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono text-sm font-bold text-[var(--color-on-surface)]">{mockIncident.id}</span>
-                        <span className="px-1.5 py-0.5 bg-[var(--color-error)]/10 text-[var(--color-error)] font-mono text-[9px] font-bold rounded border border-[var(--color-error)]/30 tracking-wider">
-                          CRITICAL
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-[var(--color-on-surface-variant)]">Gulf of Oman • {mockIncident.slickClassification} • {mockIncident.surfaceAreaKm2} km²</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[var(--color-on-surface-variant)]" />
-                  </Link>
-                </div>
-              </div>
-              
-              {/* Intelligence Feed */}
-              <div className="flex-grow bg-[var(--color-surface-container-low)]/95 backdrop-blur border border-[var(--color-outline-variant)] rounded-lg flex flex-col overflow-hidden h-48 shadow-lg">
-                <div className="px-4 py-3 border-b border-[var(--color-outline-variant)] bg-[var(--color-surface)]/50 flex justify-between items-center">
-                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--color-on-surface)] uppercase">Intelligence Feed</h3>
-                  <button className="text-[10px] font-bold tracking-widest text-[var(--color-primary)] hover:text-[var(--color-primary-fixed)] uppercase">VIEW ALL</button>
-                </div>
-                <div className="p-2 overflow-y-auto flex flex-col gap-1 flex-grow">
-                  <div className="flex items-start gap-3 p-2 hover:bg-[var(--color-surface-container-highest)] rounded cursor-pointer transition-colors border-l-2 border-[var(--color-primary)]">
-                    <Radar className="w-4 h-4 text-[var(--color-primary)] mt-0.5" />
-                    <div className="flex-grow">
-                      <p className="text-[12px] text-[var(--color-on-surface)] leading-tight mb-1">SAR pass completed: <span className="font-mono text-[var(--color-primary-fixed)]">S1A_IW_GRDH_1SDV</span></p>
-                      <p className="font-mono text-[10px] text-[var(--color-on-surface-variant)]">10:42Z</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-2 hover:bg-[var(--color-surface-container-highest)] rounded cursor-pointer transition-colors border-l-2 border-[var(--color-error)]">
-                    <AlertTriangle className="w-4 h-4 text-[var(--color-error)] mt-0.5" />
-                    <div className="flex-grow">
-                      <p className="text-[12px] text-[var(--color-on-surface)] leading-tight mb-1">Anomaly detected: <span className="font-mono text-[var(--color-error)]">INC-AQ-001</span> created</p>
-                      <p className="font-mono text-[10px] text-[var(--color-on-surface-variant)]">10:15Z</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
+            <div>
+              <div className="font-mono text-[10px] text-on-surface-variant uppercase font-medium">Active Incidents</div>
+              <div className="text-lg font-bold text-on-surface">1</div>
             </div>
           </div>
           
+          <div className="bg-surface/90 backdrop-blur border border-outline-variant px-4 py-2 rounded shadow-sm flex items-center gap-3">
+            <div className="p-1.5 bg-tertiary/10 rounded">
+              <AlertTriangle className="w-4 h-4 text-tertiary" />
+            </div>
+            <div>
+              <div className="font-mono text-[10px] text-on-surface-variant uppercase font-medium">High Priority</div>
+              <div className="text-lg font-bold text-on-surface">1</div>
+            </div>
+          </div>
+
+          <div className="bg-surface/90 backdrop-blur border border-outline-variant px-4 py-2 rounded shadow-sm flex items-center gap-3">
+            <div className="p-1.5 bg-primary/10 rounded">
+              <Search className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <div className="font-mono text-[10px] text-on-surface-variant uppercase font-medium">Investigations</div>
+              <div className="text-lg font-bold text-on-surface">1</div>
+            </div>
+          </div>
+
+          <div className="bg-surface/90 backdrop-blur border border-outline-variant px-4 py-2 rounded shadow-sm flex items-center gap-3">
+            <div className="p-1.5 bg-secondary/10 rounded">
+              <Radar className="w-4 h-4 text-secondary" />
+            </div>
+            <div>
+              <div className="font-mono text-[10px] text-on-surface-variant uppercase font-medium">Tracked Vessels</div>
+              <div className="text-lg font-bold text-on-surface">145+</div>
+            </div>
+          </div>
         </div>
-      </main>
+      </div>
+
+      {/* Left Panel (Overlaid on Desktop) */}
+      <div className="absolute top-0 left-0 bottom-0 w-[360px] bg-surface-container-lowest border-r border-outline-variant flex flex-col z-20 shadow-sm pointer-events-auto">
+        <div className="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+          <h2 className="text-xs font-bold text-on-surface uppercase tracking-wider">Active Incidents</h2>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <Link href={`/investigation/${mockIncident.id}`} className="block">
+            <div className="bg-surface border border-outline-variant rounded p-3 hover:bg-surface-container-high transition-colors cursor-pointer group">
+              <div className="flex justify-between items-start mb-2">
+                <span className="font-mono text-sm text-primary font-bold">{mockIncident.id}</span>
+                <span className="px-2 py-0.5 bg-error/10 text-error font-mono text-[10px] rounded uppercase tracking-wider border border-error/20 font-bold">
+                  {mockIncident.priority}
+                </span>
+              </div>
+              <h3 className="text-sm text-on-surface font-medium mb-2">Major Oil Slick Detected</h3>
+              <div className="flex flex-col gap-1 font-mono text-[11px] text-on-surface-variant">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" /> 
+                  Gulf of Oman ({mockIncident.incident.centerCoord[1].toFixed(2)}°N, {mockIncident.incident.centerCoord[0].toFixed(2)}°E)
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" /> 
+                  {new Date(mockIncident.incident.initialDetectionTime).toISOString().slice(11, 16)} UTC (Active)
+                </div>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Right Panel (Intelligence Feed) */}
+      <div className="absolute top-0 right-0 bottom-0 w-[420px] bg-surface-container-lowest border-l border-outline-variant flex flex-col z-20 shadow-sm pointer-events-auto">
+        <div className="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+          <h2 className="text-xs font-bold text-on-surface uppercase tracking-wider">Intelligence Feed</h2>
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+          </span>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-2.5 before:w-0.5 before:bg-gradient-to-b before:from-outline-variant before:via-outline-variant before:to-transparent">
+            
+            {/* Feed Item */}
+            <div className="relative">
+              <div className="absolute -left-7 mt-1.5 h-3 w-3 rounded-full bg-surface border-2 border-primary"></div>
+              <div className="bg-surface border border-outline-variant rounded p-3">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-bold text-[10px] text-primary uppercase tracking-wider">SAR Detection</span>
+                  <span className="font-mono text-[10px] text-on-surface-variant">Just now</span>
+                </div>
+                <p className="text-sm text-on-surface mb-2">New surface anomaly detected via Sentinel-1 pass.</p>
+                <div className="bg-surface-container-low border border-outline-variant rounded p-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="font-mono text-[9px] text-on-surface-variant uppercase">Confidence</div>
+                    <div className="font-mono text-xs text-on-surface">{mockIncident.lookAlikeAssessment.confidence}</div>
+                  </div>
+                  <div>
+                    <div className="font-mono text-[9px] text-on-surface-variant uppercase">Area</div>
+                    <div className="font-mono text-xs text-on-surface">{mockIncident.slick.surfaceAreaKm2} sq km</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

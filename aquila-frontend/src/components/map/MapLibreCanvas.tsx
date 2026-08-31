@@ -35,7 +35,7 @@ export function MapLibreCanvas({
   pitch = 0,
   bearing = 0,
   onMapLoaded,
-  darkTheme = true,
+  darkTheme = false,
   children
 }: MapLibreCanvasProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -45,10 +45,10 @@ export function MapLibreCanvas({
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
-    // CartoDB Dark Matter as a free proxy for a deep ocean tactical map
+    // Use CartoDB Positron for a clean, light, professional basemap
     const styleUrl = darkTheme 
       ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-      : "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
+      : "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
     const map = new MapLibreMap({
       container: mapContainer.current,
@@ -90,9 +90,6 @@ export function MapLibreCanvas({
     <div className={cn("relative w-full h-full", className)}>
       <div ref={mapContainer} className="absolute inset-0" />
       
-      {/* Scanline overlay for aesthetic */}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] z-0 opacity-10"></div>
-
       <MapContext.Provider value={mapInstance}>
         {mapInstance && children}
       </MapContext.Provider>

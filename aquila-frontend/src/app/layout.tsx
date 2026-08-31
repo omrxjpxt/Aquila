@@ -29,12 +29,14 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex bg-background text-foreground font-sans overflow-hidden">
-        <SideNavBar />
+      <body className="h-full flex flex-col bg-background text-foreground font-sans overflow-hidden">
         <TopAppBar />
-        <main className="flex-1 ml-16 mt-16 h-[calc(100vh-64px)] relative bg-surface-lowest">
-          {children}
-        </main>
+        <div className="flex flex-1 pt-14 h-full relative overflow-hidden">
+          <SideNavBar />
+          <main className="flex-1 h-full relative bg-surface-lowest overflow-hidden">
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );

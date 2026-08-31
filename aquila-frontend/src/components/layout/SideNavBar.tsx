@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radar, PlusSquare, FolderSearch, Settings } from "lucide-react";
+import { Radar, Microscope, Radio, Ship, FileText, Database, Settings } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -11,49 +11,49 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 const NAV_ITEMS = [
-  { href: "/", icon: Radar, label: "Command Center" },
-  { href: "/investigation/new", icon: PlusSquare, label: "New Investigation" },
-  { href: "/investigation/workspace", icon: FolderSearch, label: "Workspace" },
+  { href: "/", icon: Radar, label: "Overview" },
+  { href: "/investigation/INC-AQ-001", icon: Microscope, label: "Investigations" },
+  { href: "/monitoring", icon: Radio, label: "Monitoring" },
+  { href: "/vessels", icon: Ship, label: "Vessels" },
+  { href: "/reports", icon: FileText, label: "Reports" },
+  { href: "/sources", icon: Database, label: "Sources" },
 ];
 
 export function SideNavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed left-0 top-0 bottom-0 w-16 bg-[var(--color-surface-lowest)] border-r border-[var(--color-outline-variant)] flex flex-col items-center py-4 z-50">
-      <div className="mb-8">
-        <div className="w-10 h-10 rounded-full bg-[var(--color-primary-container)] flex items-center justify-center text-[var(--color-on-surface)] font-bold text-lg border border-[var(--color-primary)]">
-          AQ
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 flex-1">
+    <nav className="hidden md:flex flex-col items-center py-4 w-20 bg-surface-container-low border-r border-outline-variant h-full z-40 shrink-0">
+      <div className="flex flex-col gap-2 w-full">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+          let isActive = false;
+          if (item.href === "/") {
+            isActive = pathname === "/";
+          } else {
+            isActive = pathname.startsWith(item.href);
+          }
           return (
             <Link
               key={item.href}
               href={item.href}
-              title={item.label}
               className={cn(
-                "p-3 rounded-xl flex items-center justify-center transition-colors group relative",
+                "flex flex-col items-center justify-center py-4 transition-all w-full",
                 isActive
-                  ? "bg-[var(--color-surface-high)] text-[var(--color-primary)]"
-                  : "text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-low)] hover:text-[var(--color-on-surface)]"
+                  ? "text-primary bg-primary/10 border-r-4 border-primary"
+                  : "text-on-surface-variant hover:text-primary hover:bg-surface-variant/50"
               )}
             >
-              <item.icon className="w-6 h-6" />
-              {isActive && (
-                <div className="absolute left-0 top-2 bottom-2 w-1 bg-[var(--color-primary)] rounded-r-md" />
-              )}
+              <item.icon className="w-5 h-5 mb-1" />
+              <span className="font-semibold text-[10px] tracking-wide">{item.label}</span>
             </Link>
           );
         })}
       </div>
 
-      <div className="mt-auto">
-        <button className="p-3 rounded-xl text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-low)] hover:text-[var(--color-on-surface)] transition-colors">
-          <Settings className="w-6 h-6" />
+      <div className="mt-auto w-full">
+        <button className="flex flex-col items-center justify-center text-on-surface-variant py-4 hover:text-primary hover:bg-surface-variant/50 transition-all w-full">
+          <Settings className="w-5 h-5 mb-1" />
+          <span className="font-semibold text-[10px] tracking-wide">Settings</span>
         </button>
       </div>
     </nav>

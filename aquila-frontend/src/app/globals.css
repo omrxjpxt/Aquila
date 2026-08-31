@@ -1,43 +1,69 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #001525;
-  --color-foreground: #cee5fd;
-  
-  --color-surface-dim: #001525;
-  --color-surface-lowest: #000f1d;
-  --color-surface-low: #041d2f;
-  --color-surface: #001525;
-  --color-surface-container: #082133;
-  --color-surface-high: #142c3e;
-  --color-surface-highest: #203749;
-  --color-surface-bright: #253b4e;
-  
-  --color-primary: #54e3f6;
-  --color-primary-container: #28c7d9;
-  --color-primary-fixed: #93f1ff;
-  
-  --color-secondary: #b5c4ff;
-  --color-secondary-container: #004bcf;
-  
-  --color-tertiary: #ffc862;
-  --color-tertiary-container: #e5ab35;
-  
-  --color-error: #ffb4ab;
-  --color-error-container: #93000a;
-  
-  --color-on-surface: #cee5fd;
-  --color-on-surface-variant: #bbc9cb;
-  
-  --color-outline: #869395;
-  --color-outline-variant: #3c494b;
-  
+  --color-background: #f6fafd;
+  --color-foreground: #171c1e;
+
+  --color-surface-dim: #d6dbdd;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f0f4f7;
+  --color-surface: #f6fafd;
+  --color-surface-container: #eaeef1;
+  --color-surface-container-high: #e5e9eb;
+  --color-surface-container-highest: #dfe3e6;
+  --color-surface-bright: #f6fafd;
+  --color-surface-variant: #dde3e8;
+
+  --color-primary: #00647c;
+  --color-primary-container: #b7eaff;
+  --color-primary-fixed: #b7eaff;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #001f28;
+
+  --color-secondary: #0051d5;
+  --color-secondary-container: #dbe1ff;
+  --color-on-secondary: #ffffff;
+
+  --color-tertiary: #894e00;
+  --color-tertiary-container: #ffdcbe;
+  --color-on-tertiary: #ffffff;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+
+  --color-success: #059669;
+  --color-success-container: #d1fae5;
+
+  --color-on-surface: #171c1e;
+  --color-on-surface-variant: #3e484d;
+
+  --color-outline: #6e797e;
+  --color-outline-variant: #bdc8ce;
+
+  --color-inverse-surface: #2c3134;
+  --color-inverse-on-surface: #ecf0f3;
+
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
+/* ---- Base ---- */
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
 }
+
+/* ---- Scrollbar (minimal, professional) ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-outline-variant); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-outline); }
+
+/* ---- Provenance badges ---- */
+.provenance-observed { background-color: #059669; color: white; }
+.provenance-model-inferred { background-color: #0051d5; color: white; }
+.provenance-simulated { background-color: #7c3aed; color: white; }
+.provenance-forecast { background-color: #894e00; color: white; }
+.provenance-uncertain { background-color: #6e797e; color: white; }

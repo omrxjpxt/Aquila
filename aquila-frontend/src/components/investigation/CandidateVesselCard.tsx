@@ -1,5 +1,5 @@
 import React from "react";
-import { Ship, Navigation2, Crosshair } from "lucide-react";
+import { Ship, Navigation2, Crosshair, AlertCircle, CheckCircle2 } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -13,6 +13,7 @@ interface CandidateVesselCardProps {
   mmsi: string;
   type: string;
   score: number;
+  status?: string;
   isSelected?: boolean;
   onClick?: () => void;
   className?: string;
@@ -24,53 +25,68 @@ export function CandidateVesselCard({
   mmsi,
   type,
   score,
+  status,
   isSelected = false,
   onClick,
   className
 }: CandidateVesselCardProps) {
+  const isTopCandidate = rank === 1;
+
   return (
     <div 
       onClick={onClick}
       className={cn(
-        "p-3 border rounded-lg cursor-pointer transition-all duration-200 group relative overflow-hidden flex items-center justify-between",
+        "p-3 rounded-lg cursor-pointer transition-all duration-200 group relative overflow-hidden flex flex-col gap-3",
         isSelected 
-          ? "bg-[var(--color-surface-high)] border-[var(--color-primary)] shadow-[0_0_15px_rgba(84,227,246,0.15)]" 
-          : "bg-[var(--color-surface)] border-[var(--color-outline-variant)] hover:border-[var(--color-outline)]",
+          ? "bg-primary/5 border-2 border-primary shadow-sm" 
+          : "bg-surface border border-outline-variant hover:border-outline shadow-sm",
         className
       )}
     >
-      <div className="flex items-center gap-3">
-        <div className={cn(
-          "w-6 h-6 rounded flex items-center justify-center text-xs font-bold font-mono",
-          rank === 1 ? "bg-[var(--color-primary-container)] text-[var(--color-background)]" : "bg-[var(--color-surface-lowest)] text-[var(--color-on-surface-variant)] border border-[var(--color-outline-variant)]"
-        )}>
-          {rank}
-        </div>
-        
-        <div>
-          <h4 className="text-sm font-semibold text-[var(--color-on-surface)] flex items-center gap-1.5">
-            {vesselName}
-          </h4>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[10px] font-mono text-[var(--color-on-surface-variant)]">MMSI {mmsi}</span>
-            <span className="w-1 h-1 rounded-full bg-[var(--color-outline-variant)]"></span>
-            <span className="text-[10px] uppercase text-[var(--color-on-surface-variant)]">{type}</span>
+      <div className="flex items-start justify-between w-full gap-3">
+        <div className="flex items-start gap-3">
+          <div className={cn(
+            "w-7 h-7 rounded flex items-center justify-center text-xs font-bold shrink-0 mt-0.5",
+            isTopCandidate ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant border border-outline-variant"
+          )}>
+            {rank}
+          </div>
+          
+          <div>
+            <h4 className={cn(
+              "text-sm font-bold flex items-center gap-1.5",
+              isSelected ? "text-primary" : "text-on-surface"
+            )}>
+              {vesselName}
+            </h4>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-mono font-medium text-on-surface-variant bg-surface-container-low px-1.5 py-0.5 rounded border border-outline-variant">MMSI {mmsi}</span>
+              <span className="text-[10px] uppercase text-on-surface-variant font-medium">{type}</span>
+            </div>
           </div>
         </div>
+
+        <div className="text-right flex flex-col items-end shrink-0">
+          <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-0.5">MATCH</span>
+          <span className={cn(
+            "text-xl font-mono font-bold leading-none",
+            score >= 80 ? "text-primary" : "text-tertiary"
+          )}>
+            {score.toFixed(0)}%
+          </span>
+        </div>
       </div>
 
-      <div className="text-right flex flex-col items-end justify-center">
-        <span className={cn(
-          "text-lg font-mono font-bold",
-          score > 80 ? "text-[var(--color-primary)]" : "text-[var(--color-tertiary)]"
+      {status && (
+        <div className={cn(
+          "text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded w-fit flex items-center gap-1",
+          isTopCandidate 
+            ? "bg-primary/10 text-primary border border-primary/20" 
+            : "bg-surface-container-high text-on-surface-variant border border-outline-variant"
         )}>
-          {score}%
-        </span>
-      </div>
-
-      {/* Decorative overlay when selected */}
-      {isSelected && (
-        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-[var(--color-primary)]/10 to-transparent pointer-events-none"></div>
+          {isTopCandidate ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+          {status}
+        </div>
       )}
     </div>
   );

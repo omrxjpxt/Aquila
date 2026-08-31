@@ -3,9 +3,8 @@
 import { use, useState } from "react";
 import { Satellite, LineChart, Anchor, SlidersHorizontal, CheckCircle2, AlertTriangle, ArrowRightLeft } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer, OriginRegionLayer, TrajectoryLayer } from "@/components/map/layers";
+import { SlickLayer, OriginRegionLayer, TrajectoryLayer, GeoJSONLayer } from "@/components/map/layers";
 import { mockIncident } from "@/lib/mockData";
-import { GeoJSONLayer } from "@/components/map/layers";
 
 function SimulatedSlickLayer({ center }: { center: [number, number] }) {
   // Offset mock polygon to show "simulation"
@@ -35,19 +34,19 @@ function SimulatedSlickLayer({ center }: { center: [number, number] }) {
     <>
       <GeoJSONLayer
         id="simulated-slick-fill"
-        data={data}
+        data={data as GeoJSON.FeatureCollection}
         type="fill"
         paint={{
-          "fill-color": "#d946ef",
+          "fill-color": "#8b5cf6",
           "fill-opacity": 0.3,
         }}
       />
       <GeoJSONLayer
         id="simulated-slick-outline"
-        data={data}
+        data={data as GeoJSON.FeatureCollection}
         type="line"
         paint={{
-          "line-color": "#e879f9",
+          "line-color": "#8b5cf6",
           "line-width": 2,
           "line-opacity": 1,
         }}
@@ -60,136 +59,132 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
   const { id } = use(params);
   const incident = mockIncident;
 
-  const [selectedMmsi, setSelectedMmsi] = useState<string | null>(incident.candidates[0].mmsi);
+  const [selectedMmsi, setSelectedMmsi] = useState<string | null>(incident.vesselCandidates[0].mmsi);
 
   return (
-    <div className="flex w-full h-full relative overflow-hidden bg-[var(--color-surface-container-lowest)]">
+    <div className="flex w-full h-full relative overflow-hidden bg-surface-lowest p-2">
       
-      {/* Main Canvas: Map-Centric Layered View */}
-      <div className="absolute top-0 left-0 right-0 bottom-0 bg-[var(--color-surface-container)] overflow-hidden">
+      {/* Synchronized Map Panels Container */}
+      <div className="w-full h-full flex flex-col lg:flex-row gap-2">
         
-        {/* Synchronized Map Panels Container */}
-        <div className="w-full h-full flex flex-col lg:flex-row gap-[2px]">
+        {/* Left Map: Observed Slick */}
+        <div className="relative flex-1 bg-[#eef4f8] border border-outline-variant rounded-lg overflow-hidden group shadow-sm">
+          <MapLibreCanvas center={incident.incident.centerCoord} zoom={10} bearing={0} pitch={0}>
+            <SlickLayer center={incident.incident.centerCoord} visible={true} />
+          </MapLibreCanvas>
           
-          {/* Left Map: Observed Slick */}
-          <div className="relative flex-1 bg-[var(--color-surface-dim)] overflow-hidden group">
-            <MapLibreCanvas center={incident.centerCoord} zoom={10} bearing={0} pitch={0}>
-              <SlickLayer center={incident.centerCoord} visible={true} />
-            </MapLibreCanvas>
-            
-            {/* Floating HUD: Left Panel Label */}
-            <div className="absolute top-4 left-4 z-10 bg-[var(--color-surface-container)]/90 backdrop-blur-md border border-[var(--color-outline-variant)] p-4 rounded-lg shadow-xl pointer-events-none">
-              <div className="flex items-center gap-3 mb-1">
-                <Satellite className="w-6 h-6 text-[var(--color-primary)]" />
-                <h2 className="text-xl font-semibold text-[var(--color-primary)] uppercase tracking-wider">OBSERVED SLICK</h2>
-              </div>
-              <p className="text-sm text-[var(--color-on-surface-variant)]">Satellite SAR Detection (Sentinel-1)</p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-error)] animate-pulse"></span>
-                <span className="font-mono text-xs text-[var(--color-error)]">ANOMALY DETECTED</span>
-              </div>
+          {/* Floating HUD: Left Panel Label */}
+          <div className="absolute top-4 left-4 z-10 bg-surface/90 backdrop-blur border border-outline-variant p-3 rounded shadow-sm pointer-events-none">
+            <div className="flex items-center gap-2 mb-1">
+              <Satellite className="w-5 h-5 text-primary" />
+              <h2 className="text-sm font-bold text-primary uppercase tracking-wider">OBSERVED SLICK</h2>
+            </div>
+            <p className="text-[11px] text-on-surface-variant font-medium">Satellite SAR Detection ({incident.satellite.source})</p>
+            <div className="mt-2 flex items-center gap-1.5 bg-error/10 border border-error/20 px-2 py-1 rounded w-fit">
+              <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
+              <span className="font-mono text-[9px] font-bold text-error uppercase">ANOMALY DETECTED</span>
             </div>
           </div>
+        </div>
+        
+        {/* Right Map: Predicted Slick */}
+        <div className="relative flex-1 bg-[#eef4f8] border border-outline-variant rounded-lg overflow-hidden group shadow-sm">
+          <MapLibreCanvas center={incident.incident.centerCoord} zoom={10} bearing={0} pitch={0}>
+            <SimulatedSlickLayer center={incident.incident.centerCoord} />
+            <TrajectoryLayer origin={incident.originEstimate.center} slick={incident.incident.centerCoord} />
+          </MapLibreCanvas>
           
-          {/* Right Map: Predicted Slick */}
-          <div className="relative flex-1 bg-[var(--color-surface-dim)] overflow-hidden group">
-            <MapLibreCanvas center={incident.centerCoord} zoom={10} bearing={0} pitch={0}>
-              <SimulatedSlickLayer center={incident.centerCoord} />
-              <TrajectoryLayer origin={incident.originRegion.center} slick={incident.centerCoord} />
-            </MapLibreCanvas>
-            
-            {/* Floating HUD: Right Panel Label */}
-            <div className="absolute top-4 right-4 z-10 bg-[var(--color-surface-container)]/90 backdrop-blur-md border border-[var(--color-outline-variant)] p-4 rounded-lg shadow-xl text-right flex flex-col items-end pointer-events-none">
-              <div className="flex items-center gap-3 mb-1 flex-row-reverse">
-                <LineChart className="w-6 h-6 text-[#d946ef]" />
-                <h2 className="text-xl font-semibold text-[#d946ef] uppercase tracking-wider">SIMULATED SLICK</h2>
-              </div>
-              <p className="text-sm text-[var(--color-on-surface-variant)]">Counterfactual Forward Simulation</p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="font-mono text-xs text-[#e879f9]">MONTE CARLO T+24H</span>
-              </div>
+          {/* Floating HUD: Right Panel Label */}
+          <div className="absolute top-4 right-4 z-10 bg-surface/90 backdrop-blur border border-outline-variant p-3 rounded shadow-sm text-right flex flex-col items-end pointer-events-none">
+            <div className="flex items-center gap-2 mb-1 flex-row-reverse">
+              <LineChart className="w-5 h-5 text-secondary" />
+              <h2 className="text-sm font-bold text-secondary uppercase tracking-wider">SIMULATED SLICK</h2>
+            </div>
+            <p className="text-[11px] text-on-surface-variant font-medium">Counterfactual Forward Simulation</p>
+            <div className="mt-2 flex items-center gap-1.5 bg-secondary/10 border border-secondary/20 px-2 py-1 rounded w-fit">
+              <span className="font-mono text-[9px] font-bold text-secondary uppercase">MONTE CARLO T+24H</span>
             </div>
           </div>
-          
-          {/* Central Divider Sync Indicator */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 w-8 h-8 bg-[var(--color-surface-highest)] border border-[var(--color-outline-variant)] rounded-full flex items-center justify-center shadow-md hidden lg:flex pointer-events-none">
-            <ArrowRightLeft className="w-4 h-4 text-[var(--color-on-surface-variant)]" />
+        </div>
+        
+        {/* Central Divider Sync Indicator */}
+        <div className="absolute left-1/2 top-[40%] -translate-x-1/2 -translate-y-1/2 z-30 w-8 h-8 bg-surface-lowest border border-outline-variant rounded-full flex items-center justify-center shadow-sm hidden lg:flex pointer-events-none">
+          <ArrowRightLeft className="w-4 h-4 text-on-surface-variant" />
+        </div>
+        
+        {/* Primary Metric Overlay */}
+        <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-surface/95 backdrop-blur border border-outline-variant px-6 py-4 rounded shadow-md flex flex-col items-center pointer-events-none">
+          <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-1">OBSERVED / SIMULATED OVERLAP SCORE</span>
+          <span className="text-3xl text-primary font-bold uppercase tracking-wider">{(incident.simulation.overlapScore * 100).toFixed(0)}%</span>
+        </div>
+      </div>
+
+      {/* Bottom HUD Layout: Vessel Selector & Metrics Panel */}
+      <div className="absolute bottom-4 left-4 right-4 z-40 flex flex-col lg:flex-row gap-4 items-end pointer-events-none">
+        
+        {/* Vessel Selector Card */}
+        <div className="w-full lg:w-96 bg-surface/95 backdrop-blur border border-outline-variant rounded shadow-sm pointer-events-auto flex flex-col">
+          <div className="flex items-center justify-between border-b border-outline-variant p-3 bg-surface-container-low rounded-t">
+            <h3 className="text-[10px] font-bold tracking-widest text-on-surface-variant uppercase">Candidate Models</h3>
+            <SlidersHorizontal className="w-4 h-4 text-on-surface-variant" />
+          </div>
+          <div className="flex flex-col p-3 gap-2 max-h-[300px] overflow-y-auto bg-surface-container-lowest">
+            
+            {incident.vesselCandidates.map((c) => {
+              const isSelected = selectedMmsi === c.mmsi;
+              return (
+                <button 
+                  key={c.mmsi} 
+                  onClick={() => setSelectedMmsi(c.mmsi)}
+                  className={`w-full flex justify-between items-center border p-3 rounded text-left active:scale-[0.98] transition-all relative overflow-hidden group ${isSelected ? 'bg-primary/5 border-primary shadow-sm' : 'bg-surface border-outline-variant hover:border-primary/50'}`}
+                >
+                  <div className="flex flex-col relative z-10">
+                    <span className="text-xs text-on-surface font-bold flex items-center gap-2">
+                      <Anchor className={`w-3.5 h-3.5 ${isSelected ? 'text-primary' : 'text-on-surface-variant'}`} />
+                      {c.name}
+                    </span>
+                    <span className={`font-mono text-[10px] font-medium mt-1 ${isSelected ? 'text-primary/80' : 'text-on-surface-variant'}`}>
+                      MMSI: {c.mmsi}
+                    </span>
+                  </div>
+                  {isSelected && <span className="w-2 h-2 rounded-full bg-primary shadow-sm relative z-10"></span>}
+                </button>
+              );
+            })}
+
+          </div>
+        </div>
+        
+        {/* Validation Metrics */}
+        <div className="flex-1 bg-surface/95 backdrop-blur border border-outline-variant rounded shadow-sm pointer-events-auto flex flex-col">
+           <div className="flex items-center justify-between border-b border-outline-variant p-3 bg-surface-container-low rounded-t">
+            <h3 className="text-[10px] font-bold tracking-widest text-on-surface-variant uppercase">Counterfactual Validity Analysis</h3>
           </div>
           
-          {/* Primary Metric Overlay */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-[var(--color-surface-highest)]/95 backdrop-blur-xl border border-[var(--color-primary)] p-6 rounded-lg shadow-2xl flex flex-col items-center pointer-events-none">
-            <span className="text-[11px] font-bold tracking-widest text-[var(--color-primary)] uppercase mb-2">OBSERVED / SIMULATED OVERLAP SCORE</span>
-            <span className="text-[48px] leading-[48px] text-[var(--color-primary)] font-bold drop-shadow-[0_0_16px_rgba(84,227,246,0.4)] uppercase text-center tracking-wider">High</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-surface-container-lowest rounded-b">
+            <div className="flex flex-col bg-surface border border-outline-variant p-3 rounded">
+              <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-2">EVIDENCE SCORE</span>
+              <span className="font-mono text-lg text-primary font-bold flex items-center gap-2">
+                {(incident.lookAlikeAssessment.evidenceScore * 100).toFixed(0)}% <CheckCircle2 className="w-4 h-4 text-primary" />
+              </span>
+            </div>
+            <div className="flex flex-col bg-surface border border-outline-variant p-3 rounded">
+              <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-2">MORPHOLOGY MATCH</span>
+              <span className="font-mono text-sm font-bold text-on-surface">Strong Alignment</span>
+            </div>
+            <div className="flex flex-col bg-surface border border-outline-variant p-3 rounded">
+              <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-2">ENVIRONMENTAL DRAG</span>
+              <span className="font-mono text-sm font-bold text-on-surface">Nominal</span>
+            </div>
+            <div className="flex flex-col bg-surface border border-outline-variant p-3 rounded">
+              <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-2">ATTRIBUTION STATUS</span>
+              <span className="font-mono text-[10px] text-tertiary font-bold px-2 py-1 bg-tertiary/10 rounded border border-tertiary/30 w-fit mt-1">
+                REQUIRES CORROBORATION
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Bottom HUD Layout: Vessel Selector & Metrics Panel */}
-        <div className="absolute bottom-4 left-4 right-4 z-40 flex flex-col lg:flex-row gap-4 items-end pointer-events-none">
-          
-          {/* Vessel Selector Card */}
-          <div className="w-full lg:w-96 bg-[var(--color-surface-container)]/95 backdrop-blur-xl border border-[var(--color-outline-variant)] rounded-lg p-5 shadow-2xl pointer-events-auto flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-[var(--color-outline-variant)] pb-2">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--color-on-surface-variant)] uppercase">Candidate Models</h3>
-              <SlidersHorizontal className="w-4 h-4 text-[var(--color-on-surface-variant)]" />
-            </div>
-            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto">
-              
-              {incident.candidates.map((c) => {
-                const isSelected = selectedMmsi === c.mmsi;
-                return (
-                  <button 
-                    key={c.mmsi} 
-                    onClick={() => setSelectedMmsi(c.mmsi)}
-                    className={`w-full flex justify-between items-center border p-3 rounded text-left active:scale-[0.98] transition-all relative overflow-hidden group ${isSelected ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]' : 'bg-[var(--color-surface-low)] border-[var(--color-outline-variant)] hover:border-[var(--color-primary)]/50'}`}
-                  >
-                    <div className="flex flex-col relative z-10">
-                      <span className="text-sm text-[var(--color-on-surface)] font-semibold flex items-center gap-2">
-                        <Anchor className={`w-4 h-4 ${isSelected ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)]'}`} />
-                        {c.name}
-                      </span>
-                      <span className={`font-mono text-[10px] mt-0.5 ${isSelected ? 'text-[var(--color-primary)]/70' : 'text-[var(--color-on-surface-variant)]'}`}>
-                        MMSI: {c.mmsi}
-                      </span>
-                    </div>
-                    {isSelected && <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] shadow-[0_0_8px_rgba(84,227,246,0.8)] animate-pulse relative z-10"></span>}
-                  </button>
-                );
-              })}
-
-            </div>
-          </div>
-          
-          {/* Validation Metrics */}
-          <div className="flex-1 bg-[var(--color-surface-container)]/95 backdrop-blur-xl border border-[var(--color-outline-variant)] rounded-lg p-5 shadow-2xl pointer-events-auto flex flex-col gap-4">
-             <div className="flex items-center justify-between border-b border-[var(--color-outline-variant)] pb-2">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--color-on-surface-variant)] uppercase">Counterfactual Validity Analysis</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-2">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-widest text-[var(--color-on-surface-variant)] uppercase mb-1">EVIDENCE SCORE</span>
-                <span className="font-mono text-lg text-[#4ade80] flex items-center gap-2">
-                  High <CheckCircle2 className="w-4 h-4" />
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-widest text-[var(--color-on-surface-variant)] uppercase mb-1">MORPHOLOGY MATCH</span>
-                <span className="font-mono text-lg text-[var(--color-on-surface)]">Strong Alignment</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-widest text-[var(--color-on-surface-variant)] uppercase mb-1">ENVIRONMENTAL DRAG</span>
-                <span className="font-mono text-lg text-[var(--color-on-surface)]">Nominal</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold tracking-widest text-[var(--color-on-surface-variant)] uppercase mb-1">ATTRIBUTION STATUS</span>
-                <span className="font-mono text-sm text-[var(--color-error)] font-bold px-2 py-1 bg-[var(--color-error)]/10 rounded border border-[var(--color-error)]/30 w-fit mt-1">
-                  HIGHEST-RANKED CANDIDATE
-                </span>
-              </div>
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
   );

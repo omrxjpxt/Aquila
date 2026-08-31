@@ -1,33 +1,49 @@
-import { Bell, Activity } from "lucide-react";
+"use client";
+
+import { Bell, Clock, UserCircle2 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function TopAppBar() {
+  const pathname = usePathname();
   return (
-    <header className="fixed top-0 left-16 right-0 h-16 bg-[var(--color-surface)]/90 backdrop-blur-md border-b border-[var(--color-outline-variant)] flex items-center justify-between px-6 z-40">
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold tracking-wide text-[var(--color-on-surface)]">
-          AQUILA <span className="text-[var(--color-on-surface-variant)] text-sm font-normal ml-2">v2.0.4-STABLE</span>
-        </h1>
+    <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 h-14 bg-surface border-b border-outline-variant">
+      <div className="flex items-center gap-6 h-full">
+        <Link href="/" className="text-lg font-bold text-primary tracking-tight uppercase flex items-center h-full">
+          AQUILA
+        </Link>
+        <nav className="hidden md:flex gap-6 h-full items-center">
+          <Link 
+            href="/monitoring" 
+            className={`font-medium h-full flex items-center px-1 transition-colors ${pathname.startsWith('/monitoring') || pathname === '/' ? 'text-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}
+          >
+            Live Monitoring
+          </Link>
+          <Link 
+            href="/investigation/INC-AQ-001" 
+            className={`font-medium h-full flex items-center px-1 transition-colors ${pathname.startsWith('/investigation') ? 'text-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}
+          >
+            Investigations
+          </Link>
+          <Link 
+            href="/vessels" 
+            className={`font-medium h-full flex items-center px-1 transition-colors ${pathname.startsWith('/vessels') ? 'text-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}
+          >
+            Vessel Fleet
+          </Link>
+        </nav>
       </div>
 
-      <div className="flex items-center gap-6">
-        {/* System Health */}
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <Activity className="w-4 h-4 text-[var(--color-primary)]" />
-          <span className="text-[var(--color-primary)]">SYS_NOMINAL</span>
-        </div>
-        
-        <div className="w-px h-6 bg-[var(--color-outline-variant)]"></div>
-
-        {/* Notifications */}
-        <button className="relative p-2 text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)] transition-colors">
+      <div className="flex items-center gap-4">
+        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full">
           <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--color-error)] rounded-full border border-[var(--color-surface)]"></span>
         </button>
-        
-        {/* User Profile */}
-        <div className="w-8 h-8 rounded border border-[var(--color-outline)] overflow-hidden flex items-center justify-center bg-[var(--color-surface-high)]">
-          <span className="text-xs font-bold text-[var(--color-on-surface)]">OP</span>
-        </div>
+        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full">
+          <Clock className="w-5 h-5" />
+        </button>
+        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full">
+          <UserCircle2 className="w-5 h-5" />
+        </button>
       </div>
     </header>
   );

@@ -10,8 +10,8 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 interface EvidenceFactor {
   id: string;
   name: string;
-  score: number; // 0-100 or 0-1 (we'll use 0-100 for display)
-  status: "high" | "medium" | "low" | "unknown";
+  score: number; // 0-100
+  status: "high" | "medium" | "low";
   icon: React.ElementType;
   description: string;
 }
@@ -96,44 +96,38 @@ export function AttributionBreakdown({
   ];
 
   return (
-    <div className={cn("bg-[var(--color-surface)] border border-[var(--color-outline-variant)] rounded-lg p-4", className)}>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2">
-            <Ship className="w-5 h-5 text-[var(--color-primary)]" />
-            {vesselName}
-          </h3>
-          <p className="text-xs font-mono text-[var(--color-on-surface-variant)]">MMSI: {vesselId}</p>
-        </div>
-        <div className="text-right">
-          <div className="text-2xl font-mono text-[var(--color-primary)] font-bold">{overallScore}%</div>
-          <p className="text-[10px] text-[var(--color-on-surface-variant)] uppercase tracking-wider">Overall Match</p>
-        </div>
+    <div className={cn("p-4", className)}>
+      <div className="flex justify-between items-center mb-6 hidden">
+        {/* Header moved to parent component, hidden here to avoid duplication */}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-3">
         {evidenceFactors.map((factor) => (
-          <div key={factor.id} className="bg-[var(--color-surface-low)] border border-[var(--color-outline-variant)] rounded p-3 flex flex-col gap-2 relative overflow-hidden group">
+          <div key={factor.id} className="bg-surface border border-outline-variant rounded p-3 flex flex-col gap-2 relative overflow-hidden group shadow-sm hover:border-outline transition-colors">
             {/* Status indicator bar */}
             <div className={cn(
               "absolute left-0 top-0 bottom-0 w-1",
-              factor.status === "high" ? "bg-[var(--color-primary)]" : 
-              factor.status === "medium" ? "bg-[var(--color-tertiary)]" : "bg-[var(--color-error)]"
+              factor.status === "high" ? "bg-primary" : 
+              factor.status === "medium" ? "bg-tertiary" : "bg-error"
             )}></div>
             
             <div className="flex justify-between items-center pl-2">
               <div className="flex items-center gap-2">
                 <factor.icon className={cn(
                   "w-4 h-4",
-                  factor.status === "high" ? "text-[var(--color-primary)]" : 
-                  factor.status === "medium" ? "text-[var(--color-tertiary)]" : "text-[var(--color-error)]"
+                  factor.status === "high" ? "text-primary" : 
+                  factor.status === "medium" ? "text-tertiary" : "text-error"
                 )} />
-                <span className="text-sm font-semibold text-[var(--color-on-surface)]">{factor.name}</span>
+                <span className="text-sm font-bold text-on-surface">{factor.name}</span>
               </div>
-              <span className="text-xs font-mono font-bold text-[var(--color-on-surface)]">{factor.score}%</span>
+              <span className={cn(
+                "text-sm font-mono font-bold",
+                factor.status === "high" ? "text-primary" : 
+                factor.status === "medium" ? "text-tertiary" : "text-error"
+              )}>{factor.score}%</span>
             </div>
             
-            <p className="text-xs text-[var(--color-on-surface-variant)] pl-2 opacity-80 group-hover:opacity-100 transition-opacity">
+            <p className="text-[11px] text-on-surface-variant pl-2 leading-tight">
               {factor.description}
             </p>
           </div>

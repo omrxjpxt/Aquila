@@ -1,8 +1,6 @@
-"use client";
-
-// @ts-nocheck
 import { useEffect } from "react";
 import { useMap } from "./MapLibreCanvas";
+import type { LayerSpecification, GeoJSONSource } from "maplibre-gl";
 
 export function GeoJSONLayer({
   id,
@@ -10,12 +8,14 @@ export function GeoJSONLayer({
   type,
   paint,
   layout = {},
+  visible = true,
 }: {
   id: string;
-  data: any;
+  data: GeoJSON.FeatureCollection | GeoJSON.Feature | string;
   type: "fill" | "line" | "circle" | "symbol";
-  paint: any;
-  layout?: any;
+  paint: Record<string, unknown>;
+  layout?: Record<string, unknown>;
+  visible?: boolean;
 }) {
   const map = useMap();
 
@@ -25,19 +25,18 @@ export function GeoJSONLayer({
     if (!map.getSource(id)) {
       map.addSource(id, {
         type: "geojson",
-        data,
+        data: data as GeoJSON.GeoJSON,
       });
     }
 
     if (!map.getLayer(id)) {
-      // @ts-ignore
       map.addLayer({
         id,
         type,
         source: id,
         paint,
         layout,
-      });
+      } as LayerSpecification);
     }
 
     return () => {
@@ -49,19 +48,24 @@ export function GeoJSONLayer({
   // Update data if it changes
   useEffect(() => {
     if (!map) return;
-    // @ts-ignore
-    let source = map.getSource(id);
-    if (source) {
-      // @ts-ignore
-      source.setData(data);
+    const source = map.getSource(id) as GeoJSONSource | undefined;
+    if (source && typeof data !== 'string') {
+      source.setData(data as GeoJSON.GeoJSON);
     }
   }, [map, id, data]);
+
+  // Handle visibility
+  useEffect(() => {
+    if (!map) return;
+    if (map.getLayer(id)) {
+      map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+    }
+  }, [map, id, visible]);
 
   return null;
 }
 
 export function SlickLayer({ center, visible = true }: { center: [number, number], visible?: boolean }) {
-  // Generate a mock polygon around the center
   const data = {
     type: "FeatureCollection",
     features: [
@@ -72,13 +76,14 @@ export function SlickLayer({ center, visible = true }: { center: [number, number
           coordinates: [
             [
               [center[0] - 0.05, center[1] - 0.02],
-              [center[0] - 0.02, center[1] + 0.03],
-              [center[0] + 0.04, center[1] + 0.02],
-              [center[0] + 0.06, center[1] - 0.01],
+              [center[0] - 0.02, center[1] + 0.04],
+              [center[0] + 0.06, center[1] + 0.03],
+              [center[0] + 0.04, center[1] - 0.03],
               [center[0] - 0.05, center[1] - 0.02],
             ],
           ],
         },
+        properties: {}
       },
     ],
   };
@@ -87,21 +92,23 @@ export function SlickLayer({ center, visible = true }: { center: [number, number
     <>
       <GeoJSONLayer
         id="slick-fill"
-        data={data}
+        data={data as GeoJSON.FeatureCollection}
         type="fill"
+        visible={visible}
         paint={{
           "fill-color": "#46d9eb",
-          "fill-opacity": visible ? 0.3 : 0,
+          "fill-opacity": 0.3,
         }}
       />
       <GeoJSONLayer
         id="slick-outline"
-        data={data}
+        data={data as GeoJSON.FeatureCollection}
         type="line"
+        visible={visible}
         paint={{
           "line-color": "#28c7d9",
           "line-width": 2,
-          "line-opacity": visible ? 1 : 0,
+          "line-opacity": 1,
         }}
       />
     </>
@@ -109,113 +116,52 @@ export function SlickLayer({ center, visible = true }: { center: [number, number
 }
 
 export function OriginRegionLayer({ center, radiusKm, visible = true }: { center: [number, number], radiusKm: number, visible?: boolean }) {
-  // Approximate a circle with a polygon (1 deg ~ 111km)
   const deg = radiusKm / 111;
   const points = 32;
   const coords = [];
   for (let i = 0; i <= points; i++) {
-    const angle = (i / points) * Math.PI * 2;
-    coords.push([
-      center[0] + Math.cos(angle) * deg,
-      center[1] + Math.sin(angle) * deg,
-    ]);
+    const angle = (i * 360) / points;
+    const rad = (angle * Math.PI) / 180;
+    coords.push([center[0] + deg * Math.cos(rad), center[1] + deg * Math.sin(rad)]);
   }
 
   const data = {
-    type: "Feature",
-    geometry: {
-      type: "Polygon",
-      coordinates: [coords],
-    },
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        geometry: {
+          type: "Polygon",
+          coordinates: [coords],
+        },
+        properties: {}
+      },
+    ],
   };
 
   return (
     <>
       <GeoJSONLayer
         id="origin-fill"
-        data={data}
+        data={data as GeoJSON.FeatureCollection}
         type="fill"
+        visible={visible}
         paint={{
           "fill-color": "#ffc862",
-          "fill-opacity": visible ? 0.15 : 0,
+          "fill-opacity": 0.15,
         }}
       />
       <GeoJSONLayer
         id="origin-outline"
-        data={data}
+        data={data as GeoJSON.FeatureCollection}
         type="line"
+        visible={visible}
         paint={{
           "line-color": "#e5ab35",
           "line-width": 2,
-          "line-dasharray": [2, 2],
-          "line-opacity": visible ? 0.8 : 0,
+          "line-opacity": 0.8,
         }}
       />
-    </>
-  );
-}
-
-export function VesselTracksLayer({ candidates, selectedMmsi, visible = true }: { candidates: any[], selectedMmsi?: string | null, visible?: boolean }) {
-  
-  return (
-    <>
-      {candidates.map((c, i) => {
-        const isSelected = selectedMmsi === c.mmsi;
-        const color = isSelected ? "#ffb4ab" : (c.confidenceState === "HIGH" ? "#ffb4ab" : "#bbc9cb");
-        
-        // Mock track points starting from origin to last known position
-        const track = {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [58.1500 + (i - 1)*0.05, 24.4800 + (i - 1)*0.05], // near origin
-              c.lastKnownPosition
-            ]
-          }
-        };
-
-        const point = {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: c.lastKnownPosition
-          },
-          properties: {
-            mmsi: c.mmsi,
-            name: c.name
-          }
-        };
-
-        return (
-          <div key={c.mmsi}>
-             <GeoJSONLayer
-                id={`track-${c.mmsi}`}
-                data={track}
-                type="line"
-                paint={{
-                  "line-color": color,
-                  "line-width": isSelected ? 3 : 1.5,
-                  "line-opacity": visible ? (isSelected ? 1 : 0.4) : 0,
-                  "line-dasharray": [1, 2]
-                }}
-              />
-              <GeoJSONLayer
-                id={`point-${c.mmsi}`}
-                data={point}
-                type="circle"
-                paint={{
-                  "circle-radius": isSelected ? 8 : 5,
-                  "circle-color": color,
-                  "circle-stroke-width": 2,
-                  "circle-stroke-color": "#001525",
-                  "circle-opacity": visible ? 1 : 0,
-                  "circle-stroke-opacity": visible ? 1 : 0,
-                }}
-              />
-          </div>
-        );
-      })}
     </>
   );
 }
@@ -225,23 +171,85 @@ export function TrajectoryLayer({ origin, slick, visible = true }: { origin: [nu
     type: "Feature",
     geometry: {
       type: "LineString",
-      coordinates: [origin, slick]
-    }
+      coordinates: [slick, origin],
+    },
+    properties: {}
   };
 
   return (
+    <GeoJSONLayer
+      id="drift-trajectory"
+      data={data as GeoJSON.Feature}
+      type="line"
+      visible={visible}
+      paint={{
+        "line-color": "#ffc862",
+        "line-width": 2,
+        "line-dasharray": [2, 2],
+        "line-opacity": 0.8
+      }}
+    />
+  );
+}
+
+export function VesselTracksLayer({ candidates, selectedMmsi, visible = true }: { candidates: { mmsi: string, confidenceState: string, lastKnownPosition: [number, number] }[], selectedMmsi: string | null, visible?: boolean }) {
+  return (
     <>
-      <GeoJSONLayer
-        id="trajectory-line"
-        data={data}
-        type="line"
-        paint={{
-          "line-color": "#4ade80",
-          "line-width": 2,
-          "line-dasharray": [4, 4],
-          "line-opacity": visible ? 0.8 : 0,
-        }}
-      />
+      {candidates.map((c, i) => {
+        const isSelected = selectedMmsi === c.mmsi;
+        const color = isSelected ? "#00647C" : (c.confidenceState === "HIGH" ? "#00647C" : "#8BA2A6");
+        
+        const trackGeoJSON = {
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: [
+              [58.1500 + (i - 1)*0.05, 24.4800 + (i - 1)*0.05],
+              c.lastKnownPosition
+            ]
+          },
+          properties: {}
+        };
+
+        const pointGeoJSON = {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: c.lastKnownPosition
+          },
+          properties: {}
+        };
+
+        return (
+          <div key={c.mmsi}>
+            <GeoJSONLayer
+              id={`track-${c.mmsi}`}
+              data={trackGeoJSON as GeoJSON.Feature}
+              type="line"
+              visible={visible}
+              paint={{
+                "line-color": color,
+                "line-width": isSelected ? 3 : 1.5,
+                "line-opacity": isSelected ? 1 : 0.4,
+                "line-dasharray": [1, 2]
+              }}
+            />
+            <GeoJSONLayer
+              id={`point-${c.mmsi}`}
+              data={pointGeoJSON as GeoJSON.Feature}
+              type="circle"
+              visible={visible}
+              paint={{
+                "circle-color": color,
+                "circle-radius": isSelected ? 6 : 4,
+                "circle-stroke-width": 2,
+                "circle-stroke-color": "#ffffff",
+                "circle-opacity": isSelected ? 1 : 0.6
+              }}
+            />
+          </div>
+        );
+      })}
     </>
   );
 }
