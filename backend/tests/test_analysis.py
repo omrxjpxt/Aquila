@@ -159,10 +159,8 @@ def test_full_pipeline_integration(synthetic_scene_path):
     This tests the entire Phase 4A + 4B pipeline via HTTP.
     """
     # 1. Ingest
-    response = client.post("/api/v1/satellite/ingest", json={
-        "file_path": synthetic_scene_path,
-        "provider": "SENTINEL_1_TEST"
-    })
+    with open(synthetic_scene_path, "rb") as f:
+        response = client.post("/api/v1/satellite/ingest", files={"file": ("synthetic_s1_test_scene.tif", f, "image/tiff")})
     assert response.status_code == 200
     scene = response.json()
     scene_id = scene["id"]
@@ -209,10 +207,8 @@ def test_api_missing_scene():
 def test_api_missing_slick(synthetic_scene_path):
     """Test 404 when slick doesn't exist in a valid scene."""
     # Ingest
-    response = client.post("/api/v1/satellite/ingest", json={
-        "file_path": synthetic_scene_path,
-        "provider": "SENTINEL_1_TEST"
-    })
+    with open(synthetic_scene_path, "rb") as f:
+        response = client.post("/api/v1/satellite/ingest", files={"file": ("synthetic_s1_test_scene.tif", f, "image/tiff")})
     scene_id = response.json()["id"]
 
     # Process

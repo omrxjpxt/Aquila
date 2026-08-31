@@ -1,4 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+import os
+import shutil
+import uuid
+from pathlib import Path
 from typing import List, Dict
 from app.schemas.satellite import SatelliteScene, SceneIngestRequest, ProcessingResult
 from app.schemas.slick import Slick
@@ -18,13 +22,40 @@ def get_slick_detection_service():
     return SlickDetectionService()
 
 @router.post("/ingest", response_model=SatelliteScene)
-async def ingest_scene(request: SceneIngestRequest, service: SatelliteService = Depends(get_satellite_service)):
+async def ingest_scene(
+    file: UploadFile = File(...), 
+    service: SatelliteService = Depends(get_satellite_service)
+):
     try:
+        # Save uploaded file to a temporary location
+        upload_dir = Path("data/uploads")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        file_ext = Path(file.filename).suffix if file.filename else ".tif"
+        temp_file_path = upload_dir / f"upload_{uuid.uuid4()}{file_ext}"
+        
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        request = SceneIngestRequest(file_path=str(temp_file_path), provider="UPLOAD")
         scene = await service.ingest_local_scene(request)
         scenes_db[scene.id] = scene
         return scene
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ingest/sample", response_model=SatelliteScene)
+async def ingest_sample_scene(service: SatelliteService = Depends(get_satellite_service)):
+    """Development only: Ingests the pre-existing sample GeoTIFF."""
+    try:
+        sample_path = "data/sample/real_s1_cropped.tif"
+        if not os.path.exists(sample_path):
+            raise HTTPException(status_code=404, detail="Sample scene not found on server")
+            
+        request = SceneIngestRequest(file_path=sample_path, provider="SENTINEL_1")
+        scene = await service.ingest_local_scene(request)
+        scenes_db[scene.id] = scene
+        return scene
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

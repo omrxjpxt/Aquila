@@ -6,10 +6,8 @@ client = TestClient(app)
 
 def test_ingest_process_detect(synthetic_scene_path):
     # 1. Ingest
-    response = client.post("/api/v1/satellite/ingest", json={
-        "file_path": synthetic_scene_path,
-        "provider": "SENTINEL_1_TEST"
-    })
+    with open(synthetic_scene_path, "rb") as f:
+        response = client.post("/api/v1/satellite/ingest", files={"file": ("synthetic_s1_test_scene.tif", f, "image/tiff")})
     assert response.status_code == 200
     scene = response.json()
     scene_id = scene["id"]
