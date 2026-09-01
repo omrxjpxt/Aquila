@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate } from "@/lib/api/types";
+import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate, AttributionResult } from "@/lib/api/types";
 import { satelliteApi } from "@/lib/api/satellite";
 import { analysisApi } from "@/lib/api/analysis";
 import { driftApi } from "@/lib/api/drift";
@@ -16,6 +16,7 @@ interface InvestigationState {
   driftResults: Record<string, DriftResult>; // keyed by scenario_id
   forecastResults: Record<string, ForecastResult>; // keyed by scenario_id
   vesselCandidates: Record<string, VesselCandidate[]>; // keyed by scenario_id
+  attributionResults: Record<string, AttributionResult>; // keyed by scenario_id
   
   isLoading: boolean;
   error: string | null;
@@ -30,6 +31,7 @@ interface InvestigationState {
   runHindcast: (scenario: DriftScenario) => Promise<void>;
   runForecast: (scenario: DriftScenario, originId: string) => Promise<void>;
   findVesselCandidates: (scenarioId: string, origin: OriginEstimate, start: string, end: string) => Promise<void>;
+  evaluateAttribution: (investigationId: string, scenarioId: string, origin: OriginEstimate, drift: DriftResult, candidates: VesselCandidate[]) => Promise<void>;
 }
 
 const InvestigationContext = createContext<InvestigationState | undefined>(undefined);
@@ -43,6 +45,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   const [driftResults, setDriftResults] = useState<Record<string, DriftResult>>({});
   const [forecastResults, setForecastResults] = useState<Record<string, ForecastResult>>({});
   const [vesselCandidates, setVesselCandidates] = useState<Record<string, VesselCandidate[]>>({});
+  const [attributionResults, setAttributionResults] = useState<Record<string, AttributionResult>>({});
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +164,20 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
+  const evaluateAttribution = async (investigationId: string, scenarioId: string, origin: OriginEstimate, drift: DriftResult, candidates: VesselCandidate[]) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { attributionApi } = await import('@/lib/api/attribution');
+      const result = await attributionApi.evaluateCandidates(investigationId, origin, drift, candidates);
+      setAttributionResults(prev => ({ ...prev, [scenarioId]: result }));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to evaluate attribution");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <InvestigationContext.Provider value={{
       scene,
@@ -171,6 +188,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       driftResults,
       forecastResults,
       vesselCandidates,
+      attributionResults,
       isLoading,
       error,
       setScene,
@@ -181,7 +199,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       fuseEvidence,
       runHindcast,
       runForecast,
-      findVesselCandidates
+      findVesselCandidates,
+      evaluateAttribution
     }}>
       {children}
     </InvestigationContext.Provider>

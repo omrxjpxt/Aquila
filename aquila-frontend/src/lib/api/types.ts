@@ -233,6 +233,37 @@ export interface VesselCandidate {
   provenance: AISProvenance;
 }
 
+
+export interface AttributionFactor {
+  factor_name: string;
+  status: EvidenceStatus;
+  observation: string;
+  interpretation: string;
+  evidence_source: string;
+  provenance: string;
+  limitations: string;
+}
+
+export interface AttributionCandidate {
+  vessel_identity: VesselIdentity;
+  factors: AttributionFactor[];
+  supporting_count: number;
+  contradicting_count: number;
+  neutral_count: number;
+  unavailable_count: number;
+  evidence_coverage: string;
+  evidence_ranking_score: number;
+}
+
+export interface AttributionResult {
+  investigation_id: string;
+  candidates: AttributionCandidate[];
+  highest_ranked_candidate: VesselIdentity | null;
+  ranking_methodology: string;
+  limitations: string;
+}
+
+
 export interface HindcastRequest {
   scenario: DriftScenario;
   scene_id: string;
