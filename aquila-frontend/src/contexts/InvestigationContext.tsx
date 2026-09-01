@@ -1,9 +1,10 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult } from "@/lib/api/types";
+import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario } from "@/lib/api/types";
 import { satelliteApi } from "@/lib/api/satellite";
 import { analysisApi } from "@/lib/api/analysis";
+import { driftApi } from "@/lib/api/drift";
 
 interface InvestigationState {
   scene: SatelliteScene | null;
@@ -11,6 +12,8 @@ interface InvestigationState {
   selectedCandidateId: string | null;
   assessments: Record<string, LookAlikeAssessment>; // keyed by slick_id
   fusionResults: Record<string, EvidenceFusionResult>; // keyed by slick_id
+  driftResults: Record<string, DriftResult>; // keyed by scenario_id
+  forecastResults: Record<string, ForecastResult>; // keyed by scenario_id
   
   isLoading: boolean;
   error: string | null;
@@ -22,6 +25,8 @@ interface InvestigationState {
   loadInvestigation: (sceneId: string) => Promise<void>;
   assessCandidate: (slickId: string) => Promise<void>;
   fuseEvidence: (slickId: string) => Promise<void>;
+  runHindcast: (scenario: DriftScenario) => Promise<void>;
+  runForecast: (scenario: DriftScenario, originId: string) => Promise<void>;
 }
 
 const InvestigationContext = createContext<InvestigationState | undefined>(undefined);
@@ -32,6 +37,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [assessments, setAssessments] = useState<Record<string, LookAlikeAssessment>>({});
   const [fusionResults, setFusionResults] = useState<Record<string, EvidenceFusionResult>>({});
+  const [driftResults, setDriftResults] = useState<Record<string, DriftResult>>({});
+  const [forecastResults, setForecastResults] = useState<Record<string, ForecastResult>>({});
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +110,39 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
+  const runHindcast = async (scenario: DriftScenario) => {
+    if (!scene) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await driftApi.runHindcast({
+        scenario,
+        scene_id: scene.id
+      });
+      setDriftResults(prev => ({ ...prev, [scenario.scenario_id]: result }));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to run hindcast");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const runForecast = async (scenario: DriftScenario, originId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await driftApi.runForecast({
+        scenario,
+        origin_id: originId
+      });
+      setForecastResults(prev => ({ ...prev, [scenario.scenario_id]: result }));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to run forecast");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <InvestigationContext.Provider value={{
       scene,
@@ -110,6 +150,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       selectedCandidateId,
       assessments,
       fusionResults,
+      driftResults,
+      forecastResults,
       isLoading,
       error,
       setScene,
@@ -117,7 +159,9 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       setSelectedCandidateId,
       loadInvestigation,
       assessCandidate,
-      fuseEvidence
+      fuseEvidence,
+      runHindcast,
+      runForecast
     }}>
       {children}
     </InvestigationContext.Provider>

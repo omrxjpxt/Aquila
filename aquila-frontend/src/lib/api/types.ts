@@ -110,3 +110,79 @@ export interface EvidenceFusionRequest {
   patch_path?: string | null;
   look_alike_assessment?: LookAlikeAssessment | null;
 }
+
+// Phase 5: Drift Reconstruction
+
+export interface DriftScenario {
+  scenario_id: string;
+  investigation_id: string;
+  slick_id?: string | null;
+  start_time: string; // ISO format
+  end_time: string; // ISO format
+  is_backward: boolean;
+  release_window_hours?: number;
+  forcing_sources?: string[];
+  parameters?: Record<string, unknown>;
+}
+
+export interface OriginEstimate {
+  id: string;
+  slick_id: string;
+  scenario_id: string;
+  estimated_time: string;
+  time_uncertainty_hours: number;
+  geometry: GeoJSON.Polygon;
+  limitations: string;
+}
+
+export interface DriftTrajectory {
+  id: string;
+  coordinates: number[][]; // [lon, lat][]
+  timestamps: string[]; // ISO format
+  particle_count: number;
+}
+
+export interface DriftUncertainty {
+  geometry: GeoJSON.Polygon;
+  label: string;
+}
+
+export interface DriftProvenance {
+  mode: string;
+  engine: string;
+  forcing: string;
+  model_status: string;
+  limitations: string;
+}
+
+export interface DriftResult {
+  id: string;
+  scenario_id: string;
+  slick_id: string;
+  run_time: string;
+  origin_estimate?: OriginEstimate | null;
+  trajectories: DriftTrajectory[];
+  uncertainty?: DriftUncertainty | null;
+  provenance: DriftProvenance;
+}
+
+export interface ForecastResult {
+  id: string;
+  scenario_id: string;
+  origin_id?: string | null;
+  run_time: string;
+  forecast_geometry: GeoJSON.Polygon;
+  trajectories: DriftTrajectory[];
+  uncertainty?: DriftUncertainty | null;
+  provenance: DriftProvenance;
+}
+
+export interface HindcastRequest {
+  scenario: DriftScenario;
+  scene_id: string;
+}
+
+export interface ForecastRequest {
+  scenario: DriftScenario;
+  origin_id: string;
+}

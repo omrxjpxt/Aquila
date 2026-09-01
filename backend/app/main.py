@@ -2,8 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.router import router as api_v1_router
-from app.api.v1.satellite import router as satellite_router
-from app.api.v1.analysis import router as analysis_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -33,5 +31,3 @@ async def health_check():
     return {"status": "ok"}
 
 app.include_router(api_v1_router, prefix=settings.API_V1_STR)
-app.include_router(satellite_router, prefix=settings.API_V1_STR)
-app.include_router(analysis_router, prefix=settings.API_V1_STR)

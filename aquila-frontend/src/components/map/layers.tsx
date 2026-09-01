@@ -115,25 +115,34 @@ export function SlickLayer({ center, visible = true }: { center: [number, number
   );
 }
 
-export function OriginRegionLayer({ center, radiusKm, visible = true }: { center: [number, number], radiusKm: number, visible?: boolean }) {
-  const deg = radiusKm / 111;
-  const points = 32;
-  const coords = [];
-  for (let i = 0; i <= points; i++) {
-    const angle = (i * 360) / points;
-    const rad = (angle * Math.PI) / 180;
-    coords.push([center[0] + deg * Math.cos(rad), center[1] + deg * Math.sin(rad)]);
+export function OriginRegionLayer({ geometry, center, radiusKm, visible = true }: { geometry?: GeoJSON.Polygon, center?: [number, number], radiusKm?: number, visible?: boolean }) {
+  let finalGeometry: GeoJSON.Polygon | null = null;
+  
+  if (geometry) {
+    finalGeometry = geometry;
+  } else if (center && radiusKm) {
+    const deg = radiusKm / 111;
+    const points = 32;
+    const coords = [];
+    for (let i = 0; i <= points; i++) {
+      const angle = (i * 360) / points;
+      const rad = (angle * Math.PI) / 180;
+      coords.push([center[0] + deg * Math.cos(rad), center[1] + deg * Math.sin(rad)]);
+    }
+    finalGeometry = {
+      type: "Polygon",
+      coordinates: [coords],
+    };
   }
+  
+  if (!finalGeometry) return null;
 
   const data = {
     type: "FeatureCollection",
     features: [
       {
         type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [coords],
-        },
+        geometry: finalGeometry,
         properties: {}
       },
     ],
@@ -166,12 +175,21 @@ export function OriginRegionLayer({ center, radiusKm, visible = true }: { center
   );
 }
 
-export function TrajectoryLayer({ origin, slick, visible = true }: { origin: [number, number], slick: [number, number], visible?: boolean }) {
+export function TrajectoryLayer({ coordinates, origin, slick, visible = true }: { coordinates?: number[][], origin?: [number, number], slick?: [number, number], visible?: boolean }) {
+  let finalCoords: number[][] = [];
+  if (coordinates) {
+    finalCoords = coordinates;
+  } else if (origin && slick) {
+    finalCoords = [slick, origin];
+  }
+  
+  if (finalCoords.length === 0) return null;
+
   const data = {
     type: "Feature",
     geometry: {
       type: "LineString",
-      coordinates: [slick, origin],
+      coordinates: finalCoords,
     },
     properties: {}
   };
