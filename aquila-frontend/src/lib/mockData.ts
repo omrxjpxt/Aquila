@@ -39,7 +39,7 @@ export type ProvenanceState = "OBSERVED" | "MODEL-INFERRED" | "SIMULATED" | "FOR
 export interface TimelineEvent {
   id: string;
   timestamp: string;
-  source: "AIS" | "SAR" | "MODEL" | "ENVIRONMENT" | "ANALYSIS";
+  source: "AIS" | "SAR" | "MODEL" | "ENVIRONMENT" | "ANALYSIS" | "SYSTEM";
   eventType: string;
   description: string;
   importance: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -102,6 +102,7 @@ export interface InvestigationData {
     radiusKm: number;
     timeWindow: string;
     confidenceState: "HIGH" | "MEDIUM" | "LOW";
+    windHindcast?: string;
     modelUsed: string;
   };
 
@@ -109,6 +110,7 @@ export interface InvestigationData {
     hindcastConfidence: string;
     forecastImpact: string;
     modelUsed: string;
+    driftParameters?: string;
     windSource: string;
     currentSource: string;
     releaseWindow: { start: string; end: string };
@@ -125,11 +127,13 @@ export interface InvestigationData {
   timeline: TimelineEvent[];
 
   simulation: {
+    description?: string;
     parameters: string;
     overlapScore: number;
     observedArea: number;
     simulatedArea: number;
-    intersectionArea: number;
+    intersectionArea?: number;
+    name?: string;
     model: string;
   };
 
@@ -163,7 +167,7 @@ export interface DataSource {
   name: string;
   type: "SAR" | "OPTICAL" | "AIS" | "METEOROLOGICAL" | "OCEANOGRAPHIC" | "MODEL";
   provider: string;
-  status: "OPERATIONAL" | "DEGRADED" | "OFFLINE" | "SCHEDULED";
+  status: "OPERATIONAL" | "DEGRADED" | "OFFLINE" | "SCHEDULED" | "UNAVAILABLE";
   lastUpdate: string;
   nextUpdate: string;
   resolution: string;
@@ -276,13 +280,15 @@ export const mockIncident: InvestigationData = {
     radiusKm: 12.5,
     timeWindow: "2023-10-21T14:00Z – 2023-10-22T02:00Z",
     confidenceState: "HIGH",
-    modelUsed: "OpenDrift Lagrangian backward simulation (ERA5 wind + HYCOM currents)",
+    windHindcast: "ERA5 Reanalysis (10m U/V components)",
+    modelUsed: "MockDriftEngine backward simulation (DEMO/MOCK)",
   },
 
   drift: {
     hindcastConfidence: "HIGH — backward trajectory converges to narrow origin region",
-    forecastImpact: "Potential coastal impact within 48h if unchecked",
-    modelUsed: "OpenDrift v1.11",
+    forecastImpact: "Potential coastal impact within 48 hours",
+    driftParameters: "Wind forcing coefficient: 0.03 | Current forcing: 1.0",
+    modelUsed: "MockDriftEngine v1.0",
     windSource: "ECMWF ERA5 (0.25° resolution)",
     currentSource: "HYCOM GOFS 3.1",
     releaseWindow: { start: "2023-10-21T14:00:00Z", end: "2023-10-22T02:00:00Z" },
@@ -329,8 +335,8 @@ export const mockIncident: InvestigationData = {
       sixFactors: {
         spatialCompatibility: { score: 0.95, state: "OBSERVED", detail: "AIS track passes directly through modeled origin region. Last known position before gap is within 3.2 km of estimated release point." },
         temporalCompatibility: { score: 0.92, state: "MODEL-INFERRED", detail: "AIS gap of 18.25h overlaps precisely with modeled release window (2023-10-21T14:00Z – 2023-10-22T02:00Z)." },
-        trajectoryCompatibility: { score: 0.88, state: "MODEL-INFERRED", detail: "Pre-gap heading and speed are consistent with a transit path through the origin region. Post-gap position lies on the expected continuation vector." },
-        driftCompatibility: { score: 0.85, state: "SIMULATED", detail: "OpenDrift backward simulation from detected slick converges to an origin overlapping with vessel track. Overlap confidence: HIGH." },
+        trajectoryCompatibility: { score: 0.95, state: "OBSERVED", detail: "Vessel track spatially intersects the modeled origin region during the critical time window. Missing AIS segment exactly spans the intersection." },
+        driftCompatibility: { score: 0.85, state: "SIMULATED", detail: "MockDriftEngine backward simulation from detected slick converges to an origin overlapping with vessel track. Overlap confidence: HIGH (DEMO/MOCK)." },
         behaviouralEvidence: { score: 0.82, state: "MODEL-INFERRED", detail: "Speed reduction from 12.8 kn to 4.5 kn observed 15 min before AIS gap. Pattern is consistent with slow-speed discharge behavior, though not conclusive." },
         aisDataQuality: { score: 0.78, state: "OBSERVED", detail: "18.25-hour AIS gap in a region with adequate shore-based AIS coverage. Gap is anomalous for this vessel's historical pattern." },
       },
@@ -412,27 +418,28 @@ export const mockIncident: InvestigationData = {
     { id: "evt-06", timestamp: "2023-10-22T08:15:00Z", source: "AIS", eventType: "AIS Signal Resumed", description: "CHEM CHALLENGER AIS resumes at 58.22°E, 24.42°N. Gap duration: 18h 15m.", importance: "HIGH", relatedVessel: "477123900" },
     { id: "evt-07", timestamp: "2023-10-22T10:00:00Z", source: "ENVIRONMENT", eventType: "Wind Shift", description: "NW wind increases to 12 kn, accelerating surface drift toward SE.", importance: "MEDIUM" },
     { id: "evt-08", timestamp: "2023-10-23T08:42:15Z", source: "SAR", eventType: "Satellite Detection", description: "Sentinel-1A SAR pass detects dark anomaly spanning 6.8 km² at 58.20°E, 24.45°N.", importance: "CRITICAL" },
-    { id: "evt-09", timestamp: "2023-10-23T09:00:00Z", source: "ANALYSIS", eventType: "HOG+SVM Classification", description: "Automated classifier (trained on synthetic data) indicates high probability of anthropogenic hydrocarbon.", importance: "HIGH" },
-    { id: "evt-10", timestamp: "2023-10-23T14:00:00Z", source: "MODEL", eventType: "Origin Reconstruction", description: "OpenDrift backward simulation converges to origin region centered at 58.15°E, 24.48°N (r=12.5km).", importance: "HIGH" },
+    { id: "evt-09", timestamp: "2023-10-23T12:30:00Z", source: "SYSTEM", eventType: "Evidence Fusion", description: "Multi-modal evidence fusion confirms physical environmental conditions support the oil hypothesis.", importance: "MEDIUM" },
+    { id: "evt-10", timestamp: "2023-10-23T14:00:00Z", source: "MODEL", eventType: "Origin Reconstruction", description: "MockDriftEngine backward simulation converges to origin region centered at 58.15°E, 24.48°N (r=12.5km).", importance: "HIGH" },
     { id: "evt-11", timestamp: "2023-10-24T06:00:00Z", source: "ANALYSIS", eventType: "Attribution Complete", description: "Candidate analysis identifies CHEM CHALLENGER as highest-ranked candidate (evidence score: 89).", importance: "CRITICAL" },
-    { id: "evt-12", timestamp: "2023-10-24T12:00:00Z", source: "MODEL", eventType: "Forecast Update", description: "Forward drift projection indicates potential coastal impact within 48 hours if unmitigated.", importance: "HIGH" },
+    { id: "evt-12", timestamp: "2023-10-24T12:00:00Z", source: "MODEL", eventType: "Forecast Update", description: "Forward drift projection indicates potential coastal impact within 48 hours", importance: "HIGH" },
   ],
 
   simulation: {
-    parameters: "OpenDrift / ECMWF ERA5 Wind / HYCOM GOFS 3.1 Currents",
+    description: "Backward Lagrangian trajectory modeling to establish probable origin.",
+    parameters: "MockDriftEngine / Constant Forcing (DEMO/MOCK)",
     overlapScore: 0.85,
     observedArea: 6.8,
     simulatedArea: 7.2,
-    intersectionArea: 5.78,
-    model: "OpenDrift v1.11 — Lagrangian particle tracking",
+    name: "Drift Model Integration",
+    model: "MockDriftEngine — Analytical displacement (DEMO/MOCK)",
   },
 
   evidence: {
     sarBackscatter: { value: "Consistent with heavy oil — strong damping of Bragg scattering", provenance: "OBSERVED" },
     opticalConfirmation: { value: "Pending — cloud cover prevents Sentinel-2 corroboration", provenance: "UNCERTAIN" },
-    windHindcast: { value: "ERA5 wind field aligned with observed drift direction", provenance: "MODEL-INFERRED" },
+    windHindcast: { value: "Constant wind field aligned with observed drift direction", provenance: "MODEL-INFERRED" },
     aisCorrelation: { value: "Strong spatio-temporal match between AIS gap and origin region", provenance: "OBSERVED" },
-    driftModel: { value: "OpenDrift backward simulation converges to origin overlapping with vessel track", provenance: "SIMULATED" },
+    driftModel: { value: "MockDriftEngine backward simulation converges to origin overlapping with vessel track", provenance: "SIMULATED" },
     behaviouralAnalysis: { value: "Speed reduction prior to AIS gap is suggestive but not conclusive", provenance: "MODEL-INFERRED" },
   },
 };
@@ -470,8 +477,8 @@ export const mockDataSources: DataSource[] = [
   { id: "src-s2", name: "Sentinel-2", type: "OPTICAL", provider: "ESA / Copernicus", status: "DEGRADED", lastUpdate: "2023-10-22T10:15:00Z", nextUpdate: "2023-10-24T10:20:00Z", resolution: "10m (B2/B3/B4)", coverage: "Gulf of Oman — Cloud cover limits usability", provenance: "ESA Copernicus Open Access Hub" },
   { id: "src-ais", name: "AIS Telemetry", type: "AIS", provider: "Spire Global / exactEarth", status: "OPERATIONAL", lastUpdate: "2023-10-24T14:15:00Z", nextUpdate: "Continuous", resolution: "N/A (position reports)", coverage: "Global maritime — shore-based + satellite AIS", provenance: "Spire Maritime API" },
   { id: "src-era5", name: "ECMWF ERA5 Wind", type: "METEOROLOGICAL", provider: "ECMWF / Copernicus CDS", status: "OPERATIONAL", lastUpdate: "2023-10-23T06:00:00Z", nextUpdate: "2023-10-24T06:00:00Z", resolution: "0.25° (~28km)", coverage: "Global", provenance: "Copernicus Climate Data Store" },
-  { id: "src-hycom", name: "HYCOM GOFS 3.1", type: "OCEANOGRAPHIC", provider: "HYCOM Consortium / NOAA", status: "OPERATIONAL", lastUpdate: "2023-10-23T00:00:00Z", nextUpdate: "2023-10-24T00:00:00Z", resolution: "1/12° (~8km)", coverage: "Global ocean", provenance: "HYCOM Data Server" },
-  { id: "src-opendrift", name: "OpenDrift Model", type: "MODEL", provider: "MET Norway (open source)", status: "OPERATIONAL", lastUpdate: "2023-10-24T06:00:00Z", nextUpdate: "On demand", resolution: "N/A (Lagrangian particles)", coverage: "Configurable — regional setup for Gulf of Oman", provenance: "OpenDrift v1.11 — local deployment" },
+  { id: "src-hycom", name: "HYCOM GOFS 3.1", type: "OCEANOGRAPHIC", provider: "HYCOM Consortium / NOAA", status: "UNAVAILABLE", lastUpdate: "2023-10-23T00:00:00Z", nextUpdate: "2023-10-24T00:00:00Z", resolution: "1/12° (~8km)", coverage: "Global ocean", provenance: "HYCOM Data Server" },
+  { id: "src-opendrift", name: "MockDriftEngine", type: "MODEL", provider: "AQUILA Built-in (DEMO)", status: "OPERATIONAL", lastUpdate: "2023-10-24T06:00:00Z", nextUpdate: "On demand", resolution: "N/A (Analytical vectors)", coverage: "Global", provenance: "MockDriftEngine (DEMO/MOCK)" },
 ];
 
 // --------------- Mock Monitoring Alerts ---------------

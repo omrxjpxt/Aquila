@@ -12,16 +12,20 @@ router = APIRouter(prefix="/drift", tags=["drift"])
 origin_db = {}
 scenario_db = {}
 
+
 class HindcastRequest(BaseModel):
     scenario: DriftScenario
     scene_id: str
+
 
 class ForecastRequest(BaseModel):
     scenario: DriftScenario
     origin_id: str
 
+
 def get_drift_service():
     return DriftService()
+
 
 @router.post("/hindcast", response_model=DriftResult)
 async def run_hindcast(
@@ -38,17 +42,19 @@ async def run_hindcast(
             if candidate.id == request.scenario.slick_id:
                 slick = candidate
                 break
-                
+
     if not slick:
-        raise HTTPException(status_code=404, detail=f"Slick {request.scenario.slick_id} not found in scene {request.scene_id}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Slick {request.scenario.slick_id} not found in scene {request.scene_id}")
 
     try:
         result = service.execute_hindcast(request.scenario, slick)
-        
+
         # Save origin for future forecast chaining
         if result.origin_estimate:
             origin_db[result.origin_estimate.id] = result.origin_estimate
-            
+
         scenario_db[request.scenario.scenario_id] = result
         return result
     except Exception as e:
@@ -66,7 +72,7 @@ async def run_forecast(
     """
     if request.origin_id not in origin_db:
         raise HTTPException(status_code=404, detail=f"Origin estimate {request.origin_id} not found")
-        
+
     origin = origin_db[request.origin_id]
 
     try:

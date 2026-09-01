@@ -73,6 +73,7 @@ async def assess_look_alike(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @router.post("/evidence-fusion", response_model=EvidenceFusionResult)
 async def fuse_evidence(
     request: EvidenceFusionRequest,
@@ -87,7 +88,7 @@ async def fuse_evidence(
         raise HTTPException(status_code=404, detail=f"Scene '{request.scene_id}' not found")
 
     scene = scenes_db[request.scene_id]
-    
+
     if request.scene_id not in candidates_db:
         raise HTTPException(status_code=404, detail="No candidates found for this scene")
 
@@ -104,7 +105,8 @@ async def fuse_evidence(
     assessment = request.look_alike_assessment
     if assessment is None:
         if request.patch_path is None or scene.processed_storage_path is None:
-            raise HTTPException(status_code=400, detail="Must provide either look_alike_assessment or patch_path for scene")
+            raise HTTPException(status_code=400,
+                                detail="Must provide either look_alike_assessment or patch_path for scene")
         try:
             assessment = await la_service.assess_candidate(slick, scene.processed_storage_path, request.patch_path)
         except Exception as e:

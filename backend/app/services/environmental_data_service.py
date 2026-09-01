@@ -1,32 +1,33 @@
 from datetime import datetime
 from app.schemas.environment import (
-    WindObservation, 
-    CurrentObservation, 
-    OpticalAvailability, 
+    WindObservation,
+    CurrentObservation,
+    OpticalAvailability,
     OpticalAvailabilityStatus
 )
+
 
 class EnvironmentalDataService:
     """
     Interface for fetching environmental metocean data.
     """
-    
+
     async def get_wind(self, lat: float, lon: float, time: datetime) -> WindObservation:
         raise NotImplementedError
-        
+
     async def get_current(self, lat: float, lon: float, time: datetime) -> CurrentObservation:
         raise NotImplementedError
-        
+
     async def get_optical_availability(self, lat: float, lon: float, time: datetime) -> OpticalAvailability:
         raise NotImplementedError
 
 
 class MockEnvironmentalDataService(EnvironmentalDataService):
     """
-    Deterministic mock provider for Phase 4D. 
+    Deterministic mock provider for Phase 4D.
     Does not pretend to be real data.
     """
-    
+
     def __init__(self, force_wind_speed: float = None):
         # Allow tests to inject a specific wind speed for edge case testing
         self.force_wind_speed = force_wind_speed
@@ -36,7 +37,7 @@ class MockEnvironmentalDataService(EnvironmentalDataService):
         Returns a deterministic mock wind observation.
         """
         speed = self.force_wind_speed if self.force_wind_speed is not None else 6.5
-        
+
         return WindObservation(
             source="DEMO / MOCK Wind Provider",
             timestamp=time,

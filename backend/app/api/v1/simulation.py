@@ -6,6 +6,7 @@ from app.services.simulation_service import CounterfactualSimulationService
 router = APIRouter()
 service = CounterfactualSimulationService()
 
+
 @router.post("/counterfactual", response_model=CounterfactualResult)
 async def run_counterfactual(scenario: CounterfactualScenario):
     """

@@ -6,6 +6,7 @@ from app.services.attribution_service import AttributionService
 router = APIRouter()
 service = AttributionService()
 
+
 @router.post("/evaluate", response_model=AttributionResult)
 async def evaluate_attribution(query: AttributionQuery):
     """

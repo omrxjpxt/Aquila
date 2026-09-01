@@ -13,9 +13,7 @@ export default function InvestigationLayout(props: {
   const { loadInvestigation, isLoading, error, scene } = useInvestigation();
 
   useEffect(() => {
-    // If the URL ID is not mock but a real scene, try to load it
-    // For Phase 4C we'll attempt loading everything unless it's explicitly the demo "INC-AQ-001"
-    if (id !== "INC-AQ-001" && id !== scene?.id) {
+    if (id && id !== scene?.id) {
       loadInvestigation(id);
     }
   }, [id, scene?.id, loadInvestigation]);

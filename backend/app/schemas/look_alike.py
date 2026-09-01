@@ -32,8 +32,11 @@ class LookAlikeAssessment(BaseModel):
     """
     slick_id: str = Field(..., description="ID of the candidate slick being assessed")
     predicted_class: LookAlikeClass = Field(..., description="Model prediction: OIL_LIKE, LOOKALIKE, or UNCERTAIN")
-    raw_score: float = Field(..., description="Raw SVM decision function value. Positive = OIL_LIKE, Negative = LOOKALIKE. Magnitude indicates distance from decision boundary.")
-    uncertainty_margin: float = Field(..., description="Threshold below which |raw_score| triggers UNCERTAIN classification")
+    raw_score: float = Field(
+        ...,
+        description="Raw SVM decision function value. Positive = OIL_LIKE, Negative = LOOKALIKE. Magnitude indicates distance from decision boundary.")
+    uncertainty_margin: float = Field(...,
+                                      description="Threshold below which |raw_score| triggers UNCERTAIN classification")
     model_version: str = Field(..., description="Identifier of the model used")
     model_type: str = Field(default="HOG+SVM", description="Type of model architecture")
     patch_metadata: PatchMetadata

@@ -4,18 +4,19 @@ from app.schemas.slick import Slick
 from app.schemas.look_alike import LookAlikeAssessment
 from app.schemas.environment import WindObservation, CurrentObservation, OpticalAvailability, OpticalAvailabilityStatus
 from app.schemas.evidence_fusion import (
-    EvidenceFusionResult, 
-    EvidenceItem, 
-    EvidenceStatus, 
+    EvidenceFusionResult,
+    EvidenceItem,
+    EvidenceStatus,
     EvidenceCategory
 )
+
 
 class EvidenceFusionService:
     """
     Service responsible for fusing SAR, ML, and environmental context into a transparent,
     auditable chain of evidence. Does NOT manufacture calibrated probabilities.
     """
-    
+
     def fuse_evidence(
         self,
         investigation_id: str,
@@ -26,15 +27,15 @@ class EvidenceFusionService:
         current: CurrentObservation,
         optical: OpticalAvailability
     ) -> EvidenceFusionResult:
-        
+
         items = []
-        
+
         # 1. SAR Morphology
         # Based purely on geometric and backscatter properties prior to ML
         contrast_ratio = slick.supporting_metrics.get("contrast_ratio")
         has_contrast = contrast_ratio is not None and contrast_ratio > 1.2
         is_sizable = slick.area_sq_km > 0.5
-        
+
         if has_contrast and is_sizable:
             items.append(EvidenceItem(
                 category=EvidenceCategory.SAR_MORPHOLOGY,
@@ -66,7 +67,7 @@ class EvidenceFusionService:
         else:
             status = EvidenceStatus.NEUTRAL
             interp = "Model returned uncertain classification due to edge-case features."
-            
+
         items.append(EvidenceItem(
             category=EvidenceCategory.MODEL_ASSESSMENT,
             source=model_assessment.model_version,
@@ -100,7 +101,7 @@ class EvidenceFusionService:
         else:
             w_status = EvidenceStatus.NEUTRAL
             w_interp = "LIMITING / REDUCED DETECTABILITY. Surface oil is likely entrained, limiting SAR visibility."
-            
+
         items.append(EvidenceItem(
             category=EvidenceCategory.WIND_CONTEXT,
             source=wind.source,
@@ -110,7 +111,7 @@ class EvidenceFusionService:
             limitations="Wind is regional context; local micro-meteorology may differ.",
             provenance="AQUILA Demo Heuristics v1.0"
         ))
-        
+
         # 4. Ocean Current Context
         items.append(EvidenceItem(
             category=EvidenceCategory.OCEAN_CURRENT_CONTEXT,
@@ -121,7 +122,7 @@ class EvidenceFusionService:
             limitations="Does not prove source correlation without full hydrodynamic modeling.",
             provenance="AQUILA Demo Context"
         ))
-        
+
         # 5. Optical Corroboration
         if optical.status == OpticalAvailabilityStatus.AVAILABLE:
             opt_status = EvidenceStatus.SUPPORTING
@@ -132,7 +133,7 @@ class EvidenceFusionService:
         else:
             opt_status = EvidenceStatus.UNAVAILABLE
             opt_interp = f"Optical imagery is {optical.status.value.replace('_', ' ').lower()}."
-            
+
         items.append(EvidenceItem(
             category=EvidenceCategory.OPTICAL_CORROBORATION,
             source=optical.source,
@@ -142,7 +143,7 @@ class EvidenceFusionService:
             limitations="Optical sensors are limited by daylight and cloud cover.",
             provenance="AQUILA Optical Assessor"
         ))
-        
+
         # 6. Temporal Consistency
         # For phase 4D, we just compare SAR acquisition time vs Environmental observation time
         # Ensure timezone awareness
@@ -152,9 +153,9 @@ class EvidenceFusionService:
             env_time = env_time.replace(tzinfo=timezone.utc)
         if not sar_time.tzinfo:
             sar_time = sar_time.replace(tzinfo=timezone.utc)
-            
+
         offset_hours = abs((sar_time - env_time).total_seconds()) / 3600.0
-        
+
         if offset_hours < 2.0:
             t_status = EvidenceStatus.SUPPORTING
             t_interp = "Environmental data is temporally aligned with SAR acquisition."
@@ -176,7 +177,7 @@ class EvidenceFusionService:
         supports = [i for i in items if i.status == EvidenceStatus.SUPPORTING]
         contradicts = [i for i in items if i.status == EvidenceStatus.CONTRADICTING]
         unavailables = [i for i in items if i.status == EvidenceStatus.UNAVAILABLE]
-        
+
         if len(contradicts) > 0:
             overall = "Requires Corroboration / Contradicting Evidence Present"
         elif len(supports) >= 3:

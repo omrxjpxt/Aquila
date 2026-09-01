@@ -2,7 +2,7 @@
 Phase 4B: Lightweight Oil-vs-Look-Alike Classifier
 
 STRATEGY: HOG texture features + SVM / Random Forest
-WHY: 
+WHY:
   - Trains on CPU in seconds/minutes
   - HOG captures edge orientation histograms which are relevant for
     distinguishing smooth oil slicks from textured look-alikes
@@ -66,12 +66,12 @@ UNCERTAINTY_MARGIN = 0.3
 def extract_features(img_path):
     """
     Extract HOG (Histogram of Oriented Gradients) features from a grayscale patch.
-    
+
     HOG captures the distribution of edge orientations in local image regions,
     which is effective for distinguishing:
       - Oil: smooth, low-gradient regions with dampened speckle
       - Look-alike: textured regions with more varied edge orientations
-    
+
     Additional features:
       - Mean intensity (overall brightness)
       - Std intensity (texture roughness proxy)
@@ -113,7 +113,7 @@ def load_dataset(dataset_dir):
     groups = []  # scene IDs for grouped splitting
     filenames = []
 
-    print(f"Extracting features from {len(metadata)} patches...")
+    print("Extracting features from", len(metadata), "patches...")
     t0 = time.time()
 
     for i, entry in enumerate(metadata):
@@ -125,7 +125,7 @@ def load_dataset(dataset_dir):
         filenames.append(entry['filename'])
 
         if (i + 1) % 200 == 0:
-            print(f"  Processed {i+1}/{len(metadata)} patches...")
+            print("  Processed", i+1, "/", len(metadata), "patches...")
 
     elapsed = time.time() - t0
     print(f"Feature extraction complete in {elapsed:.1f}s")
@@ -151,9 +151,9 @@ def scene_wise_split(X, y, groups, test_size=0.2, random_state=42):
     test_scenes = set(groups[test_idx])
     assert len(train_scenes & test_scenes) == 0, "Scene leakage detected!"
 
-    print(f"  Train scenes: {len(train_scenes)}, Test scenes: {len(test_scenes)}")
-    print(f"  Train samples: {len(train_idx)}, Test samples: {len(test_idx)}")
-    print(f"  No scene overlap: ✓")
+    print("  Train scenes:", len(train_scenes), ", Test scenes:", len(test_scenes))
+    print("  Train samples:", len(train_idx), ", Test samples:", len(test_idx))
+    print("  No scene overlap: ✓")
 
     return train_idx, test_idx
 
@@ -164,10 +164,10 @@ def train_and_evaluate():
 
     # ── Load Data ──
     X, y, groups, filenames = load_dataset(DATASET_DIR)
-    print(f"\nDataset: {len(y)} samples, {len(np.unique(groups))} scenes")
-    print(f"  Class 0 (LOOKALIKE): {np.sum(y == 0)}")
-    print(f"  Class 1 (OIL_LIKE):  {np.sum(y == 1)}")
-    print(f"  Feature dimension: {X.shape[1]}")
+    print("\nDataset:", len(y), "samples,", len(np.unique(groups)), "scenes")
+    print("  Class 0 (LOOKALIKE):", np.sum(y == 0))
+    print("  Class 1 (OIL_LIKE): ", np.sum(y == 1))
+    print("  Feature dimension:", X.shape[1])
 
     # ── Scene-wise Split ──
     print("\n── Scene-Wise Train/Test Split ──")
@@ -186,10 +186,10 @@ def train_and_evaluate():
     X_train, y_train = X_trainval[tv_train_idx], y_trainval[tv_train_idx]
     X_val, y_val = X_trainval[tv_val_idx], y_trainval[tv_val_idx]
 
-    print(f"\nFinal splits:")
-    print(f"  Train: {len(y_train)} (oil: {np.sum(y_train == 1)}, la: {np.sum(y_train == 0)})")
-    print(f"  Val:   {len(y_val)} (oil: {np.sum(y_val == 1)}, la: {np.sum(y_val == 0)})")
-    print(f"  Test:  {len(y_test)} (oil: {np.sum(y_test == 1)}, la: {np.sum(y_test == 0)})")
+    print("\nFinal splits:")
+    print("  Train:", len(y_train), "(oil:", np.sum(y_train == 1), ", la:", np.sum(y_train == 0), ")")
+    print("  Val:  ", len(y_val), "(oil:", np.sum(y_val == 1), ", la:", np.sum(y_val == 0), ")")
+    print("  Test: ", len(y_test), "(oil:", np.sum(y_test == 1), ", la:", np.sum(y_test == 0), ")")
 
     # ── Train SVM ──
     print("\n── Training SVM (RBF kernel) ──")

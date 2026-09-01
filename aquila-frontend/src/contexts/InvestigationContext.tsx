@@ -75,7 +75,12 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load investigation state");
+      if (sceneId === "INC-AQ-001") {
+        console.warn("Backend unavailable for INC-AQ-001, falling back to DEMO/MOCK state");
+        // We do not throw error for INC-AQ-001 to allow DEMO mode to function
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load investigation state");
+      }
     } finally {
       setIsLoading(false);
     }

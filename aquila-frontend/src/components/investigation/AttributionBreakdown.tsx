@@ -75,7 +75,7 @@ export function AttributionBreakdown({
       score: factors.drift,
       status: evaluateStatus(factors.drift),
       icon: Anchor, // Using Anchor as a proxy for oceanic/drift
-      description: "Hindcast origin match based on OpenDrift model."
+      description: "Hindcast origin match based on MockDriftEngine model."
     },
     {
       id: "behavioural",

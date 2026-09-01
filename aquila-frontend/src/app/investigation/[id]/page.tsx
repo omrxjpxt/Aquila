@@ -146,7 +146,7 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                     <div className="space-y-2">
                       <div className="flex justify-between items-center p-2 border border-outline-variant rounded bg-surface-container-lowest">
                         <span className="text-[11px] font-medium text-on-surface">SAR Backscatter</span>
-                        <span className="text-[10px] font-bold uppercase text-primary bg-primary/10 px-2 py-0.5 rounded">Confirmed</span>
+                        <span className="text-[10px] font-bold uppercase text-primary bg-primary/10 px-2 py-0.5 rounded">Observed</span>
                       </div>
                     </div>
                   </div>
