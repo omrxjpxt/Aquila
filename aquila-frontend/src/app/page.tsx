@@ -1,7 +1,7 @@
 "use client";
 
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer } from "@/components/map/layers";
+import { SlickLayer, VesselTracksLayer } from "@/components/map/layers";
 import { mockIncident } from "@/lib/mockData";
 import Link from "next/link";
 import { useState } from "react";
@@ -16,7 +16,25 @@ export default function CommandCenterPage() {
       <div className="flex-1 h-full relative bg-[#eef4f8] overflow-hidden">
         <MapLibreCanvas center={mockIncident.incident.centerCoord} zoom={8}>
           <SlickLayer center={mockIncident.incident.centerCoord} visible={showSlick} />
+          {mockIncident.candidates && (
+            <VesselTracksLayer 
+              candidates={mockIncident.candidates} 
+              selectedMmsi={null} 
+              visible={showSlick} // Using the same toggle for simplicity or I could add another one, but let's just make the toggles work.
+            />
+          )}
         </MapLibreCanvas>
+
+        {/* Map Controls */}
+        <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2">
+          <button 
+            onClick={() => setShowSlick(!showSlick)}
+            className="bg-surface p-2 rounded shadow border border-outline-variant hover:bg-surface-container-high transition-colors text-on-surface"
+            title="Toggle Map Layers"
+          >
+            <Radar className={`w-5 h-5 ${showSlick ? 'text-primary' : 'text-on-surface-variant'}`} />
+          </button>
+        </div>
 
         {/* Metrics Bar (Overlay on Map) */}
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 flex gap-4 z-10 pointer-events-auto">

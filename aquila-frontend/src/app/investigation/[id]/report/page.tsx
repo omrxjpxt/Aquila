@@ -63,15 +63,15 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <p className="font-mono text-xs font-bold text-on-surface-variant mt-2 tracking-wider">REF: {displayId} | GEN: {new Date().toISOString().split('T')[0]}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="bg-primary/10 text-primary hover:bg-primary hover:text-on-primary border border-primary/20 transition-colors px-4 py-2 rounded flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase shadow-sm">
+            <button onClick={() => window.print()} className="bg-primary/10 text-primary hover:bg-primary hover:text-on-primary border border-primary/20 transition-colors px-4 py-2 rounded flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase shadow-sm">
               <FileText className="w-4 h-4" />
               Export PDF
             </button>
-            <button className="bg-surface text-on-surface hover:text-primary hover:border-primary border border-outline-variant transition-colors px-4 py-2 rounded flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase shadow-sm">
+            <button onClick={() => alert("Sharing unavailable in DEMO.")} className="bg-surface text-on-surface hover:text-primary hover:border-primary border border-outline-variant transition-colors px-4 py-2 rounded flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase shadow-sm">
               <Share2 className="w-4 h-4" />
               Share Report
             </button>
-            <button className="bg-surface text-on-surface hover:text-primary hover:border-primary border border-outline-variant transition-colors px-4 py-2 rounded flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase shadow-sm">
+            <button onClick={() => alert("Saving unavailable in DEMO.")} className="bg-surface text-on-surface hover:text-primary hover:border-primary border border-outline-variant transition-colors px-4 py-2 rounded flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase shadow-sm">
               <Save className="w-4 h-4" />
               Save Report
             </button>

@@ -32,7 +32,10 @@ export default function SourcesPage() {
             </p>
           </div>
           
-          <button className="flex items-center gap-2 px-4 py-2 bg-surface border border-outline-variant rounded text-sm font-medium text-on-surface hover:text-primary hover:bg-surface-container-high transition-colors shadow-sm">
+          <button 
+            onClick={() => alert("Status refresh unavailable in DEMO.")}
+            className="flex items-center gap-2 px-4 py-2 bg-surface border border-outline-variant rounded text-sm font-medium text-on-surface hover:text-primary hover:bg-surface-container-high transition-colors shadow-sm"
+          >
             <RefreshCw className="w-4 h-4" />
             Refresh Status
           </button>

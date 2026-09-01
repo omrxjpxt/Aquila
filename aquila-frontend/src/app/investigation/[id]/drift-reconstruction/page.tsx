@@ -191,7 +191,10 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
                 <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-sm"></div>
               </div>
             </div>
-            <button className="w-8 h-8 bg-[#e5ab35] text-on-primary hover:bg-[#e5ab35]/80 rounded-full flex items-center justify-center transition-colors">
+            <button 
+              onClick={() => alert('Playback animation unavailable in DEMO.')}
+              className="w-8 h-8 bg-[#e5ab35] text-on-primary hover:bg-[#e5ab35]/80 rounded-full flex items-center justify-center transition-colors"
+            >
               <Play className="w-3.5 h-3.5 ml-0.5" />
             </button>
           </div>

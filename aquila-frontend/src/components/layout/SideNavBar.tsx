@@ -51,7 +51,10 @@ export function SideNavBar() {
       </div>
 
       <div className="mt-auto w-full">
-        <button className="flex flex-col items-center justify-center text-on-surface-variant py-4 hover:text-primary hover:bg-surface-variant/50 transition-all w-full">
+        <button 
+          className="flex flex-col items-center justify-center text-on-surface-variant py-4 hover:text-primary hover:bg-surface-variant/50 transition-all w-full"
+          onClick={() => alert('Settings unavailable in DEMO.')}
+        >
           <Settings className="w-5 h-5 mb-1" />
           <span className="font-semibold text-[10px] tracking-wide">Settings</span>
         </button>

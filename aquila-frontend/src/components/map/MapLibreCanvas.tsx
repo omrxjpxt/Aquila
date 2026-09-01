@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, createContext, useContext } from "react";
-import { Map as MapLibreMap } from "maplibre-gl";
+import { Map as MapLibreMap, NavigationControl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -59,6 +59,8 @@ export function MapLibreCanvas({
       bearing: bearing,
       attributionControl: false,
     });
+
+    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
 
     mapRef.current = map;
 

@@ -35,13 +35,22 @@ export function TopAppBar() {
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full">
+        <button 
+          className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full"
+          onClick={() => alert('Notifications unavailable in DEMO.')}
+        >
           <Bell className="w-5 h-5" />
         </button>
-        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full">
+        <button 
+          className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full"
+          onClick={() => alert('Task Queue unavailable in DEMO.')}
+        >
           <Clock className="w-5 h-5" />
         </button>
-        <button className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full">
+        <button 
+          className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full"
+          onClick={() => alert('Profile unavailable in DEMO.')}
+        >
           <UserCircle2 className="w-5 h-5" />
         </button>
       </div>

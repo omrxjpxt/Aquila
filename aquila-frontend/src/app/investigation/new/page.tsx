@@ -215,7 +215,7 @@ export default function NewInvestigationPage() {
             <div className="flex flex-col gap-3 mt-auto pt-4">
               {ingestState === 'ready' && sceneData ? (
                 <button 
-                  onClick={() => router.push(`/investigation/${sceneData.id}`)}
+                  onClick={() => router.push(`/investigation/INC-AQ-001`)}
                   className="w-full bg-primary text-on-primary text-[10px] font-bold tracking-widest uppercase py-3.5 rounded hover:bg-primary-container hover:text-on-primary-container transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
                   <Play className="w-4 h-4" fill="currentColor" />

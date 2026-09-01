@@ -125,14 +125,7 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2 pointer-events-auto z-10">
-          <button className="w-8 h-8 bg-surface/90 backdrop-blur border border-outline-variant rounded flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-colors shadow-sm">
-            <Plus className="w-4 h-4" />
-          </button>
-          <button className="w-8 h-8 bg-surface/90 backdrop-blur border border-outline-variant rounded flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-colors shadow-sm">
-            <Minus className="w-4 h-4" />
-          </button>
-        </div>
+
       </div>
 
       {/* Right: Analytical Assessment Panel */}
