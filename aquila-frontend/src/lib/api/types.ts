@@ -169,12 +169,68 @@ export interface DriftResult {
 export interface ForecastResult {
   id: string;
   scenario_id: string;
-  origin_id?: string | null;
-  run_time: string;
   forecast_geometry: GeoJSON.Polygon;
   trajectories: DriftTrajectory[];
   uncertainty?: DriftUncertainty | null;
   provenance: DriftProvenance;
+}
+
+export interface VesselIdentity {
+  mmsi: string;
+  imo: string | null;
+  name: string | null;
+  vessel_type: string | null;
+  flag: string | null;
+}
+
+export interface AISPosition {
+  timestamp: string;
+  lon: number;
+  lat: number;
+  speed_knots: number | null;
+  heading: number | null;
+  navigation_status: string | null;
+  quality: string;
+}
+
+export interface AISGap {
+  start_time: string;
+  end_time: string;
+  duration_hours: number;
+  start_lon: number;
+  start_lat: number;
+  end_lon: number;
+  end_lat: number;
+}
+
+export interface AISTrack {
+  mmsi: string;
+  geometry: GeoJSON.MultiLineString;
+  gap_geometry: GeoJSON.MultiLineString | null;
+  positions: AISPosition[];
+  gaps: AISGap[];
+  total_observations: number;
+  longest_gap_hours: number;
+  coverage_quality: string;
+}
+
+export interface AISProvenance {
+  source: string;
+  mode: string;
+  retrieval_time: string;
+  limitations: string;
+}
+
+export interface VesselCandidate {
+  id: string;
+  investigation_id: string;
+  identity: VesselIdentity;
+  track: AISTrack;
+  spatially_relevant: boolean;
+  temporally_relevant: boolean;
+  closest_approach_meters: number | null;
+  inside_origin_region: boolean;
+  provenance: AISProvenance;
 }
 
 export interface HindcastRequest {

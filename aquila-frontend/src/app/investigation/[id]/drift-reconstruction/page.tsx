@@ -25,14 +25,14 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
   const [showUncertainty, setShowUncertainty] = useState(true);
 
   // Default scenario params
-  const [scenarioParams] = useState<DriftScenario>({
+  const [scenarioParams] = useState<DriftScenario>(() => ({
     scenario_id: `hindcast-${id}-24h`,
-    investigation_id: id,
+    investigation_id: id as string,
     slick_id: selectedCandidateId,
-    start_time: new Date().toISOString(), // Mock, backend overrides if 0
+    start_time: new Date().toISOString(),
     end_time: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
     is_backward: true,
-  });
+  }));
 
   const selectedCandidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
   const driftResult = driftResults[scenarioParams.scenario_id];

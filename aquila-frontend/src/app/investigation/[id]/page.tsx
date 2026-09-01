@@ -243,7 +243,6 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
               <>
                 <SlickLayer center={incident.incident.centerCoord} visible={showSlick} />
                 <OriginRegionLayer center={incident.originEstimate.center} radiusKm={incident.originEstimate.radiusKm} visible={showOrigin} />
-                <VesselTracksLayer candidates={incident.vesselCandidates} selectedMmsi={selectedMmsi} visible={showVessels} />
               </>
             )}
           </MapLibreCanvas>

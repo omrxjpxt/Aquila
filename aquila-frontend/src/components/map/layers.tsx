@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useMap } from "./MapLibreCanvas";
 import type { LayerSpecification, GeoJSONSource } from "maplibre-gl";
 
+import { VesselCandidate } from "@/lib/api/types";
 export function GeoJSONLayer({
   id,
   data,
@@ -210,38 +211,56 @@ export function TrajectoryLayer({ coordinates, origin, slick, visible = true }: 
   );
 }
 
-export function VesselTracksLayer({ candidates, selectedMmsi, visible = true }: { candidates: { mmsi: string, confidenceState: string, lastKnownPosition: [number, number] }[], selectedMmsi: string | null, visible?: boolean }) {
+export function VesselTracksLayer({ candidates, selectedMmsi, visible = true }: { candidates: VesselCandidate[], selectedMmsi: string | null, visible?: boolean }) {
   return (
     <>
       {candidates.map((c, i) => {
-        const isSelected = selectedMmsi === c.mmsi;
-        const color = isSelected ? "#00647C" : (c.confidenceState === "HIGH" ? "#00647C" : "#8BA2A6");
+        const isSelected = selectedMmsi === c.identity.mmsi;
+        const color = isSelected ? "#00647C" : (c.spatially_relevant && c.temporally_relevant ? "#8BA2A6" : "#cbd5e1");
         
+        // 1. Plot the observed segments
         const trackGeoJSON = {
           type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [58.1500 + (i - 1)*0.05, 24.4800 + (i - 1)*0.05],
-              c.lastKnownPosition
-            ]
-          },
+          geometry: c.track.geometry,
           properties: {}
         };
+        
+        // 2. Plot the gaps (if any)
+        const gapGeoJSON = c.track.gap_geometry ? {
+          type: "Feature",
+          geometry: c.track.gap_geometry,
+          properties: {}
+        } : null;
 
+        // 3. Plot the current position (last known)
+        const lastPos = c.track.positions[c.track.positions.length - 1];
         const pointGeoJSON = {
           type: "Feature",
           geometry: {
             type: "Point",
-            coordinates: c.lastKnownPosition
+            coordinates: [lastPos.lon, lastPos.lat]
           },
           properties: {}
         };
 
         return (
-          <div key={c.mmsi}>
+          <div key={c.identity.mmsi}>
+            {gapGeoJSON && (
+              <GeoJSONLayer
+                id={`gap-${c.identity.mmsi}`}
+                data={gapGeoJSON as GeoJSON.Feature}
+                type="line"
+                visible={visible}
+                paint={{
+                  "line-color": "#eab308", // Yellow to indicate GAP explicitly
+                  "line-width": isSelected ? 3 : 1.5,
+                  "line-opacity": isSelected ? 0.8 : 0.4,
+                  "line-dasharray": [2, 3]
+                }}
+              />
+            )}
             <GeoJSONLayer
-              id={`track-${c.mmsi}`}
+              id={`track-${c.identity.mmsi}`}
               data={trackGeoJSON as GeoJSON.Feature}
               type="line"
               visible={visible}
@@ -249,11 +268,10 @@ export function VesselTracksLayer({ candidates, selectedMmsi, visible = true }: 
                 "line-color": color,
                 "line-width": isSelected ? 3 : 1.5,
                 "line-opacity": isSelected ? 1 : 0.4,
-                "line-dasharray": [1, 2]
               }}
             />
             <GeoJSONLayer
-              id={`point-${c.mmsi}`}
+              id={`point-${c.identity.mmsi}`}
               data={pointGeoJSON as GeoJSON.Feature}
               type="circle"
               visible={visible}

@@ -1,10 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario } from "@/lib/api/types";
+import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate } from "@/lib/api/types";
 import { satelliteApi } from "@/lib/api/satellite";
 import { analysisApi } from "@/lib/api/analysis";
 import { driftApi } from "@/lib/api/drift";
+// aisApi is imported lazily to avoid circular dependencies if any
 
 interface InvestigationState {
   scene: SatelliteScene | null;
@@ -14,6 +15,7 @@ interface InvestigationState {
   fusionResults: Record<string, EvidenceFusionResult>; // keyed by slick_id
   driftResults: Record<string, DriftResult>; // keyed by scenario_id
   forecastResults: Record<string, ForecastResult>; // keyed by scenario_id
+  vesselCandidates: Record<string, VesselCandidate[]>; // keyed by scenario_id
   
   isLoading: boolean;
   error: string | null;
@@ -27,6 +29,7 @@ interface InvestigationState {
   fuseEvidence: (slickId: string) => Promise<void>;
   runHindcast: (scenario: DriftScenario) => Promise<void>;
   runForecast: (scenario: DriftScenario, originId: string) => Promise<void>;
+  findVesselCandidates: (scenarioId: string, origin: OriginEstimate, start: string, end: string) => Promise<void>;
 }
 
 const InvestigationContext = createContext<InvestigationState | undefined>(undefined);
@@ -39,6 +42,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   const [fusionResults, setFusionResults] = useState<Record<string, EvidenceFusionResult>>({});
   const [driftResults, setDriftResults] = useState<Record<string, DriftResult>>({});
   const [forecastResults, setForecastResults] = useState<Record<string, ForecastResult>>({});
+  const [vesselCandidates, setVesselCandidates] = useState<Record<string, VesselCandidate[]>>({});
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +147,20 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
+  const findVesselCandidates = async (scenarioId: string, origin: OriginEstimate, start: string, end: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { aisApi } = await import('@/lib/api/ais');
+      const candidates = await aisApi.discoverCandidates(origin, start, end);
+      setVesselCandidates(prev => ({ ...prev, [scenarioId]: candidates }));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to find vessel candidates");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <InvestigationContext.Provider value={{
       scene,
@@ -152,6 +170,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       fusionResults,
       driftResults,
       forecastResults,
+      vesselCandidates,
       isLoading,
       error,
       setScene,
@@ -161,7 +180,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       assessCandidate,
       fuseEvidence,
       runHindcast,
-      runForecast
+      runForecast,
+      findVesselCandidates
     }}>
       {children}
     </InvestigationContext.Provider>
