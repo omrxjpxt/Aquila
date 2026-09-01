@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate, AttributionResult } from "@/lib/api/types";
+import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate, AttributionResult, CounterfactualScenario, CounterfactualResult } from "@/lib/api/types";
 import { satelliteApi } from "@/lib/api/satellite";
 import { analysisApi } from "@/lib/api/analysis";
 import { driftApi } from "@/lib/api/drift";
@@ -17,6 +17,7 @@ interface InvestigationState {
   forecastResults: Record<string, ForecastResult>; // keyed by scenario_id
   vesselCandidates: Record<string, VesselCandidate[]>; // keyed by scenario_id
   attributionResults: Record<string, AttributionResult>; // keyed by scenario_id
+  counterfactualResults: Record<string, CounterfactualResult>; // keyed by candidate_mmsi or scenario
   
   isLoading: boolean;
   error: string | null;
@@ -32,6 +33,7 @@ interface InvestigationState {
   runForecast: (scenario: DriftScenario, originId: string) => Promise<void>;
   findVesselCandidates: (scenarioId: string, origin: OriginEstimate, start: string, end: string) => Promise<void>;
   evaluateAttribution: (investigationId: string, scenarioId: string, origin: OriginEstimate, drift: DriftResult, candidates: VesselCandidate[]) => Promise<void>;
+  runCounterfactualSimulation: (scenario: CounterfactualScenario) => Promise<void>;
 }
 
 const InvestigationContext = createContext<InvestigationState | undefined>(undefined);
@@ -46,6 +48,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   const [forecastResults, setForecastResults] = useState<Record<string, ForecastResult>>({});
   const [vesselCandidates, setVesselCandidates] = useState<Record<string, VesselCandidate[]>>({});
   const [attributionResults, setAttributionResults] = useState<Record<string, AttributionResult>>({});
+  const [counterfactualResults, setCounterfactualResults] = useState<Record<string, CounterfactualResult>>({});
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +181,20 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
+  const runCounterfactualSimulation = async (scenario: CounterfactualScenario) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { simulationApi } = await import('@/lib/api/simulation');
+      const result = await simulationApi.runCounterfactual(scenario);
+      setCounterfactualResults(prev => ({ ...prev, [scenario.candidate_vessel_id]: result }));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to run simulation");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <InvestigationContext.Provider value={{
       scene,
@@ -189,6 +206,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       forecastResults,
       vesselCandidates,
       attributionResults,
+      counterfactualResults,
       isLoading,
       error,
       setScene,
@@ -200,7 +218,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       runHindcast,
       runForecast,
       findVesselCandidates,
-      evaluateAttribution
+      evaluateAttribution,
+      runCounterfactualSimulation
     }}>
       {children}
     </InvestigationContext.Provider>

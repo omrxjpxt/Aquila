@@ -273,3 +273,51 @@ export interface ForecastRequest {
   scenario: DriftScenario;
   origin_id: string;
 }
+
+export interface DifferenceGeometry {
+  overlap_polygon?: GeoJSON.Polygon | null;
+  observed_only_polygon?: GeoJSON.Polygon | null;
+  simulated_only_polygon?: GeoJSON.Polygon | null;
+}
+
+export interface SimulationComparison {
+  spatial_agreement_iou: number;
+  overlap_area_km2: number;
+  observed_area_km2: number;
+  simulated_area_km2: number;
+  centroid_distance_meters: number;
+  trajectory_comparison: string;
+  temporal_comparison: string;
+  spatial_interpretation: string;
+  human_readable_interpretation: string;
+}
+
+export interface SimulationProvenance {
+  mode: string;
+  engine: string;
+  model_status: string;
+  observed_data_source: string;
+  simulation_forcing_source: string;
+  scenario_parameters: Record<string, unknown>;
+  limitations: string;
+}
+
+export interface CounterfactualScenario {
+  investigation_id: string;
+  candidate_vessel_id: string;
+  hypothesized_release_time: string; // ISO datetime
+  hypothesized_release_location: [number, number]; // [lon, lat]
+  drift_duration_hours: number;
+  observed_slick_geometry: GeoJSON.Geometry;
+  scenario_parameters?: Record<string, unknown>;
+}
+
+export interface CounterfactualResult {
+  scenario_id: string;
+  scenario: CounterfactualScenario;
+  simulated_slick_geometry: GeoJSON.Polygon;
+  simulated_trajectory: number[][]; // [lon, lat][]
+  difference_geometry: DifferenceGeometry;
+  comparison: SimulationComparison;
+  provenance: SimulationProvenance;
+}
