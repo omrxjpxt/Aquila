@@ -1,7 +1,7 @@
 "use client";
 
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer, VesselTracksLayer } from "@/components/map/layers";
+import { SlickLayer } from "@/components/map/layers";
 import { mockIncident } from "@/lib/mockData";
 import Link from "next/link";
 import { useState } from "react";

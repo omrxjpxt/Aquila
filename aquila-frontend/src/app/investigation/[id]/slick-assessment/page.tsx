@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect } from "react";
-import { Activity, Plus, Minus, Layers, AlertTriangle, CheckCircle, XCircle, Info, HelpCircle } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle, XCircle, Info, HelpCircle } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { SlickLayer, GeoJSONLayer } from "@/components/map/layers";
 import { mockIncident } from "@/lib/mockData";

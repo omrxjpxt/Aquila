@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { Activity, AlertTriangle, Play, Settings } from "lucide-react";
+import { Play, AlertTriangle, Activity } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { GeoJSONLayer, OriginRegionLayer, TrajectoryLayer } from "@/components/map/layers";
 import { useInvestigation } from "@/contexts/InvestigationContext";
@@ -18,11 +18,10 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
     runHindcast,
     isLoading
   } = useInvestigation();
-
-  const [showSlick, setShowSlick] = useState(true);
-  const [showOrigin, setShowOrigin] = useState(true);
-  const [showTrajectory, setShowTrajectory] = useState(true);
-  const [showUncertainty, setShowUncertainty] = useState(true);
+  const [showSlick] = useState(true);
+  const [showOrigin] = useState(true);
+  const [showTrajectory] = useState(true);
+  const [showUncertainty] = useState(true);
 
   // Default scenario params
   const [scenarioParams] = useState<DriftScenario>(() => ({

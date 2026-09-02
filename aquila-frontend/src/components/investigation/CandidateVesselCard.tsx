@@ -1,5 +1,5 @@
 import React from "react";
-import { Ship, Navigation2, Crosshair, AlertCircle, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 

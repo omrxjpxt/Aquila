@@ -3,7 +3,7 @@
 import { use } from "react";
 import { mockVessels } from "@/lib/mockData";
 import Link from "next/link";
-import { ArrowLeft, Ship, MapPin, Navigation, History, ShieldAlert, Radio, Activity } from "lucide-react";
+import { ArrowLeft, Ship, Navigation, MapPin, Radio, Activity, ShieldAlert } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { GeoJSONLayer } from "@/components/map/layers";
 

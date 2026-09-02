@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { Satellite, LineChart, Anchor, SlidersHorizontal, CheckCircle2, AlertTriangle, ArrowRightLeft, MapPin, Clock } from "lucide-react";
+import { use, useEffect, useState, useMemo } from "react";
+import { Satellite, LineChart, SlidersHorizontal, AlertTriangle, ArrowRightLeft } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { SlickLayer, GeoJSONLayer } from "@/components/map/layers";
 import { useInvestigation } from "@/contexts/InvestigationContext";
@@ -75,7 +75,7 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
 
   const selectedSlick = slicks.find(c => c.id === selectedCandidateId) || slicks[0];
   const scenarioId = `hindcast-${id}-24h`;
-  const candidates = vesselCandidates[scenarioId] || [];
+  const candidates = useMemo(() => vesselCandidates[scenarioId] || [], [vesselCandidates, scenarioId]);
   
   const [selectedMmsi, setSelectedMmsi] = useState<string | null>(null);
   
@@ -84,24 +84,25 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
   const [releaseLat, setReleaseLat] = useState<string>("");
   const [duration, setDuration] = useState<number>(24);
 
-  // Initialize form state when a candidate is selected
+  // Technical reason: We must auto-select the first candidate and their coordinates once the asynchronous data loads from Context, so that the simulation form is pre-filled.
   useEffect(() => {
     if (candidates.length > 0 && !selectedMmsi) {
-       // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+       // eslint-disable-next-line react-hooks/set-state-in-effect
        setSelectedMmsi(candidates[0].identity.mmsi);
     }
   }, [candidates, selectedMmsi]);
 
   const selectedCandidate = candidates.find((c: VesselCandidate) => c.identity.mmsi === selectedMmsi);
 
+  // Technical reason: We need to default the form inputs to the candidate's coordinates once they are selected.
   useEffect(() => {
     if (selectedCandidate && (!releaseLon || !releaseLat)) {
        // Default to their latest position or origin region intersection (simplification: track end)
        const coords = selectedCandidate.track.positions;
        if (coords && coords.length > 0) {
-           // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+           // eslint-disable-next-line react-hooks/set-state-in-effect
            setReleaseLon(coords[0].lon.toFixed(4));
-           // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+            
            setReleaseLat(coords[0].lat.toFixed(4));
        }
     }

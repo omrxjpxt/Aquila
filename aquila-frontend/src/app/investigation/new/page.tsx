@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Clock, Radar, RadioTower, Waves, Camera, Play, FolderOpen, Target, UploadCloud, CheckCircle2, Loader2, AlertTriangle } from "lucide-react";
+import { Radar, RadioTower, Target, UploadCloud, CheckCircle2, Loader2, AlertTriangle, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { satelliteApi } from "@/lib/api/satellite";
 import { useInvestigation } from "@/contexts/InvestigationContext";

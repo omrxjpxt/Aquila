@@ -1,25 +1,23 @@
 "use client";
 
 import { use } from "react";
-import { FileText, Share2, Save, AlertTriangle, Image as ImageIcon, Crosshair, HelpCircle, Wind, Anchor, Search, Database, Clock, ListChecks, Info, RadioTower, Satellite } from "lucide-react";
+import { FileText, Share2, Save, AlertTriangle, Image as ImageIcon, Search, ListChecks, RadioTower, Satellite, Wind } from "lucide-react";
 import { mockIncident } from "@/lib/mockData";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 
 export default function InvestigationReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { scene, candidates, selectedCandidateId, assessments, fusionResults, driftResults, vesselCandidates, attributionResults, counterfactualResults } = useInvestigation();
+  const { scene, candidates, selectedCandidateId, assessments, driftResults, vesselCandidates, attributionResults } = useInvestigation();
   
   const isDemo = id === "INC-AQ-001" || (!scene);
   const fallback = mockIncident;
 
   const candidate = candidates.find(c => c.id === selectedCandidateId);
   const assessment = selectedCandidateId ? assessments[selectedCandidateId] : null;
-  const fusion = selectedCandidateId ? fusionResults[selectedCandidateId] : null;
   
   // Get first available scenario ID for drift
   const scenarioId = Object.keys(driftResults)[0];
-  const drift = scenarioId ? driftResults[scenarioId] : null;
   const ais = scenarioId ? vesselCandidates[scenarioId] : null;
   const attribution = scenarioId ? attributionResults[scenarioId] : null;
   
@@ -32,8 +30,6 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
   const topVessel = topCandidate && ais 
     ? ais.find(v => v.identity.mmsi === topCandidate.vessel_identity.mmsi)
     : null;
-    
-  const simulation = topCandidate ? counterfactualResults[topCandidate.vessel_identity.mmsi] : null;
 
   // Fallbacks to mock if needed, but we try to use real data first
   const displayId = id;

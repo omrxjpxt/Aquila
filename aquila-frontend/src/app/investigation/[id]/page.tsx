@@ -1,9 +1,9 @@
 "use client";
 
 import { use, useState } from "react";
-import { Activity, Droplet, Crosshair, MapPin, Clock, ZoomIn, ZoomOut, Play, SkipBack, SkipForward, Layers } from "lucide-react";
+import { Crosshair, Droplet, ZoomIn, ZoomOut } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer, VesselTracksLayer, OriginRegionLayer, GeoJSONLayer } from "@/components/map/layers";
+import { SlickLayer, OriginRegionLayer, GeoJSONLayer } from "@/components/map/layers";
 import { mockIncident } from "@/lib/mockData";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 
@@ -19,11 +19,8 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
   const incident = mockIncident;
 
   // Interactive State
-  const [showSlick, setShowSlick] = useState(true);
-  const [showOrigin, setShowOrigin] = useState(true);
-  const [showVessels, setShowVessels] = useState(true);
-  const [selectedMmsi, setSelectedMmsi] = useState<string | null>(mockIncident.vesselCandidates[0].mmsi);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [showSlick] = useState(true);
+  const [showOrigin] = useState(true);
 
   return (
     <div className="flex w-full h-full relative overflow-hidden flex-col bg-surface">

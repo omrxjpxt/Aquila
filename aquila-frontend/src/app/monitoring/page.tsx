@@ -1,6 +1,6 @@
 "use client";
 
-import { mockAlerts, mockVessels, mockIncident } from "@/lib/mockData";
+import { mockAlerts, mockVessels } from "@/lib/mockData";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { Activity, AlertTriangle, ShieldAlert, WifiOff, MapPin, ExternalLink } from "lucide-react";
 import Link from "next/link";

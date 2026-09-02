@@ -1,7 +1,7 @@
 "use client";
 
 import { use } from "react";
-import { MapPin, AlertTriangle, Droplet, Satellite, Activity, CheckCircle, ArrowRight, Fullscreen, Flag } from "lucide-react";
+import { Satellite, Droplet, Flag, Activity, CheckCircle, MapPin, AlertTriangle } from "lucide-react";
 import { mockIncident } from "@/lib/mockData";
 
 import { useInvestigation } from "@/contexts/InvestigationContext";
@@ -9,7 +9,7 @@ import { useInvestigation } from "@/contexts/InvestigationContext";
 export default function EvidenceTimelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { scene, candidates, selectedCandidateId, assessments, fusionResults, driftResults, vesselCandidates, attributionResults, counterfactualResults } = useInvestigation();
+  const { scene, candidates, selectedCandidateId, assessments, fusionResults, driftResults, vesselCandidates, attributionResults } = useInvestigation();
   
   const isDemo = id === "INC-AQ-001" || (!scene);
   const fallback = mockIncident;
@@ -30,8 +30,6 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
     ? ais.find(v => v.identity.mmsi === topCandidate.vessel_identity.mmsi)
     : null;
     
-  const simulation = topCandidate ? counterfactualResults[topCandidate.vessel_identity.mmsi] : null;
-
   const displayId = id;
   const targetName = topVessel ? topVessel.identity.name : (isDemo ? fallback.vesselCandidates[0].name : 'UNAVAILABLE');
   const timeframe = scene ? new Date(scene.acquisition_time).toISOString().split('T')[0] : (isDemo ? '2023-10-23' : 'UNAVAILABLE');

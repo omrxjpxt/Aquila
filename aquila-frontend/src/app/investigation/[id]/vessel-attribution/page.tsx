@@ -3,16 +3,13 @@
 import { use, useEffect, useState } from "react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { VesselTracksLayer, OriginRegionLayer } from "@/components/map/layers";
-import { ListOrdered, ShieldCheck, Plus, Minus, Search, AlertTriangle, CheckCircle, XCircle, HelpCircle, AlertCircle } from "lucide-react";
+import { ListOrdered, ShieldCheck, Search, AlertTriangle, CheckCircle, XCircle, HelpCircle, AlertCircle } from "lucide-react";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 import { EvidenceStatus } from "@/lib/api/types";
 
 export default function VesselAttributionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { 
-    scene, 
-    candidates: slicks, 
-    selectedCandidateId, 
     loadInvestigation, 
     driftResults, 
     vesselCandidates, 
@@ -36,8 +33,6 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
     loadInvestigation(id);
   }, [id, loadInvestigation]);
 
-  const selectedSlick = slicks.find(c => c.id === selectedCandidateId) || slicks[0];
-  
   const scenarioId = `hindcast-${id}-24h`;
   const driftResult = driftResults[scenarioId];
   const candidates = vesselCandidates[scenarioId] || [];

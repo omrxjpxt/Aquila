@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Radar, Droplet, Wind, Crosshair, Map, Activity, ShieldAlert, FileText } from "lucide-react";
+import { LayoutDashboard, Droplet, Wind, ShieldAlert, FileText, Crosshair, Activity } from "lucide-react";
 
 export function InvestigationSubNav({ incidentId }: { incidentId: string }) {
   const pathname = usePathname();
 
   const tabs = [
-    { name: "Overview", href: `/investigation/${incidentId}`, icon: Map, exact: true },
+    { name: "Overview", href: `/investigation/${incidentId}`, icon: LayoutDashboard, exact: true },
     { name: "Slick Assessment", href: `/investigation/${incidentId}/slick-assessment`, icon: Droplet },
     { name: "Origin & Drift", href: `/investigation/${incidentId}/drift-reconstruction`, icon: Wind },
     { name: "Vessel Attribution", href: `/investigation/${incidentId}/vessel-attribution`, icon: Crosshair },

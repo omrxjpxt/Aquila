@@ -214,7 +214,7 @@ export function TrajectoryLayer({ coordinates, origin, slick, visible = true }: 
 export function VesselTracksLayer({ candidates, selectedMmsi, visible = true }: { candidates: VesselCandidate[], selectedMmsi: string | null, visible?: boolean }) {
   return (
     <>
-      {candidates.map((c, i) => {
+      {candidates.map((c) => {
         const isSelected = selectedMmsi === c.identity.mmsi;
         const color = isSelected ? "#00647C" : (c.spatially_relevant && c.temporally_relevant ? "#8BA2A6" : "#cbd5e1");
         

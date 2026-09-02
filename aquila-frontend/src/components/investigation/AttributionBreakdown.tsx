@@ -1,5 +1,5 @@
 import React from "react";
-import { Ship, Anchor, AlertTriangle, Navigation, Clock, Activity, ShieldCheck, Map } from "lucide-react";
+import { AlertTriangle, Clock, Navigation, Anchor, ShieldCheck, Map } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -17,9 +17,6 @@ interface EvidenceFactor {
 }
 
 interface AttributionBreakdownProps {
-  vesselId: string;
-  vesselName: string;
-  overallScore: number;
   factors: {
     spatial: number;
     temporal: number;
@@ -32,9 +29,6 @@ interface AttributionBreakdownProps {
 }
 
 export function AttributionBreakdown({
-  vesselId,
-  vesselName,
-  overallScore,
   factors,
   className
 }: AttributionBreakdownProps) {
