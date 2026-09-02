@@ -16,13 +16,6 @@ export default function CommandCenterPage() {
       <div className="flex-1 h-full relative bg-[#eef4f8] overflow-hidden">
         <MapLibreCanvas center={mockIncident.incident.centerCoord} zoom={8}>
           <SlickLayer center={mockIncident.incident.centerCoord} visible={showSlick} />
-          {mockIncident.candidates && (
-            <VesselTracksLayer 
-              candidates={mockIncident.candidates} 
-              selectedMmsi={null} 
-              visible={showSlick} // Using the same toggle for simplicity or I could add another one, but let's just make the toggles work.
-            />
-          )}
         </MapLibreCanvas>
 
         {/* Map Controls */}
