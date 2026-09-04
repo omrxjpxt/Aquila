@@ -36,8 +36,13 @@ class SatelliteService:
         scene_id = request.scene_id or f"local-scene-{int(datetime.utcnow().timestamp())}"
         acq_time = request.acquisition_time or datetime.utcnow()
 
-        # We assume standard Sentinel-1 GRD VV for this pipeline baseline
+        # Extract tags if available, else use defaults
+        tags = src.tags() if src.tags() else {}
         polarization = tags.get('POLARIZATION', 'VV')
+        
+        # Override polarization if passed explicitly in request
+        if request.polarization:
+            polarization = request.polarization
 
         scene = SatelliteScene(
             id=scene_id,
@@ -48,7 +53,15 @@ class SatelliteService:
             height=height,
             crs=crs,
             raw_storage_path=request.file_path,
-            polarization=polarization
+            polarization=polarization,
+            source=request.source,
+            provenance=request.provenance,
+            retrieval_api=request.retrieval_api,
+            original_stac_scene_id=request.original_stac_scene_id,
+            collection=request.collection,
+            backscatter_coefficient=request.backscatter_coefficient,
+            orthorectified=request.orthorectified,
+            retrieval_timestamp=request.retrieval_timestamp
         )
         return scene
 

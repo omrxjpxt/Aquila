@@ -25,6 +25,16 @@ class SatelliteScene(BaseModel):
                                                   description="URI or path to the normalized processed asset")
 
     is_processed: bool = Field(default=False, description="Has the scene been preprocessed?")
+    
+    # Phase 11B Provenance tracking
+    source: Optional[str] = Field(default=None, description="Source (e.g. CDSE)")
+    provenance: Optional[str] = Field(default=None, description="Mode/provenance (e.g. LIVE, MOCK)")
+    retrieval_api: Optional[str] = Field(default=None, description="API used for retrieval")
+    original_stac_scene_id: Optional[str] = Field(default=None, description="Original STAC Scene ID")
+    collection: Optional[str] = Field(default=None, description="Collection name")
+    backscatter_coefficient: Optional[str] = Field(default=None, description="E.g. SIGMA0_ELLIPSOID")
+    orthorectified: Optional[bool] = Field(default=None, description="Was it orthorectified?")
+    retrieval_timestamp: Optional[datetime.datetime] = Field(default=None, description="When the raster was retrieved")
 
 
 class SceneIngestRequest(BaseModel):
@@ -33,6 +43,17 @@ class SceneIngestRequest(BaseModel):
     # For a real system, you might pass scene ID or extract it from metadata
     scene_id: Optional[str] = None
     acquisition_time: Optional[datetime.datetime] = None
+    
+    # Optional metadata to pass through to the created scene
+    source: Optional[str] = None
+    provenance: Optional[str] = None
+    retrieval_api: Optional[str] = None
+    original_stac_scene_id: Optional[str] = None
+    collection: Optional[str] = None
+    polarization: Optional[str] = None
+    backscatter_coefficient: Optional[str] = None
+    orthorectified: Optional[bool] = None
+    retrieval_timestamp: Optional[datetime.datetime] = None
 
 
 class ProcessingResult(BaseModel):
@@ -62,3 +83,11 @@ class SatelliteSearchResult(BaseModel):
     instrument_mode: Optional[str] = Field(default=None, description="Instrument mode (e.g. IW)")
     
     thumbnail_url: Optional[str] = Field(default=None, description="URL to the quicklook thumbnail")
+
+
+class SatelliteRetrievalRequest(BaseModel):
+    scene: SatelliteSearchResult
+    bbox: Tuple[float, float, float, float] = Field(..., description="AOI Bounding box [min_lon, min_lat, max_lon, max_lat]")
+    width: Optional[int] = Field(default=None, description="Requested raster width (px)")
+    height: Optional[int] = Field(default=None, description="Requested raster height (px)")
+

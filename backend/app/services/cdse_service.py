@@ -127,3 +127,117 @@ class CDSEService:
                 results.append(result)
                 
             return results
+
+    async def retrieve_raster(
+        self,
+        bbox: Tuple[float, float, float, float],
+        scene: SatelliteSearchResult,
+        width: Optional[int] = None,
+        height: Optional[int] = None
+    ) -> str:
+        """
+        Retrieves a float32 GeoTIFF from CDSE Sentinel Hub Process API.
+        The Process API selects imagery by collection, time interval, and AOI rather than directly by STAC scene ID.
+        """
+        token = await self._get_access_token()
+        
+        process_url = "https://sh.dataspace.copernicus.eu/process/v1"
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "image/tiff"
+        }
+        
+        req_width = width or 1000
+        req_height = height or 1000
+        
+        if req_width * req_height > 2500 * 2500:
+            raise ValueError(f"Requested AOI is too large: {req_width}x{req_height}. Maximum allowed is 6,250,000 pixels.")
+            
+        pol = "VV"
+        if scene.polarization:
+            pol_upper = scene.polarization.upper()
+            if "VV" in pol_upper or "DV" in pol_upper or "SV" in pol_upper:
+                pol = "VV"
+            elif "HH" in pol_upper or "DH" in pol_upper or "SH" in pol_upper:
+                pol = "HH"
+            else:
+                raise ValueError(f"Unsupported polarization: {scene.polarization}")
+
+        evalscript = f"""//VERSION=3
+function setup() {{
+  return {{
+    input: ["{pol}", "dataMask"],
+    output: {{ bands: 1, sampleType: "FLOAT32" }}
+  }};
+}}
+function evaluatePixel(sample) {{
+  if (sample.dataMask === 0) return [NaN];
+  return [sample.{pol}];
+}}
+"""
+        
+        t_start = (scene.acquisition_time - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        t_end = (scene.acquisition_time + timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        payload = {
+            "input": {
+                "bounds": {
+                    "bbox": list(bbox),
+                    "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"}
+                },
+                "data": [
+                    {
+                        "type": "sentinel-1-grd",
+                        "dataFilter": {
+                            "timeRange": {
+                                "from": t_start,
+                                "to": t_end
+                            }
+                        },
+                        "processing": {
+                            "backCoeff": "SIGMA0_ELLIPSOID",
+                            "orthorectify": True
+                        }
+                    }
+                ]
+            },
+            "output": {
+                "width": req_width,
+                "height": req_height,
+                "responses": [
+                    {
+                        "identifier": "default",
+                        "format": {
+                            "type": "image/tiff"
+                        }
+                    }
+                ]
+            },
+            "evalscript": evalscript
+        }
+        
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(process_url, headers=headers, json=payload)
+            
+            if response.status_code != 200:
+                logger.error(f"CDSE process failed: {response.status_code} - {response.text}")
+                if response.status_code == 400:
+                    raise ValueError(f"Process API validation error: {response.text}")
+                elif response.status_code in (401, 403):
+                    raise PermissionError(f"Process API authorization error: {response.status_code}")
+                elif response.status_code == 429:
+                    raise RuntimeError("Process API rate limit exceeded")
+                else:
+                    raise RuntimeError(f"Process API error: HTTP {response.status_code}")
+                    
+            import os
+            os.makedirs("data/scenes", exist_ok=True)
+            file_name = f"cdse_retrieval_{scene.id}_{int(datetime.utcnow().timestamp())}.tif"
+            file_path = os.path.join("data/scenes", file_name)
+            
+            with open(file_path, "wb") as f:
+                f.write(response.content)
+                
+            return file_path
+

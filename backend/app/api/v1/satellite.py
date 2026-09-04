@@ -4,7 +4,7 @@ import shutil
 import uuid
 from pathlib import Path
 from typing import List, Dict
-from app.schemas.satellite import SatelliteScene, SceneIngestRequest, ProcessingResult, SatelliteSearchResult
+from app.schemas.satellite import SatelliteScene, SceneIngestRequest, ProcessingResult, SatelliteSearchResult, SatelliteRetrievalRequest
 from app.schemas.slick import Slick
 from app.services.satellite_service import SatelliteService
 from app.services.slick_detection_service import SlickDetectionService
@@ -54,6 +54,59 @@ async def search_scenes(
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception:
         raise HTTPException(status_code=500, detail="An error occurred during the search operation.")
+
+
+@router.post("/retrieve", response_model=SatelliteScene)
+async def retrieve_scene(
+    request: SatelliteRetrievalRequest,
+    cdse_service: CDSEService = Depends(get_cdse_service),
+    sat_service: SatelliteService = Depends(get_satellite_service)
+):
+    try:
+        # Validate bbox
+        b = request.bbox
+        if len(b) != 4:
+            raise ValueError("Bounding box must have 4 coordinates")
+        if b[0] >= b[2] or b[1] >= b[3]:
+            raise ValueError("Invalid bounding box dimensions")
+            
+        # Retrieve raster
+        file_path = await cdse_service.retrieve_raster(
+            bbox=b,
+            scene=request.scene,
+            width=request.width,
+            height=request.height
+        )
+        
+        # Ingest into existing pipeline
+        ingest_req = SceneIngestRequest(
+            file_path=file_path,
+            provider="CDSE_PROCESS_API",
+            scene_id=request.scene.id,
+            acquisition_time=request.scene.acquisition_time,
+            source="CDSE",
+            provenance="LIVE",
+            retrieval_api="Sentinel Hub Process v1",
+            original_stac_scene_id=request.scene.id,
+            collection=request.scene.collection,
+            polarization=request.scene.polarization,
+            backscatter_coefficient="SIGMA0_ELLIPSOID",
+            orthorectified=True,
+            retrieval_timestamp=datetime.utcnow()
+        )
+        
+        scene = await sat_service.ingest_local_scene(ingest_req)
+        scenes_db[scene.id] = scene
+        return scene
+        
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except PermissionError as pe:
+        raise HTTPException(status_code=401, detail=str(pe))
+    except RuntimeError as re:
+        raise HTTPException(status_code=502, detail=str(re))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/ingest", response_model=SatelliteScene)
