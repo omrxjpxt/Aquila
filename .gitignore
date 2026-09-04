@@ -22,3 +22,4 @@ out/
 # AQUILA generated scientific data
 backend/data/csiro_synthetic/
 backend/data/scenes/*.tif
+

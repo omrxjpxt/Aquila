@@ -1,0 +1,542 @@
+[
+  {
+    "sample_id": "ow-0582.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0582.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190811T034354_20190811T034419_028516_03394F_EA40.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "ow-0120.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0120.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190318T154810_20190318T154835_015411_01CDBD_41F5.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "ow-0560.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0560.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190729T154038_20190729T154103_028334_033394_F489.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "ow-0152.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0152.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190330T154835_20190330T154900_015586_01D376_146D.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "ow-0072.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0072.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190306T154810_20190306T154835_015236_01C814_5AC6.SAFE;S1B_IW_GRDH_1SDV_20190306T154745_20190306T154810_015236_01C814_B914.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0014.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0014.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190122T155610_20190122T155635_014609_01B38B_28CE.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0944.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0944.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191130T155618_20191130T155643_019159_02429A_7E10.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "oc-0296.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/oc-0296.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191002T154845_20191002T154910_029282_0353D1_FBA2.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "oc-0066.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/oc-0066.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190221T155637_20190221T155702_026030_02E6CF_CB00.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0861.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0861.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191022T034356_20191022T034421_029566_035D93_FD78.SAFE;S1A_IW_GRDH_1SDV_20191022T034331_20191022T034356_029566_035D93_9262.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0523.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0523.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190716T154816_20190716T154841_017161_020487_EEF7.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0033.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0033.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190202T160514_20190202T160539_025753_02DD0D_CACF.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0545.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0545.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190723T035212_20190723T035237_028239_0330A7_A061.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0404.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0404.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190610T154903_20190610T154928_016636_01F4FD_9997.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "oc-0011.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/oc-0011.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190113T034235_20190113T034300_014470_01AF20_B0E8.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0058.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0058.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190223T035130_20190223T035155_015068_01C287_0DC8.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0064.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0064.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190305T155727_20190305T155752_026205_02ED1B_9DEA.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0114.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0114.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190313T035206_20190313T035231_026314_02F112_B938.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0884.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0884.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191101T040026_20191101T040051_029712_0362AE_90E1.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0601.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0601.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190816T035149_20190816T035214_028589_033BD4_FE5C.SAFE;S1A_IW_GRDH_1SDV_20190816T035124_20190816T035149_028589_033BD4_572B.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0070.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0070.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190306T035951_20190306T040016_026212_02ED51_0951.SAFE;S1A_IW_GRDH_1SDV_20190306T035926_20190306T035951_026212_02ED51_1D32.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "oc-0320.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/oc-0320.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191022T034421_20191022T034446_029566_035D93_463F.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0054.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0054.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190222T154810_20190222T154835_015061_01C24C_9BBE.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0978.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0978.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191220T035113_20191220T035138_019443_024BA5_ABE1.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "oc-0236.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/oc-0236.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190809T040049_20190809T040114_028487_03384A_86C8.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0582.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0582.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190811T034354_20190811T034419_028516_03394F_EA40.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "ow-0056.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0056.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190222T154810_20190222T154835_015061_01C24C_9BBE.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0210.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0210.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190423T154811_20190423T154836_015936_01DF14_D0D6.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "ow-0404.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/ow-0404.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190610T154903_20190610T154928_016636_01F4FD_9997.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "oc-0224.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "OIL",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/oc-0224.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190727T155643_20190727T155708_028305_0332B2_1E7C.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0240-03-000005.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0240-03-000005.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190216T154950_20190216T155015_025957_02E43B_182C.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "nw-1272-08-000023.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1272-08-000023.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190216T040005_20190216T040029_014966_01BF36_0C59.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "nw-1269-08-000020.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1269-08-000020.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190127T160455_20190127T160520_014682_01B5E9_3B85.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "nw-0045-00-000045.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0045-00-000045.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190223T035040_20190223T035105_015068_01C287_5EB6.SAFE",
+    "track_a": true,
+    "track_b": true
+  },
+  {
+    "sample_id": "nc-0087-01-000011.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0087-01-000011.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190321T033458_20190321T033523_015447_01CEE6_6D57.SAFE;S1B_IW_GRDH_1SDV_20190321T033433_20190321T033458_015447_01CEE6_D58A.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1584-09-000160.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1584-09-000160.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191225T035923_20191225T035948_019516_024E03_9F14.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0272-03-000037.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0272-03-000037.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191102T154107_20191102T154132_029734_036369_FE5F.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0076-00-000076.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0076-00-000076.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191216T033527_20191216T033552_030368_037971_A81F.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1700-10-000108.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1700-10-000108.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191004T034317_20191004T034342_018320_02282B_4A6D.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0369-02-000026.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0369-02-000026.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190220T160519_20190220T160544_015032_01C169_37F7.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0241-01-000069.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0241-01-000069.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190616T154954_20190616T155019_027707_0320A3_41EC.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1051-06-000139.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1051-06-000139.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191002T035924_20191002T035949_018291_022738_4C40.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0875-05-000129.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0875-05-000129.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191016T034227_20191016T034252_018495_022D96_DFD2.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0523-03-000020.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0523-03-000020.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190218T034259_20190218T034324_014995_01C035_58C9.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1038-06-000126.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1038-06-000126.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190730T153248_20190730T153313_017365_020A74_DD3A.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0212-01-000040.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0212-01-000040.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190319T035039_20190319T035104_015418_01CDFB_172B.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1420-08-000171.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1420-08-000171.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191229T160527_20191229T160552_019582_02501D_988D.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0040-00-000040.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0040-00-000040.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190712T034223_20190712T034248_017095_02029D_48B8.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0034-00-000034.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0034-00-000034.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190619T033457_20190619T033522_027743_0321AE_AA16.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0612-03-000109.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0612-03-000109.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190904T034355_20190904T034420_028866_034579_B50C.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1402-08-000153.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1402-08-000153.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20191211T160547_20191211T160612_030303_037740_EFF3.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1614-10-000022.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1614-10-000022.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190221T155727_20190221T155752_026030_02E6CF_E2B0.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0555-03-000052.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0555-03-000052.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190413T034322_20190413T034347_026766_0301B4_A868.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0464-02-000121.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0464-02-000121.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190920T035859_20190920T035924_018116_0221CA_C24B.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1684-10-000092.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1684-10-000092.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20190921T154041_20190921T154106_018138_022283_3509.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0309-04-000030.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0309-04-000030.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190612T034300_20190612T034325_027641_031EA9_7D1B.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nc-0343-04-000064.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nc-0343-04-000064.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191212T155618_20191212T155643_019334_02482D_8FCC.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1531-09-000107.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1531-09-000107.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190624T034301_20190624T034326_027816_0323DB_4474.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-0407-02-000064.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-0407-02-000064.jpg",
+    "scene_id": "S1A_IW_GRDH_1SDV_20190430T035143_20190430T035208_027014_030AB6_4943.SAFE",
+    "track_a": true,
+    "track_b": false
+  },
+  {
+    "sample_id": "nw-1230-07-000152.jpg",
+    "source_dataset": "PANGAEA.980773 DARTIS_2019",
+    "label": "LOOK_ALIKE",
+    "source_image": "/Users/omgangwar/Documents/Projects/Aquilia/backend/data/validation/nw-1230-07-000152.jpg",
+    "scene_id": "S1B_IW_GRDH_1SDV_20191123T160529_20191123T160554_019057_023F6D_872B.SAFE",
+    "track_a": true,
+    "track_b": false
+  }
+]

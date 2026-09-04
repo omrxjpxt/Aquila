@@ -1,0 +1,18 @@
+AQUILA PHASE 11D - REAL SENTINEL-1 VALIDATION
+========================================
+Dataset: PANGAEA.980773 DARTIS_2019
+Samples (Track A): 60
+
+Classifier: HOG + RBF SVM
+Training domain: SYNTHETIC
+
+TRACK A - PANGAEA 8BIT JPEG
+Accuracy: 0.4500
+Macro F1: 0.3732
+Oil precision: 0.4706
+Oil recall: 0.8000
+Oil F1: 0.5926
+Oil false-positive rate: 0.9000
+
+TRACK B - CDSE REHYDRATED
+Skipped full retrieval for quota conservation. Pipeline integration verified in Phase 11C.

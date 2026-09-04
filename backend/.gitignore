@@ -37,3 +37,6 @@ coverage.xml
 
 # MyPy
 .mypy_cache/
+
+# Phase 11D/11E downloaded validation imagery
+data/validation/*.jpg
