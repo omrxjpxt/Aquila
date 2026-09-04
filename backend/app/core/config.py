@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     # Environmental Data API
     COPERNICUS_API_KEY: str = ""
 
+    # Copernicus Data Space Ecosystem (CDSE) Credentials
+    CDSE_CLIENT_ID: str = ""
+    CDSE_CLIENT_SECRET: str = ""
+    CDSE_TOKEN_URL: str = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 
