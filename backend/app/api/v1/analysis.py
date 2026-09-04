@@ -1,14 +1,24 @@
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel, Field
 from app.schemas.look_alike import LookAlikeAssessment, LookAlikeRequest
 from app.schemas.evidence_fusion import EvidenceFusionRequest, EvidenceFusionResult
+from app.schemas.analysis import RealSceneAnalysisResult
 from app.schemas.slick import Slick
 from app.services.look_alike_service import LookAlikeService
 from app.services.environmental_data_service import MockEnvironmentalDataService
 from app.services.evidence_fusion_service import EvidenceFusionService
+from app.services.real_scene_analysis_service import RealSceneAnalysisService
 from app.api.v1.satellite import scenes_db, candidates_db
 from datetime import datetime
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
+
+class RealSceneAnalysisRequest(BaseModel):
+    scene_id: str = Field(..., description="ID of the processed real scene")
+
+def get_real_scene_analysis_service():
+    return RealSceneAnalysisService()
+
 
 
 def get_look_alike_service():
@@ -138,3 +148,34 @@ async def fuse_evidence(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fuse evidence: {str(e)}")
+
+
+@router.post("/real-scene", response_model=RealSceneAnalysisResult)
+async def analyze_real_scene(
+    request: RealSceneAnalysisRequest,
+    service: RealSceneAnalysisService = Depends(get_real_scene_analysis_service)
+):
+    """
+    Run the entire real-scene baseline analysis pipeline on a LIVE CDSE raster.
+    This takes an existing processed scene ID and applies baseline dark anomaly
+    detection and look-alike classification without requiring a mock simulation path.
+    """
+    if request.scene_id not in scenes_db:
+        raise HTTPException(status_code=404, detail=f"Scene '{request.scene_id}' not found")
+        
+    scene = scenes_db[request.scene_id]
+    
+    if scene.provenance != "LIVE":
+        # Keep it strict for now to avoid silently treating DEMO data as LIVE
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Scene '{request.scene_id}' has provenance '{scene.provenance}'. This endpoint requires a LIVE scene."
+        )
+        
+    try:
+        result = await service.analyze_real_scene(scene)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
