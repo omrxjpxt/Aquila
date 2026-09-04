@@ -4,10 +4,13 @@ import shutil
 import uuid
 from pathlib import Path
 from typing import List, Dict
-from app.schemas.satellite import SatelliteScene, SceneIngestRequest, ProcessingResult
+from app.schemas.satellite import SatelliteScene, SceneIngestRequest, ProcessingResult, SatelliteSearchResult
 from app.schemas.slick import Slick
 from app.services.satellite_service import SatelliteService
 from app.services.slick_detection_service import SlickDetectionService
+from app.services.cdse_service import CDSEService
+from fastapi import Query
+from datetime import datetime
 
 router = APIRouter(prefix="/satellite", tags=["satellite"])
 
@@ -22,6 +25,35 @@ def get_satellite_service():
 
 def get_slick_detection_service():
     return SlickDetectionService()
+
+
+def get_cdse_service():
+    return CDSEService()
+
+
+@router.get("/search", response_model=List[SatelliteSearchResult])
+async def search_scenes(
+    bbox: str = Query(..., description="Bounding box in format min_lon,min_lat,max_lon,max_lat"),
+    start_datetime: datetime = Query(...),
+    end_datetime: datetime = Query(...),
+    limit: int = Query(10, ge=1, le=100),
+    service: CDSEService = Depends(get_cdse_service)
+):
+    try:
+        bbox_parts = [float(p.strip()) for p in bbox.split(",")]
+        if len(bbox_parts) != 4:
+            raise ValueError("Bounding box must have 4 coordinates")
+            
+        return await service.search_scenes(
+            bbox=(bbox_parts[0], bbox_parts[1], bbox_parts[2], bbox_parts[3]),
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
+            limit=limit
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception:
+        raise HTTPException(status_code=500, detail="An error occurred during the search operation.")
 
 
 @router.post("/ingest", response_model=SatelliteScene)
