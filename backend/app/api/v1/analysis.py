@@ -5,10 +5,12 @@ from app.schemas.evidence_fusion import EvidenceFusionRequest, EvidenceFusionRes
 from app.schemas.analysis import RealSceneAnalysisResult
 from app.schemas.slick import Slick
 from app.services.look_alike_service import LookAlikeService
-from app.services.environmental_data_service import MockEnvironmentalDataService
+from app.services.environmental_data_service import MockEnvironmentalDataService, EnvironmentalDataService
+from app.services.open_meteo_service import OpenMeteoEnvironmentalService
 from app.services.evidence_fusion_service import EvidenceFusionService
 from app.services.real_scene_analysis_service import RealSceneAnalysisService
 from app.api.v1.satellite import scenes_db, candidates_db
+from app.core.config import settings
 from datetime import datetime
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
@@ -26,6 +28,8 @@ def get_look_alike_service():
 
 
 def get_env_service():
+    if settings.ENVIRONMENTAL_PROVIDER == "LIVE_OPEN_METEO":
+        return OpenMeteoEnvironmentalService()
     return MockEnvironmentalDataService()
 
 

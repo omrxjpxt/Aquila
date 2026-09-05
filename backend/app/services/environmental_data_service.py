@@ -40,11 +40,13 @@ class MockEnvironmentalDataService(EnvironmentalDataService):
 
         return WindObservation(
             source="DEMO / MOCK Wind Provider",
+            provider="DEMO_MOCK",
             timestamp=time,
             resolution="0.25 deg, Mock",
             is_mock=True,
             speed_m_s=speed,
-            direction_deg=275.0  # Coming from the West
+            direction_deg=275.0,  # Coming from the West
+            availability_status="AVAILABLE"
         )
 
     async def get_current(self, lat: float, lon: float, time: datetime) -> CurrentObservation:
@@ -53,11 +55,13 @@ class MockEnvironmentalDataService(EnvironmentalDataService):
         """
         return CurrentObservation(
             source="DEMO / MOCK Current Provider",
+            provider="DEMO_MOCK",
             timestamp=time,
             resolution="0.08 deg, Mock",
             is_mock=True,
             speed_m_s=0.35,
-            direction_deg=120.0  # Going towards South-East
+            direction_deg=120.0,  # Going towards South-East
+            availability_status="AVAILABLE"
         )
 
     async def get_optical_availability(self, lat: float, lon: float, time: datetime) -> OpticalAvailability:
@@ -66,8 +70,10 @@ class MockEnvironmentalDataService(EnvironmentalDataService):
         """
         return OpticalAvailability(
             source="DEMO / MOCK Optical Provider",
+            provider="DEMO_MOCK",
             timestamp=time,
             resolution="10m, Mock",
             is_mock=True,
-            status=OpticalAvailabilityStatus.CLOUD_OBSCURED
+            status=OpticalAvailabilityStatus.CLOUD_OBSCURED,
+            availability_status="AVAILABLE"
         )

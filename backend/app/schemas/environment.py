@@ -17,19 +17,30 @@ class EnvironmentalObservation(BaseModel):
     source: str = Field(..., description="Provider or source of the data (e.g., ERA5, HYCOM, MOCK)")
     timestamp: datetime = Field(..., description="Valid time of this observation")
     resolution: str = Field(default="UNKNOWN", description="Spatial/temporal resolution of the data")
+    provider: str = Field(..., description="API Provider (e.g. Open-Meteo, DEMO_MOCK)")
+    dataset: Optional[str] = Field(default=None, description="Underlying scientific dataset/model")
+    requested_lat: Optional[float] = Field(default=None, description="Requested query latitude")
+    requested_lon: Optional[float] = Field(default=None, description="Requested query longitude")
+    returned_lat: Optional[float] = Field(default=None, description="Returned model grid latitude")
+    returned_lon: Optional[float] = Field(default=None, description="Returned model grid longitude")
+    requested_timestamp: Optional[datetime] = Field(default=None, description="Target timestamp for lookup")
+    time_offset_hours: Optional[float] = Field(default=None, description="Hours difference between target and available observation")
+    retrieval_timestamp: Optional[datetime] = Field(default=None, description="When the query was made")
+    api_endpoint: Optional[str] = Field(default=None, description="Endpoint used for lookup")
+    availability_status: str = Field(default="AVAILABLE", description="AVAILABLE or UNAVAILABLE")
     is_mock: bool = Field(default=False, description="True if this is deterministic mock data")
 
 
 class WindObservation(EnvironmentalObservation):
     """Wind conditions for context."""
-    speed_m_s: float = Field(..., description="Wind speed in meters per second")
-    direction_deg: float = Field(..., description="Wind direction (meteorological convention, coming from)")
+    speed_m_s: Optional[float] = Field(default=None, description="Wind speed in meters per second")
+    direction_deg: Optional[float] = Field(default=None, description="Wind direction (meteorological convention, coming from)")
 
 
 class CurrentObservation(EnvironmentalObservation):
     """Ocean current conditions for context."""
-    speed_m_s: float = Field(..., description="Current speed in meters per second")
-    direction_deg: float = Field(..., description="Current direction (oceanographic convention, going to)")
+    speed_m_s: Optional[float] = Field(default=None, description="Current speed in meters per second")
+    direction_deg: Optional[float] = Field(default=None, description="Current direction (oceanographic convention, going to)")
 
 
 class OpticalAvailability(EnvironmentalObservation):

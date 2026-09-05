@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     SENTINEL_API_USER: str = ""
     SENTINEL_API_PASSWORD: str = ""
 
+    ENVIRONMENTAL_PROVIDER: str = "DEMO_MOCK"  # Options: DEMO_MOCK, LIVE_OPEN_METEO
+    
     # Global Fishing Watch
     GFW_API_KEY: str = ""
 
