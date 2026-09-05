@@ -42,3 +42,4 @@ coverage.xml
 data/validation/*.jpg
 # Generated live CDSE validation rasters
 data/uploads/*.tif
+data/ais_imports/

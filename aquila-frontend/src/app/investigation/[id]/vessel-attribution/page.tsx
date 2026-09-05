@@ -21,6 +21,11 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
   
   const [selectedMmsi, setSelectedMmsi] = useState<string | null>(null);
   const [expandedFactors, setExpandedFactors] = useState<Record<string, boolean>>({});
+  const [aisMode, setAisMode] = useState<"MOCK" | "BYOD">("MOCK");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [declaredSource, setDeclaredSource] = useState("");
 
   const toggleFactor = (factorName: string) => {
     setExpandedFactors(prev => ({
@@ -43,11 +48,28 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
       const endTime = new Date().toISOString();
       const startTime = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
       findVesselCandidates(
+        id as string,
         scenarioId, 
         driftResult.origin_estimate, 
         startTime,
-        endTime
+        endTime,
+        aisMode
       );
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!uploadFile) return;
+    setUploading(true);
+    try {
+      const { aisApi } = await import('@/lib/api/ais');
+      const res = await aisApi.uploadByodData(id as string, uploadFile, declaredSource);
+      setImportResult(res);
+      setAisMode("BYOD"); // Auto switch mode to BYOD
+    } catch (e: any) {
+      alert(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -135,14 +157,68 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
             </div>
             
             {(!candidates || candidates.length === 0) ? (
-              <button 
-                onClick={handleDiscover}
-                disabled={!driftResult || isLoading}
-                className="w-full bg-primary hover:bg-primary-hover text-on-primary font-bold text-xs uppercase tracking-wider py-2 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Search className="w-4 h-4" />
-                {isLoading ? "Querying AIS..." : "Discover Vessels"}
-              </button>
+              <div className="flex flex-col gap-3">
+                <div className="flex bg-surface-container rounded p-1 text-[10px] font-bold tracking-widest uppercase">
+                  <button 
+                    onClick={() => setAisMode("MOCK")}
+                    className={`flex-1 py-1 rounded transition-colors ${aisMode === "MOCK" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
+                  >
+                    Mock AIS
+                  </button>
+                  <button 
+                    onClick={() => setAisMode("BYOD")}
+                    className={`flex-1 py-1 rounded transition-colors ${aisMode === "BYOD" ? "bg-[#00647C] text-white" : "text-on-surface-variant hover:bg-surface-container-high"}`}
+                  >
+                    BYOD AIS
+                  </button>
+                </div>
+                
+                {aisMode === "BYOD" && (
+                  <div className="border border-dashed border-outline-variant rounded p-3 bg-surface text-xs space-y-2">
+                    <span className="block font-bold text-on-surface uppercase tracking-wider mb-1">Upload Historical AIS</span>
+                    <input 
+                      type="file" 
+                      accept=".csv,.json"
+                      onChange={e => setUploadFile(e.target.files?.[0] || null)}
+                      className="block w-full text-[10px] text-on-surface-variant file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:uppercase file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Declared Source (e.g. MarineTraffic)" 
+                      value={declaredSource}
+                      onChange={e => setDeclaredSource(e.target.value)}
+                      className="w-full text-[10px] p-1.5 rounded border border-outline-variant bg-surface-container-lowest"
+                    />
+                    <button 
+                      onClick={handleUpload}
+                      disabled={!uploadFile || uploading}
+                      className="w-full bg-[#00647C] hover:bg-[#005063] text-white font-bold text-[10px] uppercase tracking-wider py-1.5 rounded transition-colors disabled:opacity-50"
+                    >
+                      {uploading ? "Uploading..." : "Upload & Import"}
+                    </button>
+                    {importResult && (
+                      <div className="mt-2 p-2 bg-[#00647C]/10 border border-[#00647C]/20 rounded space-y-1 text-[9px] font-mono">
+                        <span className="block font-bold text-[#00647C] uppercase tracking-widest bg-[#00647C]/20 px-1 py-0.5 w-fit rounded">PROVENANCE: {importResult.provenance}</span>
+                        {importResult.declared_source && <span className="block text-on-surface">Source: {importResult.declared_source}</span>}
+                        <span className="block text-on-surface">Records: {importResult.record_count}</span>
+                        <span className="block text-on-surface">Vessels: {importResult.vessel_count}</span>
+                        <span className={`block font-bold ${importResult.validation_status === 'SUCCESS' ? 'text-[#00647C]' : 'text-error'}`}>Status: {importResult.validation_status}</span>
+                        {importResult.warnings?.length > 0 && <span className="block text-[#eab308]">Warnings: {importResult.warnings.length}</span>}
+                        {importResult.errors?.length > 0 && <span className="block text-error">Errors: {importResult.errors.length}</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <button 
+                  onClick={handleDiscover}
+                  disabled={!driftResult || isLoading}
+                  className="w-full bg-primary hover:bg-primary-hover text-on-primary font-bold text-xs uppercase tracking-wider py-2 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Search className="w-4 h-4" />
+                  {isLoading ? "Querying AIS..." : "Discover Vessels"}
+                </button>
+              </div>
             ) : !attributionResult ? (
               <button 
                 onClick={handleEvaluate}
@@ -176,7 +252,12 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                     )}
                   </div>
                   <div className="flex justify-between items-end mt-2">
-                    <span className="text-[9px] bg-surface-container border border-outline px-1.5 py-0.5 rounded text-on-surface-variant font-mono">MMSI: {cand.vessel_identity.mmsi}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] w-fit bg-surface-container border border-outline px-1.5 py-0.5 rounded text-on-surface-variant font-mono">MMSI: {cand.vessel_identity.mmsi}</span>
+                      {cand._rawTrack?.provenance?.mode === "USER_PROVIDED_AIS" && (
+                        <span className="text-[8px] w-fit font-bold uppercase tracking-widest bg-[#00647C]/20 text-[#00647C] px-1 py-0.5 rounded">USER PROVIDED AIS</span>
+                      )}
+                    </div>
                     {attributionResult && (
                       <div className="flex items-center gap-1">
                         <span className="text-[9px] font-bold uppercase text-on-surface-variant">Score</span>

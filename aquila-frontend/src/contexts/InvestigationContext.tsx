@@ -31,7 +31,7 @@ interface InvestigationState {
   fuseEvidence: (slickId: string) => Promise<void>;
   runHindcast: (scenario: DriftScenario) => Promise<void>;
   runForecast: (scenario: DriftScenario, originId: string) => Promise<void>;
-  findVesselCandidates: (scenarioId: string, origin: OriginEstimate, start: string, end: string) => Promise<void>;
+  findVesselCandidates: (investigationId: string, scenarioId: string, origin: OriginEstimate, start: string, end: string, mode?: string) => Promise<void>;
   evaluateAttribution: (investigationId: string, scenarioId: string, origin: OriginEstimate, drift: DriftResult, candidates: VesselCandidate[]) => Promise<void>;
   runCounterfactualSimulation: (scenario: CounterfactualScenario) => Promise<void>;
 }
@@ -158,12 +158,12 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
-  const findVesselCandidates = async (scenarioId: string, origin: OriginEstimate, start: string, end: string) => {
+  const findVesselCandidates = async (investigationId: string, scenarioId: string, origin: OriginEstimate, start: string, end: string, mode: string = "MOCK") => {
     setIsLoading(true);
     setError(null);
     try {
       const { aisApi } = await import('@/lib/api/ais');
-      const candidates = await aisApi.discoverCandidates(origin, start, end);
+      const candidates = await aisApi.discoverCandidates(investigationId, origin, start, end, mode);
       setVesselCandidates(prev => ({ ...prev, [scenarioId]: candidates }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to find vessel candidates");

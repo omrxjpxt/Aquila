@@ -210,7 +210,7 @@ class AISService:
         max_lat += 0.5
 
         # 2. Fetch raw positions
-        raw_positions = await self.provider.fetch_raw_positions(min_lon, min_lat, max_lon, max_lat, start_time, end_time)
+        raw_positions = await self.provider.fetch_raw_positions(min_lat, min_lon, max_lat, max_lon, start_time, end_time)
 
         # Group by MMSI
         pos_by_mmsi: Dict[str, List[AISPosition]] = {}
