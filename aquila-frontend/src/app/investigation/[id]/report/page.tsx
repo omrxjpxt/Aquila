@@ -37,7 +37,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
   const lat = scene ? ((scene.bbox[1] + scene.bbox[3]) / 2).toFixed(1) + '°N' : (isDemo ? fallback.incident.centerCoord[1].toFixed(1) + '°N' : 'UNAVAILABLE');
   const lon = scene ? ((scene.bbox[0] + scene.bbox[2]) / 2).toFixed(1) + '°E' : (isDemo ? fallback.incident.centerCoord[0].toFixed(1) + '°E' : 'UNAVAILABLE');
   const area = candidate ? candidate.area_km2.toFixed(2) + ' km²' : (isDemo ? fallback.slick.surfaceAreaKm2 + ' km²' : 'UNAVAILABLE');
-  const assessmentConf = assessment ? assessment.raw_score?.toFixed(2) ?? 'N/A' : (isDemo ? fallback.lookAlikeAssessment.raw_score : 'UNAVAILABLE');
+  const assessmentConf = assessment ? assessment.raw_score?.toFixed(2) ?? 'N/A' : (isDemo ? (fallback.lookAlikeAssessment as any).raw_score : 'UNAVAILABLE');
   const topMmsi = topVessel ? topVessel.identity.mmsi : (isDemo ? fallback.vesselCandidates[0].mmsi : 'UNAVAILABLE');
   const classification = candidate ? candidate.classification || 'UNASSESSED' : (isDemo ? fallback.slick.classification : 'UNAVAILABLE');
   const priority = scene ? 'HIGH' : (isDemo ? fallback.priority : 'UNAVAILABLE');

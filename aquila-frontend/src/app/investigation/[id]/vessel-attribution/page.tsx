@@ -254,7 +254,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                   <div className="flex justify-between items-end mt-2">
                     <div className="flex flex-col gap-1">
                       <span className="text-[9px] w-fit bg-surface-container border border-outline px-1.5 py-0.5 rounded text-on-surface-variant font-mono">MMSI: {cand.vessel_identity.mmsi}</span>
-                      {cand._rawTrack?.provenance?.mode === "USER_PROVIDED_AIS" && (
+                      {(cand as any)._rawTrack?.provenance?.mode === "USER_PROVIDED_AIS" && (
                         <span className="text-[8px] w-fit font-bold uppercase tracking-widest bg-[#00647C]/20 text-[#00647C] px-1 py-0.5 rounded">USER PROVIDED AIS</span>
                       )}
                     </div>

@@ -32,6 +32,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export const apiClient = {
+  baseUrl: API_V1,
   get: async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
     const response = await fetch(`${API_V1}${endpoint}`, {
       ...options,

@@ -6,7 +6,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **SAR Data Ingestion** | Automated CDSE client integration via OData. | `cdse_client.py`, `live_cdse_validation_11f.py` | LIVE | Requires valid CDSE API credentials; throughput limited by EU Copernicus limits. |
 | **Slick Detection** | Morphological thresholding and geometry extraction. | `slick_detection.py`, test suite | LIVE | Relies on baseline SAR parameters; performs poorly in high wind (>10 m/s). |
-| **Look-Alike Classification** | Random Forest model trained on domain-specific real SAR patches. | `classification_service.py`, `train_phase_11e.py` | LIVE | Does not guarantee physical substance; explicitly trained to separate 'Oil-Like' from biological look-alikes. |
+| **Look-Alike Classification** | HOG + RBF SVM model trained on domain-specific real SAR patches. | `classification_service.py`, `train_phase_11e.py` | LIVE | Does not guarantee physical substance; explicitly trained to separate 'Oil-Like' from biological look-alikes. |
 | **Environmental Forcing** | Real-time / Historical API integration fetching U/V components. | `OpenMeteoForcingAdapter` | LIVE | Spatial resolution is ~10km (Open-Meteo). Not localized hydrodynamic modeling. |
 | **Drift Reconstruction** | OceanDrift 1.14.12 executing backward particle transport. | `opendrift_adapter.py`, `DriftService` | LIVE | Trajectories are probabilistic; landmask stranding stops particle tracking. |
 | **Vessel Attribution** | Six-factor compatibility ranking ingesting AIS data. | `AttributionService`, `AISService` | BYOD / MOCK | Live regional historical AIS REST access is gated; BYOD enables robust forensic investigation. |
@@ -21,7 +21,7 @@ This scenario represents the most heavily validated and robust pathway through t
 - **AOI**: Corsica Channel (Mediterranean)
 - **Polarization**: VV (Primary for slick detection)
 - **Slick Candidate**: High-contrast morphological anomaly (Area: ~15km²)
-- **Classifier Model**: `AQUILA_RF_v1.0` (Trained on 400 Sentinel-1 patches)
+- **Classifier Model**: `AQUILA_SVM_v1.0` (HOG + RBF SVM trained on 400 Sentinel-1 patches)
 - **Environmental Provider**: Open-Meteo (Marine + Atmospheric)
 - **Environmental Timestamp Matching**: Nearest chronological hourly step backward from 05:34Z.
 - **Drift Duration**: -24 Hours (Hindcast)

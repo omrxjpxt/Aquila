@@ -90,5 +90,5 @@ def test_attribution_ranking():
     spatial_c2 = next(f for f in c2_res.factors if f.factor_name == "Spatial Compatibility")
     assert spatial_c2.status == EvidenceStatus.CONTRADICTING
     
-    assert c1_res.unavailable_count > 0 # Behavioural is UNAVAILABLE
-    assert c1_res.neutral_count > 0 # Trajectory is NEUTRAL
+    assert c1_res.unavailable_count > 0 # Behavioural and Trajectory are UNAVAILABLE
+    assert c1_res.neutral_count == 0
