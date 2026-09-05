@@ -31,6 +31,7 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
     start_time: new Date().toISOString(),
     end_time: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
     is_backward: true,
+    forcing_sources: ["LIVE_OPEN_METEO"]
   }));
 
   const selectedCandidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
@@ -112,7 +113,7 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
         </div>
         
         {/* PROVENANCE HUD */}
-        {driftResult && (
+        {driftResult && driftResult.provenance.mode === "DEMO_MOCK" && (
           <div className="bg-[#ffeedd]/90 backdrop-blur border border-[#e5ab35] rounded p-3 shadow-sm flex flex-col gap-1 min-w-[200px]">
             <div className="flex items-center gap-2 mb-1">
               <AlertTriangle className="w-3.5 h-3.5 text-[#e5ab35]" />
@@ -124,6 +125,29 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
             <span className="font-mono text-[9px] text-[#8c6b22]/70 mt-2">
               ENGINE: {driftResult.provenance.engine}
             </span>
+          </div>
+        )}
+        
+        {driftResult && driftResult.provenance.mode === "LIVE" && (
+          <div className="bg-primary-container/90 backdrop-blur border border-primary rounded p-3 shadow-sm flex flex-col gap-1 min-w-[200px]">
+            <div className="flex items-center gap-2 mb-1">
+              <Activity className="w-3.5 h-3.5 text-primary" />
+              <span className="text-[10px] font-bold tracking-widest uppercase text-primary">LIVE RECONSTRUCTION</span>
+            </div>
+            <span className="font-mono text-[10px] text-on-primary-container font-medium leading-tight">
+              {driftResult.provenance.limitations}
+            </span>
+            <div className="flex flex-col mt-2 gap-0.5">
+              <span className="font-mono text-[9px] text-on-primary-container/70 uppercase">
+                ENGINE: {driftResult.provenance.engine} {driftResult.provenance.engine_version}
+              </span>
+              <span className="font-mono text-[9px] text-on-primary-container/70 uppercase">
+                PARTICLES: {driftResult.provenance.particle_count}
+              </span>
+              <span className="font-mono text-[9px] text-on-primary-container/70 uppercase">
+                DURATION: {driftResult.provenance.hindcast_duration} hrs
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -151,9 +175,11 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
             {driftResult && (
               <div className="flex flex-col">
                 <span className="text-[9px] font-bold tracking-widest uppercase text-on-surface-variant mb-1">ORIGIN STATUS</span>
-                <div className="flex flex-col gap-1 bg-surface-container-lowest border border-[#e5ab35] rounded px-3 py-2">
-                  <span className="text-xs text-on-surface font-bold text-[#e5ab35]">Demonstration Origin Region</span>
-                  <span className="text-[10px] text-on-surface-variant font-medium">Derived via Mock Drift Simulation</span>
+                <div className="flex flex-col gap-1 bg-surface-container-lowest border border-primary rounded px-3 py-2">
+                  <span className="text-xs text-on-surface font-bold text-primary">Plausible Release Region</span>
+                  <span className="text-[10px] text-on-surface-variant font-medium">
+                    {driftResult.provenance.mode === 'LIVE' ? 'Derived via OpenDrift Hindcast' : 'Derived via Mock Drift Simulation'}
+                  </span>
                 </div>
               </div>
             )}
@@ -164,14 +190,33 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
         <div className="bg-surface/95 backdrop-blur border border-outline-variant rounded shadow-sm flex flex-col gap-3">
           <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant border-b border-outline-variant p-3 bg-surface-container-low rounded-t">ENVIRONMENTAL FORCING</h3>
           <div className="flex flex-col gap-2 font-mono text-[11px] px-4 pb-4">
-            <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
-              <span className="text-on-surface-variant font-medium">Ocean Currents</span>
-              <span className="text-on-surface text-right font-bold">0.35 m/s<br/><span className="text-[9px] text-tertiary">120°</span></span>
-            </div>
-            <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
-              <span className="text-on-surface-variant font-medium">Wind Field (ERA5)</span>
-              <span className="text-on-surface text-right font-bold">6.5 m/s<br/><span className="text-[9px] text-primary">275°</span></span>
-            </div>
+            {driftResult?.provenance.mode === 'LIVE' ? (
+              <>
+                <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
+                  <span className="text-on-surface-variant font-medium">Source</span>
+                  <span className="text-on-surface text-right font-bold text-[9px]">{driftResult.provenance.forcing_provider}</span>
+                </div>
+                <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
+                  <span className="text-on-surface-variant font-medium">Dataset</span>
+                  <span className="text-on-surface text-right font-bold text-[9px]">{driftResult.provenance.forcing_dataset}</span>
+                </div>
+                <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
+                  <span className="text-on-surface-variant font-medium">Resolution</span>
+                  <span className="text-on-surface text-right font-bold text-[9px]">{driftResult.provenance.forcing_spatial_resolution}</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
+                  <span className="text-on-surface-variant font-medium">Ocean Currents</span>
+                  <span className="text-on-surface text-right font-bold">0.35 m/s<br/><span className="text-[9px] text-tertiary">120°</span></span>
+                </div>
+                <div className="flex justify-between items-center bg-surface-container-lowest px-3 py-2 rounded border border-outline-variant">
+                  <span className="text-on-surface-variant font-medium">Wind Field (ERA5)</span>
+                  <span className="text-on-surface text-right font-bold">6.5 m/s<br/><span className="text-[9px] text-primary">275°</span></span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

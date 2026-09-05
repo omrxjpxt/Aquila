@@ -49,7 +49,7 @@ async def run_hindcast(
             detail=f"Slick {request.scenario.slick_id} not found in scene {request.scene_id}")
 
     try:
-        result = service.execute_hindcast(request.scenario, slick)
+        result = await service.execute_hindcast(request.scenario, slick)
 
         # Save origin for future forecast chaining
         if result.origin_estimate:
@@ -76,7 +76,7 @@ async def run_forecast(
     origin = origin_db[request.origin_id]
 
     try:
-        result = service.execute_forecast(request.scenario, origin)
+        result = await service.execute_forecast(request.scenario, origin)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Forecast simulation failed: {str(e)}")

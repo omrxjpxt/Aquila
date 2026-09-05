@@ -156,7 +156,27 @@ export interface DriftUncertainty {
 export interface DriftProvenance {
   mode: string;
   engine: string;
-  forcing: string;
+  engine_version?: string | null;
+  model?: string | null;
+  simulation_mode?: string | null;
+  simulation_start?: string | null;
+  simulation_end?: string | null;
+  timestep?: number | null;
+  particle_count?: number | null;
+  seed_geometry?: string | null;
+  forcing_provider: string;
+  forcing_dataset?: string | null;
+  forcing_start?: string | null;
+  forcing_end?: string | null;
+  forcing_spatial_resolution?: string | null;
+  forcing_temporal_resolution?: string | null;
+  forcing_units?: string | null;
+  forcing_retrieval_timestamp?: string | null;
+  requested_coordinates?: string | null;
+  returned_coordinates?: string | null;
+  grid_spacing?: string | null;
+  grid_dimensions?: string | null;
+  hindcast_duration?: number | null;
   model_status: string;
   limitations: string;
 }

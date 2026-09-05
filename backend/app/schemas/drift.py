@@ -47,9 +47,29 @@ class DriftUncertainty(BaseModel):
 
 
 class DriftProvenance(BaseModel):
-    mode: str = Field(default="DEMO_MOCK", description="Must be DEMO_MOCK until OpenDrift is integrated")
+    mode: str = Field(default="DEMO_MOCK", description="LIVE or DEMO_MOCK")
     engine: str = Field(default="MockDriftEngine")
-    forcing: str = Field(default="MockEnvironmentalDataService")
+    engine_version: Optional[str] = None
+    model: Optional[str] = None
+    simulation_mode: str = Field(default="HINDCAST")
+    simulation_start: Optional[datetime] = None
+    simulation_end: Optional[datetime] = None
+    timestep: Optional[float] = None
+    particle_count: Optional[int] = None
+    seed_geometry: Optional[str] = None
+    forcing_provider: str = Field(default="MockEnvironmentalDataService")
+    forcing_dataset: Optional[str] = None
+    forcing_start: Optional[datetime] = None
+    forcing_end: Optional[datetime] = None
+    forcing_spatial_resolution: Optional[str] = None
+    forcing_temporal_resolution: Optional[str] = None
+    forcing_units: Optional[str] = None
+    forcing_retrieval_timestamp: Optional[datetime] = None
+    requested_coordinates: Optional[str] = None
+    returned_coordinates: Optional[str] = None
+    grid_spacing: Optional[str] = None
+    grid_dimensions: Optional[str] = None
+    hindcast_duration: Optional[float] = None
     model_status: str = Field(default="NOT_PHYSICALLY_VALIDATED")
     limitations: str = Field(
         default="This trajectory is generated for development/demo purposes and is not a physically validated oil-spill forecast.")

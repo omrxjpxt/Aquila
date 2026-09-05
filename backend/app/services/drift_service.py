@@ -32,10 +32,10 @@ class DriftEngine:
     - Dispersion and uncertainty envelopes
     """
 
-    def run_hindcast(self, scenario: DriftScenario, slick: Slick) -> DriftResult:
+    async def run_hindcast(self, scenario: DriftScenario, slick: Slick) -> DriftResult:
         raise NotImplementedError
 
-    def run_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
+    async def run_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
         raise NotImplementedError
 
 
@@ -98,7 +98,7 @@ class MockDriftEngine(DriftEngine):
             "coordinates": [points]
         }
 
-    def run_hindcast(self, scenario: DriftScenario, slick: Slick) -> DriftResult:
+    async def run_hindcast(self, scenario: DriftScenario, slick: Slick) -> DriftResult:
         # Number of hours to backtrack
         duration_hrs = (scenario.end_time - scenario.start_time).total_seconds() / 3600.0
         duration_hrs = abs(duration_hrs)
@@ -170,7 +170,7 @@ class MockDriftEngine(DriftEngine):
             uncertainty=uncertainty
         )
 
-    def run_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
+    async def run_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
         duration_hrs = (scenario.end_time - scenario.start_time).total_seconds() / 3600.0
         duration_hrs = abs(duration_hrs)
         if duration_hrs == 0:
@@ -236,10 +236,21 @@ class DriftService:
     """
 
     def __init__(self):
-        self.engine = MockDriftEngine()
+        self.mock_engine = MockDriftEngine()
+        self.open_drift_engine = None
 
-    def execute_hindcast(self, scenario: DriftScenario, slick: Slick) -> DriftResult:
-        return self.engine.run_hindcast(scenario, slick)
+    def _get_opendrift_engine(self):
+        if self.open_drift_engine is None:
+            from app.services.opendrift_engine import OpenDriftEngine
+            self.open_drift_engine = OpenDriftEngine()
+        return self.open_drift_engine
 
-    def execute_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
-        return self.engine.run_forecast(scenario, origin)
+    async def execute_hindcast(self, scenario: DriftScenario, slick: Slick) -> DriftResult:
+        if "LIVE_OPEN_METEO" in scenario.forcing_sources:
+            return await self._get_opendrift_engine().run_hindcast(scenario, slick)
+        return await self.mock_engine.run_hindcast(scenario, slick)
+
+    async def execute_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
+        if "LIVE_OPEN_METEO" in scenario.forcing_sources:
+            return await self._get_opendrift_engine().run_forecast(scenario, origin)
+        return await self.mock_engine.run_forecast(scenario, origin)
