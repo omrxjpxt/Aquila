@@ -59,8 +59,9 @@ def dummy_slick():
 
 
 @pytest.mark.asyncio
-async def test_assess_oil_patch(oil_patch_path, dummy_slick):
+async def test_assess_oil_patch(oil_patch_path, dummy_slick, monkeypatch):
     """Test that a dark smooth patch is classified as OIL_LIKE or UNCERTAIN."""
+    monkeypatch.setenv("LOOKALIKE_MODEL_PATH", "data/models/lookalike_svm_v1.joblib")
     service = LookAlikeService()
     assessment = await service.assess_candidate(
         slick=dummy_slick,
@@ -73,8 +74,9 @@ async def test_assess_oil_patch(oil_patch_path, dummy_slick):
 
 
 @pytest.mark.asyncio
-async def test_assess_lookalike_patch(lookalike_patch_path, dummy_slick):
+async def test_assess_lookalike_patch(lookalike_patch_path, dummy_slick, monkeypatch):
     """Test that a bright textured patch is classified as LOOKALIKE or UNCERTAIN."""
+    monkeypatch.setenv("LOOKALIKE_MODEL_PATH", "data/models/lookalike_svm_v1.joblib")
     service = LookAlikeService()
     assessment = await service.assess_candidate(
         slick=dummy_slick,
@@ -190,7 +192,7 @@ def test_full_pipeline_integration(synthetic_scene_path):
     assert assessment["predicted_class"] in ["OIL_LIKE", "LOOKALIKE", "UNCERTAIN"]
     assert "raw_score" in assessment
     assert "model_version" in assessment
-    assert assessment["model_version"] == "lookalike_svm_v1"
+    assert assessment["model_version"] == "lookalike_svm_real_v1"
     assert "patch_metadata" in assessment
     assert "uncertainty_margin" in assessment
 

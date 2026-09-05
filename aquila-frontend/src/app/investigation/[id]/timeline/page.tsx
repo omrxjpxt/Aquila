@@ -67,7 +67,7 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
       id: "assessment",
       title: "Model Assessment Completed",
       source: "HOG+SVM",
-      description: `Classifier indicates ${assessment ? ((assessment.raw_score ?? 0.97) * 100).toFixed(0) : 97}% synthetic-data benchmark confidence for ${candidate?.classification || 'OIL_LIKE'} anomaly.`,
+      description: `Classifier output raw decision score of ${assessment ? assessment.raw_score?.toFixed(2) : '1.2'} for ${candidate?.classification || 'OIL_LIKE'} anomaly.`,
       timeLabel: "T+1h",
       icon: Activity,
       colorClass: "primary",

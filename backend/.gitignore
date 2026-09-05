@@ -40,3 +40,5 @@ coverage.xml
 
 # Phase 11D/11E downloaded validation imagery
 data/validation/*.jpg
+# Generated live CDSE validation rasters
+data/uploads/*.tif

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     CDSE_CLIENT_SECRET: str = ""
     CDSE_TOKEN_URL: str = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 
+    # Look-Alike Classifier Configuration
+    LOOKALIKE_MODEL_PATH: str = "data/models/lookalike_svm_real_v1.joblib"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 

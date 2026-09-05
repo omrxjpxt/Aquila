@@ -61,7 +61,13 @@ export interface LookAlikeAssessment {
   raw_score: number;
   uncertainty_margin: number;
   model_version: string;
+  model_name: string;
   model_type: string;
+  training_domain: string;
+  training_representation: string;
+  evaluation_domain: string;
+  evaluation_status: string;
+  artifact_identifier: string;
   patch_metadata: PatchMetadata;
   assessed_at: string;
   

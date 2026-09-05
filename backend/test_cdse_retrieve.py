@@ -1,4 +1,5 @@
 import asyncio
+import pytest
 import os
 import sys
 from datetime import datetime, timezone
@@ -10,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 from app.services.cdse_service import CDSEService
 from app.schemas.satellite import SatelliteSearchResult
 
+@pytest.mark.asyncio
 async def test_live_retrieval():
     service = CDSEService()
     

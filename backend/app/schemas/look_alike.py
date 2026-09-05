@@ -38,7 +38,13 @@ class LookAlikeAssessment(BaseModel):
     uncertainty_margin: float = Field(...,
                                       description="Threshold below which |raw_score| triggers UNCERTAIN classification")
     model_version: str = Field(..., description="Identifier of the model used")
+    model_name: str = Field(default="Unknown", description="Name of the model architecture")
     model_type: str = Field(default="HOG+SVM", description="Type of model architecture")
+    training_domain: str = Field(default="Unknown", description="Domain the model was trained on")
+    training_representation: str = Field(default="Unknown", description="Data representation used in training")
+    evaluation_domain: str = Field(default="Unknown", description="Domain the model is evaluating on")
+    evaluation_status: str = Field(default="Unknown", description="Evaluation status or origin of the model")
+    artifact_identifier: str = Field(default="Unknown", description="The unique artifact or configuration path used")
     patch_metadata: PatchMetadata
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
 

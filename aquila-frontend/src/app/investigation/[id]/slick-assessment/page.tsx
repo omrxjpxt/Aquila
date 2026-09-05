@@ -175,6 +175,18 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
               {!isDemo && assessment && (
                 <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-outline-variant/50">
                   <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="text-on-surface-variant">MODEL VERSION:</span>
+                    <span className="font-bold">{assessment.model_version || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-mono mt-1">
+                    <span className="text-on-surface-variant">TRAINING DOMAIN:</span>
+                    <span className="font-bold">{assessment.training_domain || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-mono mt-1 pb-2 border-b border-outline-variant/30">
+                    <span className="text-on-surface-variant">STATUS:</span>
+                    <span className="font-bold">{assessment.evaluation_status || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-mono mt-2">
                     <span className="text-on-surface-variant">RAW SVM SCORE:</span>
                     <span className="font-bold">{assessment.raw_score.toFixed(4)}</span>
                   </div>

@@ -1,8 +1,11 @@
+import pytest
+import os
 import asyncio
 import sys
 from datetime import datetime, timedelta
 from app.services.cdse_service import CDSEService
 
+@pytest.mark.asyncio
 async def test_live_search():
     print("--- CDSE Sentinel-1 STAC Search Live Test ---")
     service = CDSEService()

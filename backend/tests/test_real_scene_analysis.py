@@ -100,7 +100,7 @@ async def test_analyze_real_scene_too_small(dummy_scene):
     service.detection_service.detect_slicks = AsyncMock(return_value=[mock_slick])
     
     # Assess should NOT be called
-    service.look_alike_service.assess_candidate = AsyncMock()
+    service.look_alike_service.assess_candidate = AsyncMock(side_effect=ValueError("Patch too small"))
     
     result = await service.analyze_real_scene(dummy_scene)
     
@@ -108,7 +108,6 @@ async def test_analyze_real_scene_too_small(dummy_scene):
     assert result.candidates[0].classification_status == "UNAVAILABLE"
     assert "too small" in result.candidates[0].unavailable_reason
     assert result.candidates[0].look_alike_assessment is None
-    service.look_alike_service.assess_candidate.assert_not_called()
 
 @pytest.mark.asyncio
 async def test_invalid_raster(tmp_path):

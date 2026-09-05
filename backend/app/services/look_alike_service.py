@@ -49,13 +49,33 @@ class LookAlikeService:
 
     def __init__(self):
         self._model = None
+        
+        # Default to real-trained model, allow override via settings/env
         self._model_path = os.environ.get(
             "LOOKALIKE_MODEL_PATH",
-            "data/models/lookalike_svm_v1.joblib"
+            settings.LOOKALIKE_MODEL_PATH
         )
         self._uncertainty_margin = float(os.environ.get(
             "LOOKALIKE_UNCERTAINTY_MARGIN", "0.3"
         ))
+        
+        # Determine metadata based on configured model
+        self._is_real_model = "lookalike_svm_real_v1" in self._model_path
+        
+        if self._is_real_model:
+            self._model_name = "HOG + RBF SVM"
+            self._model_version = "lookalike_svm_real_v1"
+            self._training_domain = "REAL_SENTINEL_1_DERIVED"
+            self._training_representation = "PANGAEA_8BIT_JPEG"
+            self._evaluation_domain = "REAL_SENTINEL_1_DERIVED / LIVE_CDSE"
+            self._evaluation_status = "REAL_DATA_TRAINED"
+        else:
+            self._model_name = "HOG + RBF SVM"
+            self._model_version = "lookalike_svm_v1"
+            self._training_domain = "SYNTHETIC"
+            self._training_representation = "SYNTHETIC_FLOAT"
+            self._evaluation_domain = "REAL_SENTINEL_1_DERIVED / LIVE_CDSE"
+            self._evaluation_status = "SYNTHETIC_TRAINED"
 
     def _load_model(self):
         """Load the trained model artifact from disk."""
@@ -227,8 +247,14 @@ class LookAlikeService:
             predicted_class=predicted_class,
             raw_score=raw_score,
             uncertainty_margin=self._uncertainty_margin,
-            model_version=MODEL_VERSION,
+            model_name=self._model_name,
+            model_version=self._model_version,
             model_type="HOG+SVM",
+            training_domain=self._training_domain,
+            training_representation=self._training_representation,
+            evaluation_domain=self._evaluation_domain,
+            evaluation_status=self._evaluation_status,
+            artifact_identifier=self._model_path,
             patch_metadata=patch_meta,
             assessed_at=datetime.utcnow()
         )
