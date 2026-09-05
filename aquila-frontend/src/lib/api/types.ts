@@ -177,6 +177,11 @@ export interface DriftProvenance {
   grid_spacing?: string | null;
   grid_dimensions?: string | null;
   hindcast_duration?: number | null;
+  simulation_status?: string | null;
+  landmask_stranding?: boolean | null;
+  stranded_particle_count?: number | null;
+  completed_particle_count?: number | null;
+  trajectory_completion_fraction?: number | null;
   model_status: string;
   limitations: string;
 }

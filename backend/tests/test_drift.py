@@ -1,9 +1,11 @@
+import pytest
 from datetime import datetime, timezone, timedelta
 from app.schemas.drift import DriftScenario
 from app.schemas.slick import Slick
 from app.services.drift_service import DriftService
 
-def test_mock_drift_engine_hindcast():
+@pytest.mark.asyncio
+async def test_mock_drift_engine_hindcast():
     service = DriftService()
     
     start_time = datetime.now(timezone.utc)
@@ -26,7 +28,7 @@ def test_mock_drift_engine_hindcast():
         geometry={"type": "Polygon", "coordinates": [[[0,0],[0,1],[1,1],[1,0],[0,0]]]}
     )
     
-    res = service.execute_hindcast(scenario, slick)
+    res = await service.execute_hindcast(scenario, slick)
     
     assert res.id == "res_test_1"
     assert res.scenario_id == "test_1"
@@ -41,7 +43,8 @@ def test_mock_drift_engine_hindcast():
     assert traj.timestamps[-1] == end_time
 
 
-def test_mock_drift_engine_forecast():
+@pytest.mark.asyncio
+async def test_mock_drift_engine_forecast():
     service = DriftService()
     
     start_time = datetime.now(timezone.utc)
@@ -65,7 +68,7 @@ def test_mock_drift_engine_forecast():
         geometry={"type": "Polygon", "coordinates": [[[0,0],[0,1],[1,1],[1,0],[0,0]]]}
     )
     
-    res_h = service.execute_hindcast(scenario_h, slick)
+    res_h = await service.execute_hindcast(scenario_h, slick)
     
     scenario_f = DriftScenario(
         scenario_id="test_f",
@@ -75,7 +78,7 @@ def test_mock_drift_engine_forecast():
         is_backward=False
     )
     
-    res_f = service.execute_forecast(scenario_f, res_h.origin_estimate)
+    res_f = await service.execute_forecast(scenario_f, res_h.origin_estimate)
     
     assert res_f.id == "fres_test_f"
     assert res_f.forecast_geometry["type"] == "Polygon"

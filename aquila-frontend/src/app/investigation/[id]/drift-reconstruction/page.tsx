@@ -142,7 +142,10 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
                 ENGINE: {driftResult.provenance.engine} {driftResult.provenance.engine_version}
               </span>
               <span className="font-mono text-[9px] text-on-primary-container/70 uppercase">
-                PARTICLES: {driftResult.provenance.particle_count}
+                STATUS: {driftResult.provenance.simulation_status || "COMPLETED"}
+              </span>
+              <span className="font-mono text-[9px] text-on-primary-container/70 uppercase">
+                PARTICLES: {driftResult.provenance.completed_particle_count ?? driftResult.provenance.particle_count} / {driftResult.provenance.particle_count}
               </span>
               <span className="font-mono text-[9px] text-on-primary-container/70 uppercase">
                 DURATION: {driftResult.provenance.hindcast_duration} hrs

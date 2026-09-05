@@ -98,7 +98,7 @@ class CounterfactualSimulationService:
         else:
             return "Simulated movement produces no spatial overlap with the observed slick."
 
-    def run_scenario(self, scenario: CounterfactualScenario) -> CounterfactualResult:
+    async def run_scenario(self, scenario: CounterfactualScenario) -> CounterfactualResult:
         # Create a fake OriginEstimate for the Drift engine
         point_geom = {
             "type": "Polygon",
@@ -128,7 +128,7 @@ class CounterfactualSimulationService:
         )
 
         # Run forward simulation
-        forecast = self.drift_service.execute_forecast(drift_scenario, fake_origin)
+        forecast = await self.drift_service.execute_forecast(drift_scenario, fake_origin)
 
         simulated_geom = forecast.forecast_geometry
 

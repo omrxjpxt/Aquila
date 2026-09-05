@@ -63,6 +63,8 @@ class OpenDriftEngine(DriftEngine):
 
         nc_path = forcing_window.to_netcdf()
 
+        o_start_time = sim_start_time.replace(tzinfo=None)
+        
         try:
             from opendrift.readers import reader_netCDF_CF_generic
             
@@ -80,7 +82,7 @@ class OpenDriftEngine(DriftEngine):
                 seed_radius = max(500, int(np.sqrt(slick.area_sq_km / np.pi) * 1000))
                 
             o.seed_elements(
-                lon=lon, lat=lat, time=sim_start_time,
+                lon=lon, lat=lat, time=o_start_time,
                 number=particle_count, radius=seed_radius
             )
 
@@ -110,7 +112,13 @@ class OpenDriftEngine(DriftEngine):
                 "time_step": time_step,
                 "sim_start": sim_start_time,
                 "sim_end": sim_end_time,
-                "duration": duration_hrs
+                "duration": duration_hrs,
+                "grid_bounds": {
+                    "lon_min": lon - 1.5,
+                    "lon_max": lon + 1.5,
+                    "lat_min": lat - 1.5,
+                    "lat_max": lat + 1.5,
+                }
             }
         finally:
             # Always clean up the temporary NetCDF file
@@ -131,7 +139,11 @@ class OpenDriftEngine(DriftEngine):
             p_lons = lons[p_idx, :]
             p_lats = lats[p_idx, :]
             
-            valid_t = np.where(~np.isnan(p_lons))[0]
+            if hasattr(p_lons, 'mask'):
+                valid_t = np.where(~p_lons.mask)[0]
+            else:
+                valid_t = np.where(~np.isnan(p_lons))[0]
+                
             if len(valid_t) > 0:
                 last_t = valid_t[-1]
                 final_lons.append(p_lons[last_t])
@@ -203,8 +215,12 @@ class OpenDriftEngine(DriftEngine):
             t_lons = lons[:, t_idx]
             t_lats = lats[:, t_idx]
             
-            valid_lons = t_lons[~np.isnan(t_lons)]
-            valid_lats = t_lats[~np.isnan(t_lats)]
+            if hasattr(t_lons, 'mask'):
+                valid_lons = t_lons[~t_lons.mask]
+                valid_lats = t_lats[~t_lats.mask]
+            else:
+                valid_lons = t_lons[~np.isnan(t_lons)]
+                valid_lats = t_lats[~np.isnan(t_lats)]
             if len(valid_lons) > 0:
                 centroid_coords.append([float(np.mean(valid_lons)), float(np.mean(valid_lats))])
             else:
@@ -222,6 +238,58 @@ class OpenDriftEngine(DriftEngine):
         )
 
         forcing = result_data["forcing"]
+        grid_bounds = result_data["grid_bounds"]
+
+        # Completion metrics
+        num_particles = lons.shape[0]
+        num_steps = len(timestamps)
+        completed_count = 0
+        stranded_land_count = 0
+        stranded_bounds_count = 0
+        
+        for p_idx in range(num_particles):
+            p_lons = lons[p_idx, :]
+            p_lats = lats[p_idx, :]
+            
+            if hasattr(p_lons, 'mask'):
+                valid_t = np.where(~p_lons.mask)[0]
+            else:
+                valid_t = np.where(~np.isnan(p_lons))[0]
+            
+            if len(valid_t) == 0:
+                continue
+                
+            if len(valid_t) == num_steps:
+                completed_count += 1
+            else:
+                last_t = valid_t[-1]
+                last_lon = p_lons[last_t]
+                last_lat = p_lats[last_t]
+                
+                # Near bounds threshold (0.05 deg)
+                if (last_lon <= grid_bounds["lon_min"] + 0.05 or 
+                    last_lon >= grid_bounds["lon_max"] - 0.05 or
+                    last_lat <= grid_bounds["lat_min"] + 0.05 or 
+                    last_lat >= grid_bounds["lat_max"] - 0.05):
+                    stranded_bounds_count += 1
+                else:
+                    stranded_land_count += 1
+
+        total_valid = completed_count + stranded_land_count + stranded_bounds_count
+        if total_valid == 0:
+            simulation_status = "FAILED"
+        elif completed_count == total_valid:
+            simulation_status = "COMPLETED"
+        else:
+            simulation_status = "PARTIALLY_COMPLETED"
+
+        fraction = completed_count / num_particles if num_particles > 0 else 0.0
+        
+        limitations = "Real environmental forcing does not imply physically validated drift. Plausible Release Region, not an exact origin."
+        if stranded_bounds_count > 0:
+            limitations += f" WARNING: {stranded_bounds_count} particles exceeded forcing grid boundaries. The forcing grid (0.5 deg spacing) is a coarse prototype limit."
+        if stranded_land_count > 0:
+            limitations += f" {stranded_land_count} particles stranded on coastal landmask."
         
         provenance = DriftProvenance(
             mode="LIVE",
@@ -245,8 +313,13 @@ class OpenDriftEngine(DriftEngine):
             requested_coordinates=forcing.requested_coordinates,
             returned_coordinates=forcing.returned_coordinates,
             hindcast_duration=result_data["duration"],
+            simulation_status=simulation_status,
+            landmask_stranding=(stranded_land_count > 0),
+            stranded_particle_count=(stranded_land_count + stranded_bounds_count),
+            completed_particle_count=completed_count,
+            trajectory_completion_fraction=fraction,
             model_status="LIVE_OPERATIONAL",
-            limitations="Real environmental forcing does not imply physically validated drift. Plausible Release Region, not an exact origin."
+            limitations=limitations
         )
 
         return DriftResult(

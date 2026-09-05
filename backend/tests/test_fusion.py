@@ -53,11 +53,11 @@ def test_fusion_wind_bands(dummy_scene, dummy_slick, dummy_assessment):
     service = EvidenceFusionService()
     
     # Base dependencies
-    current = CurrentObservation(source="MOCK", timestamp=dummy_scene.acquisition_time, speed_m_s=0.5, direction_deg=90)
-    optical = OpticalAvailability(source="MOCK", timestamp=dummy_scene.acquisition_time, status=OpticalAvailabilityStatus.AVAILABLE)
+    current = CurrentObservation(source="MOCK", provider="TEST", timestamp=dummy_scene.acquisition_time, speed_m_s=0.5, direction_deg=90)
+    optical = OpticalAvailability(source="MOCK", provider="TEST", timestamp=dummy_scene.acquisition_time, status=OpticalAvailabilityStatus.AVAILABLE)
 
     # Test < 2 m/s
-    wind = WindObservation(source="MOCK", timestamp=dummy_scene.acquisition_time, speed_m_s=1.5, direction_deg=0)
+    wind = WindObservation(source="MOCK", provider="TEST", timestamp=dummy_scene.acquisition_time, speed_m_s=1.5, direction_deg=0)
     res = service.fuse_evidence("inv1", dummy_scene, dummy_slick, dummy_assessment, wind, current, optical)
     w_item = next(i for i in res.evidence_items if i.category == EvidenceCategory.WIND_CONTEXT)
     assert w_item.status == EvidenceStatus.CONTRADICTING
@@ -93,9 +93,9 @@ def test_fusion_wind_bands(dummy_scene, dummy_slick, dummy_assessment):
 
 def test_optical_cloud_obscured(dummy_scene, dummy_slick, dummy_assessment):
     service = EvidenceFusionService()
-    wind = WindObservation(source="MOCK", timestamp=dummy_scene.acquisition_time, speed_m_s=5.0, direction_deg=0)
-    current = CurrentObservation(source="MOCK", timestamp=dummy_scene.acquisition_time, speed_m_s=0.5, direction_deg=90)
-    optical = OpticalAvailability(source="MOCK", timestamp=dummy_scene.acquisition_time, status=OpticalAvailabilityStatus.CLOUD_OBSCURED)
+    wind = WindObservation(source="MOCK", provider="TEST", timestamp=dummy_scene.acquisition_time, speed_m_s=5.0, direction_deg=0)
+    current = CurrentObservation(source="MOCK", provider="TEST", timestamp=dummy_scene.acquisition_time, speed_m_s=0.5, direction_deg=90)
+    optical = OpticalAvailability(source="MOCK", provider="TEST", timestamp=dummy_scene.acquisition_time, status=OpticalAvailabilityStatus.CLOUD_OBSCURED)
 
     res = service.fuse_evidence("inv1", dummy_scene, dummy_slick, dummy_assessment, wind, current, optical)
     o_item = next(i for i in res.evidence_items if i.category == EvidenceCategory.OPTICAL_CORROBORATION)
@@ -106,9 +106,9 @@ def test_temporal_mismatch(dummy_scene, dummy_slick, dummy_assessment):
     
     env_time = dummy_scene.acquisition_time - timedelta(hours=3)
     
-    wind = WindObservation(source="MOCK", timestamp=env_time, speed_m_s=5.0, direction_deg=0)
-    current = CurrentObservation(source="MOCK", timestamp=env_time, speed_m_s=0.5, direction_deg=90)
-    optical = OpticalAvailability(source="MOCK", timestamp=env_time, status=OpticalAvailabilityStatus.AVAILABLE)
+    wind = WindObservation(source="MOCK", provider="TEST", timestamp=env_time, speed_m_s=5.0, direction_deg=0)
+    current = CurrentObservation(source="MOCK", provider="TEST", timestamp=env_time, speed_m_s=0.5, direction_deg=90)
+    optical = OpticalAvailability(source="MOCK", provider="TEST", timestamp=env_time, status=OpticalAvailabilityStatus.AVAILABLE)
 
     res = service.fuse_evidence("inv1", dummy_scene, dummy_slick, dummy_assessment, wind, current, optical)
     t_item = next(i for i in res.evidence_items if i.category == EvidenceCategory.TEMPORAL_CONSISTENCY)

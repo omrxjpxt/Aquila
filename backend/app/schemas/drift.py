@@ -70,6 +70,11 @@ class DriftProvenance(BaseModel):
     grid_spacing: Optional[str] = None
     grid_dimensions: Optional[str] = None
     hindcast_duration: Optional[float] = None
+    simulation_status: Optional[str] = None
+    landmask_stranding: Optional[bool] = None
+    stranded_particle_count: Optional[int] = None
+    completed_particle_count: Optional[int] = None
+    trajectory_completion_fraction: Optional[float] = None
     model_status: str = Field(default="NOT_PHYSICALLY_VALIDATED")
     limitations: str = Field(
         default="This trajectory is generated for development/demo purposes and is not a physically validated oil-spill forecast.")

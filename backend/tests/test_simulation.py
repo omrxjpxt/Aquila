@@ -40,7 +40,8 @@ def test_simulation_geometries():
     assert diff.observed_only_polygon is not None
     assert diff.simulated_only_polygon is not None
 
-def test_run_scenario():
+@pytest.mark.asyncio
+async def test_run_scenario():
     service = CounterfactualSimulationService()
     
     geom = {
@@ -57,7 +58,7 @@ def test_run_scenario():
         observed_slick_geometry=geom
     )
     
-    result = service.run_scenario(scenario)
+    result = await service.run_scenario(scenario)
     
     assert result.provenance.engine == "MockDriftEngine"
     assert result.provenance.model_status == "NOT_PHYSICALLY_VALIDATED"
