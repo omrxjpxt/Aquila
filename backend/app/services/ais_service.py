@@ -1,5 +1,5 @@
 import math
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Dict
 from datetime import datetime, timedelta, timezone
 from shapely.geometry import Point, Polygon, LineString
 
@@ -213,7 +213,7 @@ class AISService:
         raw_positions = await self.provider.fetch_raw_positions(min_lon, min_lat, max_lon, max_lat, start_time, end_time)
 
         # Group by MMSI
-        pos_by_mmsi = {}
+        pos_by_mmsi: Dict[str, List[AISPosition]] = {}
         for p in raw_positions:
             mmsi = getattr(p, 'mmsi', None)
             if not mmsi:
@@ -279,7 +279,7 @@ class AISService:
                     temporally_relevant=temporally_relevant,
                     closest_approach_meters=distance_m,
                     inside_origin_region=inside,
-                    provenance=AISProvenance(mode="DEMO_MOCK" if isinstance(self.provider, MockAISProvider) else "LIVE")
+                    provenance=AISProvenance(mode=getattr(self.provider, 'provenance_mode', "DEMO_MOCK" if isinstance(self.provider, MockAISProvider) else "LIVE"))
                 )
                 candidates.append(cand)
 
