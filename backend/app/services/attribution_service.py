@@ -14,7 +14,7 @@ from app.schemas.drift import OriginEstimate, DriftResult
 class AttributionService:
     """
     Evaluates candidate vessels against 6 physical/behavioural factors.
-    Returns an explainable evidence ranking.
+    Returns an explainable compatibility ranking.
     """
 
     def evaluate(self, investigation_id: str, origin: OriginEstimate, drift: DriftResult,
@@ -65,27 +65,35 @@ class AttributionService:
             ))
 
             # 3. TRAJECTORY
-            # Simple heuristic for demo: check if there's a significant heading change near the origin
-            status = EvidenceStatus.NEUTRAL
-            obs = "Vessel maintained a steady trajectory through the region."
+            status = EvidenceStatus.UNAVAILABLE
+            obs = "Standard maneuvers observed; insufficient granular evidence to determine anomaly."
             factors.append(AttributionFactor(
                 factor_name="Trajectory Compatibility",
                 status=status,
                 observation=obs,
-                interpretation="No unusual navigational maneuvers observed near origin.",
+                interpretation="No unusual navigational maneuvers explicitly identified.",
                 evidence_source="AIS Track Geometry",
                 provenance="AQUILA Trajectory Analysis",
                 limitations="Ordinary movement does not preclude illicit activity."
             ))
 
             # 4. DRIFT
-            drift_mode = "DEMO / MOCK" if "mock" in drift.provenance.engine.lower() else "LIVE"
-            if cand.spatially_relevant and cand.temporally_relevant:
-                status = EvidenceStatus.SUPPORTING
-                obs = "Vessel position aligns with backward drift reconstruction."
+            is_mock_drift = "mock" in drift.provenance.engine.lower() or drift.provenance.mode == "DEMO_MOCK"
+            drift_mode = "DEMO_MOCK" if is_mock_drift else "LIVE"
+            
+            if is_mock_drift:
+                status = EvidenceStatus.UNAVAILABLE
+                obs = "Mock drift demonstrates algorithmic behavior but is not forensic evidence."
             else:
-                status = EvidenceStatus.CONTRADICTING
-                obs = "Vessel position contradicts backward drift reconstruction."
+                if cand.spatially_relevant and cand.temporally_relevant:
+                    status = EvidenceStatus.SUPPORTING
+                    obs = "Vessel position aligns with backward drift reconstruction."
+                elif not cand.spatially_relevant and not cand.temporally_relevant:
+                    status = EvidenceStatus.CONTRADICTING
+                    obs = "Vessel position explicitly contradicts backward drift reconstruction."
+                else:
+                    status = EvidenceStatus.UNAVAILABLE
+                    obs = "Insufficient overlap between vessel track and drift footprint."
 
             factors.append(AttributionFactor(
                 factor_name="Drift Compatibility",
@@ -94,11 +102,10 @@ class AttributionService:
                 interpretation="Vessel intercepts the back-propagated slick footprint.",
                 evidence_source=drift.provenance.engine,
                 provenance=drift_mode,
-                limitations="Physical drift reconstruction is not yet validated." if drift_mode == "DEMO / MOCK" else ""
+                limitations="Physical drift reconstruction is subject to environmental uncertainties." if not is_mock_drift else "Not valid forensic evidence."
             ))
 
             # 5. BEHAVIOURAL
-            # E.g. speed drops, loitering. Mock demo logic.
             status = EvidenceStatus.UNAVAILABLE
             obs = "Insufficient baseline history to establish behavioural anomalies."
             factors.append(AttributionFactor(
@@ -115,14 +122,13 @@ class AttributionService:
             qual = cand.track.coverage_quality
             if qual == "GOOD":
                 status = EvidenceStatus.SUPPORTING
-                obs = "High density AIS observations with no significant gaps."
+                obs = "High density AIS observations with complete evidentiary record."
             elif qual == "MODERATE":
-                status = EvidenceStatus.NEUTRAL
-                obs = "Acceptable AIS coverage with minor gaps."
+                status = EvidenceStatus.UNAVAILABLE
+                obs = "AIS gap observed; evidentiary record is incomplete."
             else:
-                # or neutral? We treat poor quality as neutral score, but label it.
-                status = EvidenceStatus.CONTRADICTING
-                obs = f"Limited AIS coverage (Longest gap: {cand.track.longest_gap_hours:.1f}h)."
+                status = EvidenceStatus.UNAVAILABLE
+                obs = "AIS gap observed; evidentiary record is incomplete."
 
             factors.append(AttributionFactor(
                 factor_name="AIS Data Quality",
@@ -131,7 +137,7 @@ class AttributionService:
                 interpretation="The evidentiary quality of the AIS record is evaluated.",
                 evidence_source="AIS Gap Analysis",
                 provenance=cand.provenance.mode,
-                limitations="Poor quality limits evidence but is not proof of suspicious behaviour."
+                limitations="Missing data limits evidence but is not proof of suspicious behaviour."
             ))
 
             # Calculate counts and score
@@ -154,8 +160,8 @@ class AttributionService:
                 evidence_ranking_score=score
             ))
 
-        # Rank
-        evaluated_candidates.sort(key=lambda x: x.evidence_ranking_score, reverse=True)
+        # Deterministic Ranking: Score Descending, then MMSI Ascending (to preserve ties deterministically)
+        evaluated_candidates.sort(key=lambda x: (-x.evidence_ranking_score, x.vessel_identity.mmsi))
 
         highest = evaluated_candidates[0].vessel_identity if evaluated_candidates else None
 

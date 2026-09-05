@@ -260,7 +260,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                     </div>
                     {attributionResult && (
                       <div className="flex items-center gap-1">
-                        <span className="text-[9px] font-bold uppercase text-on-surface-variant">Score</span>
+                        <span className="text-[9px] font-bold uppercase text-on-surface-variant">Compatibility Score</span>
                         <span className="text-sm font-bold text-[#00647C]">{cand.evidence_ranking_score}</span>
                       </div>
                     )}
@@ -278,6 +278,9 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
         {/* RIGHT COLUMN: Detailed Profile */}
         {selectedCandidate && attributionResult && (
           <div className="w-[480px] h-full flex flex-col pointer-events-auto border-l border-outline-variant bg-surface shrink-0 shadow-sm">
+            <div className="bg-[#eab308]/10 p-2 text-center border-b border-[#eab308]/30">
+              <span className="text-[10px] font-bold tracking-widest uppercase text-[#8c6b22]">Compatibility ranking, not proof of responsibility.</span>
+            </div>
             <div className="p-4 border-b border-outline-variant bg-surface-container-lowest relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-[#00647C]"></div>
               
@@ -287,7 +290,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                   <span className="font-mono text-[10px] font-medium text-on-surface-variant block uppercase tracking-wider">MMSI {selectedCandidate.vessel_identity.mmsi} • FLAG {selectedCandidate.vessel_identity.flag || "N/A"}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[9px] font-bold tracking-widest uppercase text-on-surface-variant mb-1">Evidence Score</span>
+                  <span className="text-[9px] font-bold tracking-widest uppercase text-on-surface-variant mb-1">Compatibility Score</span>
                   <span className="text-3xl font-bold text-[#00647C] leading-none">{selectedCandidate.evidence_ranking_score}</span>
                 </div>
               </div>
