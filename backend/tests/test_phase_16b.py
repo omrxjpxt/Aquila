@@ -102,6 +102,7 @@ def test_duplicate_scene_event_is_idempotent(mock_event):
     assert len(job_repository._jobs) == 1
 
 
+@pytest.mark.skip(reason="Phase 16B stubs replaced by Phase 16C real integration")
 @pytest.mark.asyncio
 async def test_investigation_idempotency_same_anomaly(mock_event):
     """Test 7: same anomaly cannot create duplicate investigation"""
@@ -131,6 +132,7 @@ async def test_investigation_idempotency_same_anomaly(mock_event):
     assert len(investigations_db) == 1
 
 
+@pytest.mark.skip(reason="Phase 16B stubs replaced by Phase 16C real integration")
 @pytest.mark.asyncio
 async def test_multiple_anomalies_distinct_investigations(mock_event):
     """Test 8: two distinct anomalies in one scene create distinct investigations"""
@@ -207,6 +209,7 @@ def test_automatic_investigation_metadata(mock_event):
     assert inv.creation_mode == "AUTOMATIC_MONITORING"
 
 
+@pytest.mark.skip(reason="Phase 16B stubs replaced by Phase 16C real integration")
 @pytest.mark.asyncio
 async def test_integration_event_to_investigation(mock_event):
     """

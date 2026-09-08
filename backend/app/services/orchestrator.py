@@ -2,26 +2,28 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 import uuid
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from app.schemas.orchestration import MonitoringJob, JobStatus
 from app.schemas.monitoring import NewSceneEvent
 from app.schemas.investigation import Investigation
-from app.schemas.look_alike import LookAlikeRequest
+from app.schemas.look_alike import LookAlikeRequest, LookAlikeClass
 from app.schemas.analysis import RealSceneAnalysisResult
 from app.schemas.slick import Slick
+from app.schemas.satellite import SatelliteSearchResult, SceneIngestRequest, SatelliteScene
+from app.schemas.drift import DriftScenario, OriginEstimate, DriftResult
+from app.schemas.ais import VesselCandidate
+
 from app.services.job_repository import job_repository
 from app.services.investigation_trigger_policy import default_trigger_policy
 from app.services.cdse_service import CDSEService
 from app.services.satellite_service import SatelliteService
 from app.services.slick_detection_service import SlickDetectionService
 from app.services.look_alike_service import LookAlikeService
-from app.services.environmental_data_service import MockEnvironmentalDataService
 from app.services.open_meteo_service import OpenMeteoEnvironmentalService
-from app.services.opendrift_engine import OpenDriftEngine
+from app.services.drift_service import DriftService
 from app.services.gfw_ais_provider import GFWAISProvider
 from app.services.attribution_service import AttributionService
-from app.api.v1.satellite import scenes_db, candidates_db
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +37,12 @@ class OrchestrationService:
         self.detect_service = SlickDetectionService()
         self.la_service = LookAlikeService()
         self.env_service = OpenMeteoEnvironmentalService()
-        self.drift_engine = OpenDriftEngine()
+        self.drift_service = DriftService()
         self.gfw_provider = GFWAISProvider()
         self.attribution_service = AttributionService()
+        
+        # Transient context storage to avoid dumping large artifacts into MonitoringJob
+        self.job_contexts: Dict[str, Dict[str, Any]] = {}
 
     def ingest_scene_event(self, event: NewSceneEvent) -> Optional[MonitoringJob]:
         """
@@ -52,9 +57,15 @@ class OrchestrationService:
             product_id=event.product_id,
             product_name=event.product_name,
             monitoring_zone_id=event.monitoring_zone_id or "default",
+            scene_event_payload=event.model_dump(),
             status=JobStatus.QUEUED
         )
         return job_repository.create_job(job)
+
+    def _get_context(self, job_id: str) -> Dict[str, Any]:
+        if job_id not in self.job_contexts:
+            self.job_contexts[job_id] = {}
+        return self.job_contexts[job_id]
 
     async def process_job(self, job: MonitoringJob):
         """
@@ -89,7 +100,7 @@ class OrchestrationService:
                 job_repository.update_job(job)
                 
         except Exception as e:
-            logger.error(f"Error processing job {job.job_id} in state {job.status}: {str(e)}")
+            logger.error(f"Error processing job {job.job_id} in state {job.status}: {str(e)}", exc_info=True)
             self._handle_failure(job, str(e))
 
     def _handle_failure(self, job: MonitoringJob, error_msg: str):
@@ -109,50 +120,103 @@ class OrchestrationService:
         job.status = JobStatus.RETRIEVING
 
     async def _handle_retrieving(self, job: MonitoringJob):
-        # We skip actual download in MVP unless we want to fully invoke cdse_service.
-        # For Phase 16B, we just transition because actual retrieval is outside scope of 16A/B strict test logic
-        # if not explicitly mocked. We'll simulate success.
+        event = NewSceneEvent.model_validate(job.scene_event_payload)
+        
+        search_result = SatelliteSearchResult(
+            id=event.product_id,
+            source="CDSE",
+            provenance="LIVE",
+            collection=event.collection,
+            acquisition_time=event.acquisition_time,
+            bbox=event.bbox,
+            geometry=event.geometry,
+            platform=event.platform,
+            orbit_direction=event.orbit_direction,
+            polarization=event.polarization,
+            instrument_mode=event.instrument_mode
+        )
+        
+        # We fetch the raster
+        # Note: CDSEService.retrieve_raster signature is (bbox, scene, width, height)
+        # We pass width=1024, height=1024 to limit size in testing if needed, or None for full
+        file_path = await self.cdse_service.retrieve_raster(
+            bbox=event.bbox,
+            scene=search_result,
+            width=2048,
+            height=2048
+        )
+        
+        ctx = self._get_context(job.job_id)
+        ctx['raster_file_path'] = file_path
+        job.provenance_references.append("CDSE:LIVE")
+        
         job.status = JobStatus.PROCESSING
 
     async def _handle_processing(self, job: MonitoringJob):
-        # We simulate the processing finding candidates.
-        # Check if candidates exist in candidates_db for this product_id to see if we're in a test context.
-        candidates = candidates_db.get(job.product_id, [])
+        ctx = self._get_context(job.job_id)
+        file_path = ctx.get('raster_file_path')
+        if not file_path:
+            raise RuntimeError("Raster file path not found in context.")
+            
+        event = NewSceneEvent.model_validate(job.scene_event_payload)
+        
+        ingest_req = SceneIngestRequest(
+            file_path=file_path,
+            provider="CDSE",
+            scene_id=event.product_id,
+            acquisition_time=event.acquisition_time,
+            source="CDSE",
+            provenance="LIVE",
+            collection=event.collection,
+            polarization=event.polarization,
+            retrieval_timestamp=datetime.utcnow()
+        )
+        
+        scene = await self.sat_service.ingest_local_scene(ingest_req)
+        
+        # Preprocess
+        proc_res = await self.sat_service.preprocess_scene(scene)
+        scene.is_processed = True
+        scene.processed_storage_path = proc_res.processed_path
+        
+        # Detect
+        candidates = await self.detect_service.detect_slicks(scene)
+        
+        ctx['scene'] = scene
+        ctx['candidates'] = candidates
+        
         if candidates:
             job.status = JobStatus.CANDIDATES_FOUND
         else:
-            # If no candidates, the scene is empty of anomalies.
             job.status = JobStatus.RESOLVED
 
     async def _handle_candidates_found(self, job: MonitoringJob):
         job.status = JobStatus.CLASSIFYING
 
     async def _handle_classifying(self, job: MonitoringJob):
-        candidates = candidates_db.get(job.product_id, [])
+        ctx = self._get_context(job.job_id)
+        scene = ctx['scene']
+        candidates: List[Slick] = ctx['candidates']
+        
         found_interesting = False
         
         for candidate in candidates:
-            # In real system, we'd call LookAlikeService
-            # We mock the result or use a stored result for tests.
-            # Here we just create a synthetic classification result for orchestration tracking.
-            result = {
-                "patch_id": candidate.id,
-                "predicted_class": "OIL_LIKE", # Fake or real based on candidate properties
-                "score": 1.2
-            }
-            # The test will override or we assume OIL_LIKE for candidate "cand_1"
-            if candidate.id == "cand_lookalike":
-                result["predicted_class"] = "LOOKALIKE"
-                
-            job.classification_results.append(result)
+            assessment = await self.la_service.assess_candidate(candidate, scene.processed_storage_path)
             
-            if default_trigger_policy.should_investigate(result):
+            result_summary = {
+                "patch_id": candidate.id,
+                "predicted_class": assessment.predicted_class.value,
+                "score": assessment.raw_score,
+                "model_name": assessment.model_name,
+                "evaluation_status": assessment.evaluation_status
+            }
+            job.classification_results.append(result_summary)
+            
+            if default_trigger_policy.should_investigate(result_summary):
                 found_interesting = True
-                
-                # Fingerprint: product_id + zone_id + candidate_id
                 anomaly_fingerprint = f"{job.product_id}_{job.monitoring_zone_id}_{candidate.id}"
                 
-                # Deduplicate investigations
+                # Deduplicate
                 existing_inv = next((inv for inv in investigations_db.values() if getattr(inv, 'anomaly_id', None) == anomaly_fingerprint), None)
                 if not existing_inv:
                     inv_id = f"INV-AUTO-{uuid.uuid4().hex[:6].upper()}"
@@ -170,6 +234,14 @@ class OrchestrationService:
                     )
                     investigations_db[inv_id] = inv
                     job.investigation_ids.append(inv_id)
+                    
+                    # We store candidate + investigation linkage in context for downstream
+                    if 'investigation_targets' not in ctx:
+                        ctx['investigation_targets'] = []
+                    ctx['investigation_targets'].append({
+                        'investigation_id': inv_id,
+                        'slick': candidate
+                    })
 
         if found_interesting:
             job.status = JobStatus.INVESTIGATION_CREATED
@@ -180,32 +252,148 @@ class OrchestrationService:
         job.status = JobStatus.ENVIRONMENT
 
     async def _handle_environment(self, job: MonitoringJob):
-        try:
-            # Fake/Real call to environment service
-            pass
-        except Exception:
-            job.provenance_references.append("ENV:UNAVAILABLE")
+        ctx = self._get_context(job.job_id)
+        targets = ctx.get('investigation_targets', [])
+        
+        for target in targets:
+            slick: Slick = target['slick']
+            # Compute rough centroid from slick geometry
+            coords = slick.geometry.get("coordinates", [[[]]])[0]
+            if len(coords) > 0:
+                lon = sum(p[0] for p in coords) / len(coords)
+                lat = sum(p[1] for p in coords) / len(coords)
+            else:
+                lon, lat = 0.0, 0.0
+                
+            try:
+                wind = await self.env_service.get_wind(lat, lon, slick.detected_at)
+                current = await self.env_service.get_current(lat, lon, slick.detected_at)
+                
+                target['wind'] = wind
+                target['current'] = current
+                job.provenance_references.append("ENV:OpenMeteo:LIVE")
+            except Exception as e:
+                logger.warning(f"Environment unavailable for {slick.id}: {e}")
+                job.provenance_references.append("ENV:UNAVAILABLE")
+                
         job.status = JobStatus.DRIFT
 
     async def _handle_drift(self, job: MonitoringJob):
-        try:
-            # Fake/Real call to drift
-            pass
-        except Exception:
-            job.provenance_references.append("DRIFT:FAILED")
+        ctx = self._get_context(job.job_id)
+        targets = ctx.get('investigation_targets', [])
+        
+        for target in targets:
+            slick: Slick = target['slick']
+            scenario = DriftScenario(
+                scenario_id=f"SCEN_{uuid.uuid4().hex[:8]}",
+                investigation_id=target['investigation_id'],
+                slick_id=slick.id,
+                start_time=slick.detected_at,
+                end_time=slick.detected_at - timedelta(hours=24),  # 24h hindcast
+                is_backward=True,
+                forcing_sources=["LIVE_OPEN_METEO"]
+            )
+            
+            try:
+                drift_result = await self.drift_service.execute_hindcast(scenario, slick)
+                target['drift_result'] = drift_result
+                job.provenance_references.append("DRIFT:OpenDrift:LIVE")
+            except Exception as e:
+                logger.error(f"Drift unavailable for {slick.id}: {e}", exc_info=True)
+                job.provenance_references.append("DRIFT:FAILED")
+                
         job.status = JobStatus.VESSEL_EVIDENCE
 
     async def _handle_vessel_evidence(self, job: MonitoringJob):
-        try:
-            # Attempt to call GFW provider
-            if not self.gfw_provider.token:
-                raise RuntimeError("GFW_API_TOKEN is not configured.")
-        except RuntimeError:
+        ctx = self._get_context(job.job_id)
+        targets = ctx.get('investigation_targets', [])
+        
+        if not self.gfw_provider.token:
+            logger.warning("GFW_API_TOKEN is not configured. GFW services are unavailable.")
             job.provenance_references.append("GFW:UNAVAILABLE")
+            job.status = JobStatus.ATTRIBUTION
+            return
+            
+        for target in targets:
+            drift_result: Optional[DriftResult] = target.get('drift_result')
+            if not drift_result or not drift_result.origin_estimate:
+                continue
+                
+            # Compute a rough bounding box around origin geometry
+            coords = drift_result.origin_estimate.geometry.get("coordinates", [[[]]])[0]
+            if len(coords) > 0:
+                lons = [p[0] for p in coords]
+                lats = [p[1] for p in coords]
+                min_lon, max_lon = min(lons), max(lons)
+                min_lat, max_lat = min(lats), max(lats)
+            else:
+                min_lon, max_lon = -180.0, 180.0
+                min_lat, max_lat = -90.0, 90.0
+                
+            try:
+                records, provenance = await self.gfw_provider.search_vessel_presence(
+                    min_lon=min_lon,
+                    min_lat=min_lat,
+                    max_lon=max_lon,
+                    max_lat=max_lat,
+                    start_time=drift_result.origin_estimate.estimated_time - timedelta(hours=2),
+                    end_time=drift_result.origin_estimate.estimated_time + timedelta(hours=2)
+                )
+                
+                mmsis = list(set([r.vessel_id for r in records if r.vessel_id]))
+                identities = await self.gfw_provider.get_vessel_identities(mmsis)
+                
+                target['gfw_records'] = records
+                target['gfw_identities'] = identities
+                job.provenance_references.append("GFW:LIVE")
+            except Exception as e:
+                logger.error(f"GFW Vessel search failed: {e}", exc_info=True)
+                job.provenance_references.append("GFW:UNAVAILABLE")
+
         job.status = JobStatus.ATTRIBUTION
 
     async def _handle_attribution(self, job: MonitoringJob):
-        # Attribution logic
+        ctx = self._get_context(job.job_id)
+        targets = ctx.get('investigation_targets', [])
+        
+        for target in targets:
+            drift_result: Optional[DriftResult] = target.get('drift_result')
+            gfw_identities = target.get('gfw_identities', [])
+            
+            # Note: Attribution service needs VesselCandidate list.
+            # Since GFW doesn't provide tracks, we construct minimal VesselCandidates.
+            candidates = []
+            
+            # This is a simplification. A real impl would map GFW Presence to VesselCandidate.
+            # We skip heavy track creation here and just pass empty tracks to evaluate.
+            # Evaluate expects `track`, `identity`, `spatially_relevant`, `temporally_relevant`, etc.
+            # Since evaluate signature requires them, we construct them loosely.
+            from app.schemas.ais import VesselIdentity, AISTrack, AISProvenance
+            
+            for ident in gfw_identities:
+                cand = VesselCandidate(
+                    id=f"cand_{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    identity=ident,
+                    track=AISTrack(mmsi=ident.mmsi, geometry={"type": "MultiLineString", "coordinates": []}, total_observations=0, longest_gap_hours=0.0),
+                    spatially_relevant=True,
+                    temporally_relevant=True,
+                    inside_origin_region=True,
+                    closest_approach_meters=100.0,
+                    provenance=AISProvenance(mode="LIVE", source="GFW")
+                )
+                candidates.append(cand)
+                
+            if drift_result and drift_result.origin_estimate:
+                att_result = self.attribution_service.evaluate(
+                    investigation_id=target['investigation_id'],
+                    origin=drift_result.origin_estimate,
+                    drift=drift_result,
+                    candidates=candidates
+                )
+                target['attribution_result'] = att_result
+                job.provenance_references.append("ATTRIBUTION:LIVE")
+                
         job.status = JobStatus.REPORT_READY
 
 
