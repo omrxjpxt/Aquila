@@ -4,10 +4,12 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.router import router as api_v1_router
 from app.core.worker import worker
+from app.core.firebase_admin import initialize_firebase_admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    initialize_firebase_admin()
     worker.start()
     yield
     # Shutdown

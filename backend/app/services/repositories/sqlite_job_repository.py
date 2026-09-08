@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 import sqlite3
 
 from app.schemas.orchestration import MonitoringJob, JobStatus
-from app.services.job_repository import JobRepository
 from app.services.repositories.db import get_db_connection
+from app.services.repositories.interfaces import JobRepository
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ class SqliteJobRepository(JobRepository):
             product_id=row['product_id'],
             product_name=row['product_name'],
             monitoring_zone_id=row['monitoring_zone_id'],
+            owner_uid=row['owner_uid'],
             status=JobStatus(row['status']),
             retry_count=row['retry_count'],
             max_retries=row['max_retries'],
@@ -41,15 +42,15 @@ class SqliteJobRepository(JobRepository):
             try:
                 conn.execute('''
                     INSERT INTO monitoring_jobs (
-                        job_id, product_id, product_name, monitoring_zone_id, status, 
+                        job_id, product_id, product_name, monitoring_zone_id, owner_uid, status, 
                         retry_count, max_retries, last_error, next_attempt_at, 
                         investigation_ids_json, classification_results_json,
                         provenance_references_json, artifact_references_json, 
                         created_at, updated_at, idempotency_key,
                         worker_id, claimed_at, lease_until
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    job.job_id, job.product_id, job.product_name, job.monitoring_zone_id, job.status.value,
+                    job.job_id, job.product_id, job.product_name, job.monitoring_zone_id, job.owner_uid, job.status.value,
                     job.retry_count, job.max_retries, job.last_error, job.next_attempt_at,
                     json.dumps(job.investigation_ids, default=str), json.dumps(job.classification_results, default=str),
                     json.dumps(job.provenance_references, default=str), json.dumps(job.artifact_references, default=str),
@@ -59,12 +60,13 @@ class SqliteJobRepository(JobRepository):
                 # Also save the scene event payload. The MonitoringJob has it initially.
                 if job.scene_event_payload:
                     conn.execute('''
-                        INSERT OR IGNORE INTO scene_events (id, product_id, zone_id, payload_json, created_at)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT OR IGNORE INTO scene_events (id, product_id, zone_id, owner_uid, payload_json, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
                     ''', (
                         job.scene_event_payload.get('id', job.job_id), 
                         job.product_id, 
                         job.monitoring_zone_id,
+                        job.owner_uid,
                         json.dumps(job.scene_event_payload, default=str),
                         job.created_at
                     ))

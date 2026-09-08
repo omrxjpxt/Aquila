@@ -1,3 +1,5 @@
+import { auth } from '../firebase';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 const API_V1 = `${API_BASE_URL}/api/v1`;
 
@@ -31,13 +33,27 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (auth && auth.currentUser) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      return { 'Authorization': `Bearer ${token}` };
+    } catch (e) {
+      console.warn("Failed to get auth token", e);
+    }
+  }
+  return {};
+}
+
 export const apiClient = {
   baseUrl: API_V1,
   get: async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(`${API_V1}${endpoint}`, {
       ...options,
       headers: {
         'Accept': 'application/json',
+        ...authHeaders,
         ...options?.headers,
       },
     });
@@ -45,10 +61,12 @@ export const apiClient = {
   },
 
   post: async <T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> => {
+    const authHeaders = await getAuthHeaders();
     const isFormData = data instanceof FormData;
     
     const headers: Record<string, string> = {
       'Accept': 'application/json',
+      ...authHeaders,
       ...options?.headers as Record<string, string>,
     };
 

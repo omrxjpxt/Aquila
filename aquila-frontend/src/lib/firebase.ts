@@ -23,3 +23,4 @@ export const auth = app ? getAuth(app) : null;
 export const db = app ? getFirestore(app) : null;
 export const storage = app ? getStorage(app) : null;
 export const realtimeDb = app ? getDatabase(app) : null;
+export const isFirebaseConfigured = !!firebaseConfig.projectId;

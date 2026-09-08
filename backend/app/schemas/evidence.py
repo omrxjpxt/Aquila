@@ -6,6 +6,7 @@ from datetime import datetime
 class EvidenceEvent(BaseModel):
     id: str
     investigation_id: str
+    owner_uid: str = Field(default="SYSTEM", description="Inherited from Investigation")
 
     event_time: datetime = Field(...,
                                  description="When this event occurred conceptually (e.g. T0, or satellite pass time)")

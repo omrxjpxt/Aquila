@@ -5,6 +5,8 @@ import { SideNavBar } from "@/components/layout/SideNavBar";
 import { TopAppBar } from "@/components/layout/TopAppBar";
 import { InvestigationProvider } from "@/contexts/InvestigationContext";
 
+import { AuthProvider } from "@/contexts/AuthContext";
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -31,15 +33,17 @@ export default function RootLayout({
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="h-full flex flex-col bg-background text-foreground font-sans overflow-hidden">
-        <InvestigationProvider>
-          <TopAppBar />
-          <div className="flex flex-1 pt-14 h-full relative overflow-hidden">
-            <SideNavBar />
-            <main className="flex-1 h-full relative bg-surface-lowest overflow-hidden">
-              {children}
-            </main>
-          </div>
-        </InvestigationProvider>
+        <AuthProvider>
+          <InvestigationProvider>
+            <TopAppBar />
+            <div className="flex flex-1 pt-14 h-full relative overflow-hidden">
+              <SideNavBar />
+              <main className="flex-1 h-full relative bg-surface-lowest overflow-hidden">
+                {children}
+              </main>
+            </div>
+          </InvestigationProvider>
+        </AuthProvider>
       </body>
     </html>
   );

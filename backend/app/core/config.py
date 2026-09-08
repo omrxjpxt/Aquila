@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     # Look-Alike Classifier Configuration
     LOOKALIKE_MODEL_PATH: str = "data/models/lookalike_svm_real_v1.joblib"
 
+    # Phase 17: Persistence and Cloud Storage
+    PERSISTENCE_BACKEND: str = "sqlite"  # "sqlite" or "firestore"
+    ARTIFACT_STORAGE_BACKEND: str = "local"  # "local" or "gcs"
+    
+    FIREBASE_PROJECT_ID: str = ""
+    FIREBASE_SERVICE_ACCOUNT_PATH: str = ""
+    GCS_BUCKET_NAME: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
 
 

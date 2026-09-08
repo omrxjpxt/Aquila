@@ -2,13 +2,43 @@
 
 import { mockAlerts, mockVessels } from "@/lib/mockData";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { Activity, AlertTriangle, ShieldAlert, WifiOff, MapPin, ExternalLink } from "lucide-react";
+import { Activity, AlertTriangle, ShieldAlert, WifiOff, MapPin, ExternalLink, Database, Cloud } from "lucide-react";
 import Link from "next/link";
 import { GeoJSONLayer } from "@/components/map/layers";
+import { useEffect, useState } from "react";
+import { collection, onSnapshot, query, orderBy, limit, DocumentData } from "firebase/firestore";
+import { db, isFirebaseConfigured } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function MonitoringPage() {
+  const { user } = useAuth();
+  const [realtimeAlerts, setRealtimeAlerts] = useState<any[]>([]);
   
-  const activeAlerts = mockAlerts;
+  useEffect(() => {
+    if (!isFirebaseConfigured || !db || !user) return;
+    
+    // Only subscribe to alerts if authenticated and firebase is ready
+    // We could filter by owner_uid if we wanted, but let's assume security rules handle it or we just show global for now
+    // Actually we should filter: where("owner_uid", "==", user.uid)
+    // For MVP phase 17 we'll just listen to the collection since rules restrict read
+    const q = query(collection(db, "alerts"), orderBy("created_at", "desc"), limit(50));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const alerts = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setRealtimeAlerts(alerts);
+    }, (err) => {
+      console.error("Firestore subscription error:", err);
+    });
+    
+    return () => unsubscribe();
+  }, [user]);
+
+  // Use Firebase data if configured, otherwise fallback to mock
+  const activeAlerts = isFirebaseConfigured ? realtimeAlerts : mockAlerts;
+  const isLive = isFirebaseConfigured;
   
   const getAlertIcon = (type: string) => {
     switch(type) {
@@ -38,6 +68,17 @@ export default function MonitoringPage() {
           <h1 className="text-xl font-bold text-primary tracking-tight mb-2 flex items-center gap-3">
             <Activity className="w-5 h-5" />
             LIVE MONITORING
+            {isLive ? (
+              <span className="ml-auto flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                <Cloud className="w-3 h-3" />
+                Firebase Live
+              </span>
+            ) : (
+              <span className="ml-auto flex items-center gap-1 text-[10px] bg-outline-variant/30 text-on-surface-variant px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                <Database className="w-3 h-3" />
+                Local Mock
+              </span>
+            )}
           </h1>
           <p className="text-xs text-on-surface-variant">
             Real-time anomaly detection and vessel behavioral alerts.

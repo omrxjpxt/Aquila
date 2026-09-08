@@ -88,7 +88,7 @@ class CDSEDiscoveryService:
                     if not self._check_spatial_overlap(prod, zone):
                         continue
                         
-                    event = self._parse_odata_product(prod, zone.id, "CDSE_RECONCILIATION")
+                    event = self._parse_odata_product(prod, zone, "CDSE_RECONCILIATION")
                     if event:
                         events.append(event)
                         
@@ -120,7 +120,7 @@ class CDSEDiscoveryService:
         if not self._check_spatial_overlap(product_metadata, zone):
             return None
             
-        return self._parse_odata_product(product_metadata, zone.id, "CDSE_SUBSCRIPTION")
+        return self._parse_odata_product(product_metadata, zone, "CDSE_SUBSCRIPTION")
 
     def _check_spatial_overlap(self, product_metadata: Dict[str, Any], zone: MonitoringZone) -> bool:
         """Test product footprint against monitoring zone AOI"""
@@ -146,7 +146,7 @@ class CDSEDiscoveryService:
     def _parse_odata_product(
         self, 
         product_metadata: Dict[str, Any], 
-        monitoring_zone_id: str, 
+        zone: MonitoringZone, 
         discovery_source: str
     ) -> Optional[NewSceneEvent]:
         """Normalize OData product to NewSceneEvent"""
@@ -197,7 +197,8 @@ class CDSEDiscoveryService:
                 publication_time=pub_time,
                 geometry=geo_footprint or {},
                 bbox=bounds,
-                monitoring_zone_id=monitoring_zone_id,
+                monitoring_zone_id=zone.id,
+                owner_uid=zone.owner_uid,
                 discovery_source=discovery_source,
                 platform=platform,
                 orbit_direction=orbit_direction,

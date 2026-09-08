@@ -11,6 +11,7 @@ class InvestigationBase(BaseModel):
     priority: str = Field(default="NORMAL", description="Priority level (e.g. LOW, NORMAL, HIGH, CRITICAL)")
     description: Optional[str] = None
     
+    owner_uid: str = Field(default="SYSTEM", description="Inherited from Job/MonitoringZone or User")
     creation_mode: str = Field(default="MANUAL", description="AUTOMATIC_MONITORING or MANUAL")
     source_product_id: Optional[str] = Field(None, description="CDSE Product UUID for automatic investigations")
     monitoring_zone_id: Optional[str] = Field(None, description="Monitoring zone that triggered this")

@@ -8,6 +8,7 @@ class MonitoringZone(BaseModel):
     """A geographic area configured for continuous monitoring."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique zone ID")
     name: str = Field(..., description="Human-readable name for the monitoring zone")
+    owner_uid: str = Field(default="SYSTEM", description="Firebase UID of the owner")
     bbox: Tuple[float, float, float, float] = Field(
         ..., 
         description="Bounding box [min_lon, min_lat, max_lon, max_lat]"
@@ -33,6 +34,7 @@ class NewSceneEvent(BaseModel):
     geometry: Dict[str, Any] = Field(..., description="GeoJSON footprint from GeoFootprint")
     bbox: Tuple[float, float, float, float] = Field(..., description="Derived from geometry")
     monitoring_zone_id: Optional[str] = Field(None, description="ID of the matching monitoring zone")
+    owner_uid: str = Field(default="SYSTEM", description="Inherited from monitoring zone")
     discovered_at: datetime = Field(default_factory=datetime.utcnow)
     discovery_source: str = Field(..., description="'CDSE_SUBSCRIPTION' or 'CDSE_RECONCILIATION'")
     

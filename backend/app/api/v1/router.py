@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from app.core.config import settings
+from app.api.deps import get_current_user
 
 from .satellite import router as satellite_router
 from .analysis import router as analysis_router
@@ -10,12 +11,12 @@ from .simulation import router as simulation_router
 
 router = APIRouter()
 
-router.include_router(satellite_router)
-router.include_router(analysis_router)
-router.include_router(drift_router)
-router.include_router(ais_router, prefix="/ais", tags=["ais"])
-router.include_router(attribution_router, prefix="/attribution", tags=["attribution"])
-router.include_router(simulation_router, prefix="/simulation", tags=["simulation"])
+router.include_router(satellite_router, dependencies=[Depends(get_current_user)])
+router.include_router(analysis_router, dependencies=[Depends(get_current_user)])
+router.include_router(drift_router, dependencies=[Depends(get_current_user)])
+router.include_router(ais_router, prefix="/ais", tags=["ais"], dependencies=[Depends(get_current_user)])
+router.include_router(attribution_router, prefix="/attribution", tags=["attribution"], dependencies=[Depends(get_current_user)])
+router.include_router(simulation_router, prefix="/simulation", tags=["simulation"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/status")

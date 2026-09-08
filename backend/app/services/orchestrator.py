@@ -16,10 +16,18 @@ from app.schemas.drift import DriftScenario, OriginEstimate, DriftResult
 from app.schemas.ais import VesselCandidate
 from app.schemas.evidence import EvidenceEvent
 
-from app.services.repositories.sqlite_job_repository import SqliteJobRepository
-from app.services.repositories.sqlite_investigation_repository import investigation_repository
-from app.services.repositories.sqlite_monitoring_zone_repository import monitoring_zone_repository
-from app.services.artifact_store import artifact_store
+from app.services.repositories.factory import (
+    get_job_repository, 
+    get_investigation_repository, 
+    get_artifact_store,
+    get_scene_event_repository
+)
+
+# Initialize repositories from factory
+job_repository = get_job_repository()
+investigation_repository = get_investigation_repository()
+artifact_store = get_artifact_store()
+scene_event_repository = get_scene_event_repository()
 from app.services.investigation_trigger_policy import default_trigger_policy
 from app.services.cdse_service import CDSEService
 from app.services.satellite_service import SatelliteService
@@ -31,8 +39,6 @@ from app.services.gfw_ais_provider import GFWAISProvider
 from app.services.attribution_service import AttributionService
 
 logger = logging.getLogger(__name__)
-
-job_repository = SqliteJobRepository()
 
 class OrchestrationService:
     def __init__(self):
@@ -53,6 +59,7 @@ class OrchestrationService:
             product_id=event.product_id,
             product_name=event.product_name,
             monitoring_zone_id=event.monitoring_zone_id or "default",
+            owner_uid=event.owner_uid,
             scene_event_payload=event.model_dump(mode='json'),
             status=JobStatus.QUEUED
         )
@@ -295,6 +302,7 @@ class OrchestrationService:
                     status="OPEN",
                     priority="HIGH",
                     creation_mode="AUTOMATIC_MONITORING",
+                    owner_uid=job.owner_uid,
                     source_product_id=job.product_id,
                     monitoring_zone_id=job.monitoring_zone_id,
                     anomaly_id=anomaly_fingerprint,

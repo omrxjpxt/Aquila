@@ -1,0 +1,80 @@
+import logging
+import uuid
+from typing import List, Optional
+from datetime import datetime
+from firebase_admin import firestore
+from google.cloud.firestore_v1.transaction import Transaction
+from app.schemas.investigation import Investigation, InvestigationCreate
+from app.schemas.evidence import EvidenceEvent
+from app.services.repositories.interfaces import InvestigationRepository
+
+logger = logging.getLogger(__name__)
+
+class FirestoreInvestigationRepository(InvestigationRepository):
+    def __init__(self):
+        self.db = firestore.client()
+        self.collection = self.db.collection('investigations')
+        self.evidence_collection = self.db.collection('evidence')
+
+    @firestore.transactional
+    def _create_investigation_txn(self, transaction: Transaction, inv_create: InvestigationCreate) -> Investigation:
+        # Idempotency check
+        if inv_create.source_product_id and inv_create.monitoring_zone_id and inv_create.anomaly_id:
+            query = self.collection.where('source_product_id', '==', inv_create.source_product_id)\
+                                   .where('monitoring_zone_id', '==', inv_create.monitoring_zone_id)\
+                                   .where('anomaly_id', '==', inv_create.anomaly_id)
+            docs = query.stream(transaction=transaction)
+            for doc in docs:
+                logger.info(f"Investigation for anomaly {inv_create.anomaly_id} already exists in Firestore.")
+                return Investigation(**doc.to_dict())
+
+        inv_id = f"INV-{datetime.utcnow().strftime('%Y')}-{str(uuid.uuid4())[:8].upper()}"
+        now = datetime.utcnow()
+        
+        # Pydantic dump
+        inv_data = inv_create.model_dump()
+        inv_data.update({
+            'id': inv_id,
+            'created_at': now,
+            'updated_at': now
+        })
+        
+        doc_ref = self.collection.document(inv_id)
+        transaction.set(doc_ref, inv_data)
+        
+        return Investigation(**inv_data)
+
+    def create_investigation(self, inv_create: InvestigationCreate) -> Investigation:
+        transaction = self.db.transaction()
+        return self._create_investigation_txn(transaction, inv_create)
+
+    def get_investigation(self, inv_id: str) -> Optional[Investigation]:
+        doc_ref = self.collection.document(inv_id)
+        doc = doc_ref.get()
+        if doc.exists:
+            return Investigation(**doc.to_dict())
+        return None
+
+    @firestore.transactional
+    def _add_evidence_txn(self, transaction: Transaction, evidence: EvidenceEvent) -> EvidenceEvent:
+        # Check idempotency
+        query = self.evidence_collection.where('investigation_id', '==', evidence.investigation_id)\
+                                        .where('event_type', '==', evidence.event_type)\
+                                        .where('source', '==', evidence.source)
+        docs = query.stream(transaction=transaction)
+        for doc in docs:
+            logger.info(f"Evidence {evidence.event_type} from {evidence.source} already exists for {evidence.investigation_id} in Firestore.")
+            return EvidenceEvent(**doc.to_dict())
+
+        doc_ref = self.evidence_collection.document(evidence.id)
+        transaction.set(doc_ref, evidence.model_dump())
+        return evidence
+
+    def add_evidence(self, evidence: EvidenceEvent) -> EvidenceEvent:
+        transaction = self.db.transaction()
+        return self._add_evidence_txn(transaction, evidence)
+
+    def get_evidence(self, investigation_id: str) -> List[EvidenceEvent]:
+        query = self.evidence_collection.where('investigation_id', '==', investigation_id)
+        docs = query.stream()
+        return [EvidenceEvent(**doc.to_dict()) for doc in docs]

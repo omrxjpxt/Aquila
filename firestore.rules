@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(ownerId) {
+      return isAuthenticated() && request.auth.uid == ownerId;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+    
+    match /monitoring_zones/{zoneId} {
+      // User can only read their own zones
+      allow read: if isOwner(resource.data.owner_uid);
+      // User can create if they assign themselves as owner
+      allow create: if isOwner(request.resource.data.owner_uid);
+      // User can update/delete their own zones, and must preserve ownership
+      allow update: if isOwner(resource.data.owner_uid) && isOwner(request.resource.data.owner_uid);
+      allow delete: if isOwner(resource.data.owner_uid);
+    }
+    
+    match /scene_events/{eventId} {
+      allow read, write: if false; // System only
+    }
+    
+    match /monitoring_jobs/{jobId} {
+      // User can read jobs originating from their zones
+      allow read: if isOwner(resource.data.owner_uid);
+      allow write: if false; // System only
+    }
+    
+    match /investigations/{invId} {
+      allow read: if isOwner(resource.data.owner_uid);
+      allow write: if false; // System only
+    }
+    
+    match /evidence/{evId} {
+      // Evidence belongs to investigations.
+      // Firestore rules cannot easily join collections securely without exposing all data.
+      // We will duplicate owner_uid on evidence to make this queryable and secure.
+      allow read: if isOwner(resource.data.owner_uid);
+      allow write: if false; // System only
+    }
+    
+    match /alerts/{alertId} {
+      allow read: if isOwner(resource.data.owner_uid);
+      allow write: if false; // System only
+    }
+    
+    match /reports/{reportId} {
+      allow read: if isOwner(resource.data.owner_uid);
+      allow write: if false; // System only
+    }
+  }
+}

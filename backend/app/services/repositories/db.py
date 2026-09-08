@@ -12,6 +12,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS monitoring_zones (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
+    owner_uid TEXT NOT NULL,
     bbox_json TEXT NOT NULL,
     is_demo BOOLEAN DEFAULT 0,
     is_enabled BOOLEAN DEFAULT 1,
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS scene_events (
     id TEXT PRIMARY KEY,
     product_id TEXT NOT NULL,
     zone_id TEXT NOT NULL,
+    owner_uid TEXT NOT NULL,
     payload_json TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL
 );
@@ -34,6 +36,7 @@ CREATE TABLE IF NOT EXISTS monitoring_jobs (
     product_id TEXT NOT NULL,
     product_name TEXT NOT NULL,
     monitoring_zone_id TEXT NOT NULL,
+    owner_uid TEXT NOT NULL,
     status TEXT NOT NULL,
     retry_count INTEGER DEFAULT 0,
     max_retries INTEGER DEFAULT 3,
@@ -60,6 +63,7 @@ CREATE TABLE IF NOT EXISTS investigations (
     status TEXT NOT NULL,
     priority TEXT NOT NULL,
     creation_mode TEXT NOT NULL,
+    owner_uid TEXT NOT NULL,
     source_product_id TEXT,
     monitoring_zone_id TEXT,
     anomaly_id TEXT,
@@ -73,6 +77,7 @@ CREATE TABLE IF NOT EXISTS investigations (
 CREATE TABLE IF NOT EXISTS evidence (
     id TEXT PRIMARY KEY,
     investigation_id TEXT NOT NULL,
+    owner_uid TEXT NOT NULL,
     evidence_type TEXT NOT NULL,
     source TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -80,6 +85,17 @@ CREATE TABLE IF NOT EXISTS evidence (
     artifact_reference TEXT,
     timestamp TIMESTAMP,
     provenance TEXT,
+    FOREIGN KEY(investigation_id) REFERENCES investigations(id)
+);
+
+-- Alerts
+CREATE TABLE IF NOT EXISTS alerts (
+    id TEXT PRIMARY KEY,
+    investigation_id TEXT,
+    severity TEXT NOT NULL,
+    alert_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL,
     FOREIGN KEY(investigation_id) REFERENCES investigations(id)
 );
 """

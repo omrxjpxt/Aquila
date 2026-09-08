@@ -7,10 +7,11 @@ import sqlite3
 from app.schemas.investigation import Investigation, InvestigationCreate
 from app.schemas.evidence import EvidenceEvent
 from app.services.repositories.db import get_db_connection
+from app.services.repositories.interfaces import InvestigationRepository
 
 logger = logging.getLogger(__name__)
 
-class SqliteInvestigationRepository:
+class SqliteInvestigationRepository(InvestigationRepository):
     def _row_to_investigation(self, row: sqlite3.Row) -> Investigation:
         return Investigation(
             id=row['id'],
@@ -18,6 +19,7 @@ class SqliteInvestigationRepository:
             status=row['status'],
             priority=row['priority'],
             creation_mode=row['creation_mode'],
+            owner_uid=row['owner_uid'],
             source_product_id=row['source_product_id'],
             monitoring_zone_id=row['monitoring_zone_id'],
             anomaly_id=row['anomaly_id'],
@@ -30,6 +32,7 @@ class SqliteInvestigationRepository:
         return EvidenceEvent(
             id=row['id'],
             investigation_id=row['investigation_id'],
+            owner_uid=row['owner_uid'],
             event_type=row['evidence_type'],
             source=row['source'],
             status=row['status'],
@@ -58,12 +61,12 @@ class SqliteInvestigationRepository:
             
             conn.execute('''
                 INSERT INTO investigations (
-                    id, title, status, priority, creation_mode, source_product_id,
+                    id, title, status, priority, creation_mode, owner_uid, source_product_id,
                     monitoring_zone_id, anomaly_id, anomaly_geometry_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 inv_id, inv_create.title, inv_create.status, inv_create.priority, inv_create.creation_mode,
-                inv_create.source_product_id, inv_create.monitoring_zone_id, inv_create.anomaly_id,
+                inv_create.owner_uid, inv_create.source_product_id, inv_create.monitoring_zone_id, inv_create.anomaly_id,
                 json.dumps(inv_create.anomaly_geometry) if inv_create.anomaly_geometry else None,
                 now, now
             ))
@@ -92,13 +95,16 @@ class SqliteInvestigationRepository:
 
             conn.execute('''
                 INSERT INTO evidence (
-                    id, investigation_id, evidence_type, source, status, observations_json, timestamp
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    id, investigation_id, owner_uid, evidence_type, source, status,
+                    observations_json, artifact_reference, timestamp, provenance
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                evidence.id, evidence.investigation_id, evidence.event_type, evidence.source,
+                evidence.id, evidence.investigation_id, evidence.owner_uid, evidence.event_type, evidence.source,
                 evidence.status if hasattr(evidence, 'status') else 'OPEN',
                 json.dumps(evidence.metadata, default=str) if evidence.metadata else "{}",
-                evidence.event_time
+                evidence.artifact_reference if hasattr(evidence, 'artifact_reference') else None,
+                evidence.event_time,
+                evidence.provenance if hasattr(evidence, 'provenance') else None
             ))
         return evidence
         
