@@ -1,12 +1,23 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.router import router as api_v1_router
+from app.core.worker import worker
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    worker.start()
+    yield
+    # Shutdown
+    await worker.stop()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend scientific engine for maritime intelligence.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS configuration

@@ -6,6 +6,7 @@ from .attribution import VesselCandidate, AttributionResult
 from .evidence import EvidenceEvent
 from .monitoring import MonitoringZone, NewSceneEvent, SceneDiscoveryCheckpoint
 from .ais import GFWCandidateEvidence, GFWAISProvenance, GFWPresenceRecord, GFWEvent
+from .orchestration import JobStatus, MonitoringJob
 
 __all__ = [
     "Investigation",
@@ -25,4 +26,6 @@ __all__ = [
     "GFWAISProvenance",
     "GFWPresenceRecord",
     "GFWEvent",
+    "JobStatus",
+    "MonitoringJob",
 ]
