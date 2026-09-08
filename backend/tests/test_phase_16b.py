@@ -6,7 +6,7 @@ import uuid
 from app.schemas.monitoring import NewSceneEvent
 from app.schemas.orchestration import JobStatus, MonitoringJob
 from app.services.job_repository import job_repository, InMemoryJobRepository
-from app.services.orchestrator import orchestrator, investigations_db
+from app.services.orchestrator import orchestrator
 from app.services.investigation_trigger_policy import InvestigationTriggerPolicy
 from app.api.v1.satellite import candidates_db
 from app.schemas.slick import Slick

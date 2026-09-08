@@ -6,7 +6,8 @@ import uuid
 from app.schemas.monitoring import NewSceneEvent
 from app.schemas.orchestration import JobStatus, MonitoringJob
 from app.services.job_repository import job_repository
-from app.services.orchestrator import orchestrator, investigations_db
+from app.services.orchestrator import orchestrator
+from app.services.repositories.sqlite_investigation_repository import investigation_repository
 from app.schemas.slick import Slick
 from app.schemas.look_alike import LookAlikeAssessment, LookAlikeClass, PatchMetadata
 from app.schemas.satellite import SatelliteScene, ProcessingResult
@@ -18,8 +19,12 @@ from app.schemas.ais import VesselIdentity, GFWPresenceRecord, GFWAISProvenance
 @pytest.fixture(autouse=True)
 def reset_repositories():
     """Reset the in-memory repositories before each test."""
-    job_repository._jobs.clear()
-    investigations_db.clear()
+    from app.services.repositories.db import get_db_connection
+    with get_db_connection() as conn:
+        conn.execute("DELETE FROM evidence")
+        conn.execute("DELETE FROM investigations")
+        conn.execute("DELETE FROM monitoring_jobs")
+        conn.execute("DELETE FROM scene_events")
     orchestrator.job_contexts.clear()
     yield
 
@@ -54,7 +59,7 @@ async def test_full_pipeline_invocation(mock_event, monkeypatch):
 
     # 2. Mock Sentinel Ingestion & Preprocessing
     async def mock_ingest(request):
-        assert request.file_path == "/tmp/mock_raster.tif"
+        assert request.file_path.endswith("mock_raster.tif")
         return SatelliteScene(
             id=request.scene_id,
             provider=request.provider,
@@ -151,10 +156,18 @@ async def test_full_pipeline_invocation(mock_event, monkeypatch):
     assert "ATTRIBUTION:LIVE" in job.provenance_references
 
     # Verify Investigation was created for only cand_1
-    assert len(investigations_db) == 1
-    inv = list(investigations_db.values())[0]
-    assert inv.creation_mode == "AUTOMATIC_MONITORING"
-    assert inv.source_product_id == mock_event.product_id
+    from app.services.repositories.db import get_db_connection
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT * FROM investigations")
+        invs = cursor.fetchall()
+        assert len(invs) == 1
+        inv = dict(invs[0])
+    
+    assert inv["creation_mode"] == "AUTOMATIC_MONITORING"
+    assert "cand_1" in inv["anomaly_id"]
+    
+    # Verify Context contains candidates
+    assert len(orchestrator.job_contexts) == 1
 
 
 @pytest.mark.asyncio

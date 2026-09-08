@@ -47,3 +47,9 @@ class MonitoringJob(BaseModel):
     investigation_ids: List[str] = Field(default_factory=list, description="IDs of investigations created from this scene")
     classification_results: List[Dict[str, Any]] = Field(default_factory=list, description="Summaries of classification outputs for traceability")
     provenance_references: List[str] = Field(default_factory=list, description="List of evidence/service providers used")
+    artifact_references: List[Dict[str, Any]] = Field(default_factory=list, description="List of large artifact references")
+    
+    # Claiming & Leases
+    worker_id: Optional[str] = None
+    claimed_at: Optional[datetime] = None
+    lease_until: Optional[datetime] = None

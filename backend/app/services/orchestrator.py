@@ -2,19 +2,24 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 import uuid
+import os
 from typing import List, Optional, Dict, Any
 
 from app.schemas.orchestration import MonitoringJob, JobStatus
 from app.schemas.monitoring import NewSceneEvent
-from app.schemas.investigation import Investigation
+from app.schemas.investigation import InvestigationCreate
 from app.schemas.look_alike import LookAlikeRequest, LookAlikeClass
 from app.schemas.analysis import RealSceneAnalysisResult
 from app.schemas.slick import Slick
 from app.schemas.satellite import SatelliteSearchResult, SceneIngestRequest, SatelliteScene
 from app.schemas.drift import DriftScenario, OriginEstimate, DriftResult
 from app.schemas.ais import VesselCandidate
+from app.schemas.evidence import EvidenceEvent
 
-from app.services.job_repository import job_repository
+from app.services.repositories.sqlite_job_repository import SqliteJobRepository
+from app.services.repositories.sqlite_investigation_repository import investigation_repository
+from app.services.repositories.sqlite_monitoring_zone_repository import monitoring_zone_repository
+from app.services.artifact_store import artifact_store
 from app.services.investigation_trigger_policy import default_trigger_policy
 from app.services.cdse_service import CDSEService
 from app.services.satellite_service import SatelliteService
@@ -27,8 +32,7 @@ from app.services.attribution_service import AttributionService
 
 logger = logging.getLogger(__name__)
 
-# MVP in-memory DB for investigations
-investigations_db = {}  # type: dict[str, Investigation]
+job_repository = SqliteJobRepository()
 
 class OrchestrationService:
     def __init__(self):
@@ -45,27 +49,36 @@ class OrchestrationService:
         self.job_contexts: Dict[str, Dict[str, Any]] = {}
 
     def ingest_scene_event(self, event: NewSceneEvent) -> Optional[MonitoringJob]:
-        """
-        Accepts NewSceneEvent, checks for deduplication, and creates a MonitoringJob.
-        """
-        existing_job = job_repository.get_job_by_product_and_zone(event.product_id, event.monitoring_zone_id or "default")
-        if existing_job:
-            logger.info(f"Event for product {event.product_id} in zone {event.monitoring_zone_id} is already being processed.")
-            return existing_job
-
         job = MonitoringJob(
             product_id=event.product_id,
             product_name=event.product_name,
             monitoring_zone_id=event.monitoring_zone_id or "default",
-            scene_event_payload=event.model_dump(),
+            scene_event_payload=event.model_dump(mode='json'),
             status=JobStatus.QUEUED
         )
+        # create_job is idempotent via SQLite constraint
         return job_repository.create_job(job)
 
     def _get_context(self, job_id: str) -> Dict[str, Any]:
         if job_id not in self.job_contexts:
             self.job_contexts[job_id] = {}
         return self.job_contexts[job_id]
+
+    async def recover_stale_jobs(self):
+        """Finds jobs with expired leases and safely transitions them based on stage."""
+        stale_jobs = job_repository.get_stale_jobs()
+        for job in stale_jobs:
+            logger.info(f"Recovering stale job {job.job_id} currently in state {job.status}")
+            # Reset worker ownership
+            job.worker_id = None
+            job.claimed_at = None
+            job.lease_until = None
+            
+            # Simple fallback strategy: move back to RETRY_WAIT and clear current state
+            # The actual stages handle avoiding duplicate work when retried
+            job.status = JobStatus.RETRY_WAIT
+            job.next_attempt_at = datetime.utcnow()
+            job_repository.update_job(job)
 
     async def process_job(self, job: MonitoringJob):
         """
@@ -74,6 +87,10 @@ class OrchestrationService:
         """
         try:
             while job.status not in [JobStatus.RESOLVED, JobStatus.FAILED, JobStatus.REPORT_READY, JobStatus.RETRY_WAIT]:
+                # Renew lease
+                job.lease_until = datetime.utcnow() + timedelta(minutes=5)
+                job_repository.update_job(job)
+                
                 logger.info(f"Job {job.job_id} entering state {job.status}")
                 if job.status == JobStatus.QUEUED:
                     await self._handle_queued(job)
@@ -99,6 +116,12 @@ class OrchestrationService:
                 job.updated_at = datetime.utcnow()
                 job_repository.update_job(job)
                 
+            # Clear lease when done processing
+            job.worker_id = None
+            job.claimed_at = None
+            job.lease_until = None
+            job_repository.update_job(job)
+                
         except Exception as e:
             logger.error(f"Error processing job {job.job_id} in state {job.status}: {str(e)}", exc_info=True)
             self._handle_failure(job, str(e))
@@ -107,6 +130,10 @@ class OrchestrationService:
         job.retry_count += 1
         job.last_error = error_msg
         job.updated_at = datetime.utcnow()
+        job.worker_id = None
+        job.claimed_at = None
+        job.lease_until = None
+        
         if job.retry_count >= job.max_retries:
             job.status = JobStatus.FAILED
         else:
@@ -116,12 +143,33 @@ class OrchestrationService:
             job.next_attempt_at = datetime.utcnow() + timedelta(seconds=delay)
         job_repository.update_job(job)
 
+    def _find_artifact(self, job: MonitoringJob, artifact_type: str) -> Optional[Dict[str, Any]]:
+        for art in job.artifact_references:
+            if art.get("artifact_type") == artifact_type:
+                return art
+        return None
+
     async def _handle_queued(self, job: MonitoringJob):
         job.status = JobStatus.RETRIEVING
 
     async def _handle_retrieving(self, job: MonitoringJob):
-        event = NewSceneEvent.model_validate(job.scene_event_payload)
+        ctx = self._get_context(job.job_id)
         
+        # STAGE-AWARE RECOVERY
+        existing_artifact = self._find_artifact(job, "RAW_S1_RASTER")
+        if existing_artifact:
+            try:
+                # verify it exists
+                file_path = artifact_store.get_artifact_path(existing_artifact)
+                logger.info(f"Recovered RETRIEVING stage using existing artifact: {file_path}")
+                ctx['raster_file_path'] = file_path
+                job.status = JobStatus.PROCESSING
+                return
+            except FileNotFoundError:
+                logger.warning(f"Artifact {existing_artifact['artifact_id']} missing from disk. Re-retrieving.")
+                job.artifact_references.remove(existing_artifact)
+        
+        event = NewSceneEvent.model_validate(job.scene_event_payload)
         search_result = SatelliteSearchResult(
             id=event.product_id,
             source="CDSE",
@@ -136,9 +184,6 @@ class OrchestrationService:
             instrument_mode=event.instrument_mode
         )
         
-        # We fetch the raster
-        # Note: CDSEService.retrieve_raster signature is (bbox, scene, width, height)
-        # We pass width=1024, height=1024 to limit size in testing if needed, or None for full
         file_path = await self.cdse_service.retrieve_raster(
             bbox=event.bbox,
             scene=search_result,
@@ -146,17 +191,36 @@ class OrchestrationService:
             height=2048
         )
         
-        ctx = self._get_context(job.job_id)
-        ctx['raster_file_path'] = file_path
-        job.provenance_references.append("CDSE:LIVE")
+        # Persist artifact
+        artifact_ref = artifact_store.store_artifact(file_path, "RAW_S1_RASTER", job.job_id)
+        job.artifact_references.append(artifact_ref)
+        
+        ctx['raster_file_path'] = artifact_ref['path']
+        if "CDSE:LIVE" not in job.provenance_references:
+            job.provenance_references.append("CDSE:LIVE")
         
         job.status = JobStatus.PROCESSING
 
     async def _handle_processing(self, job: MonitoringJob):
         ctx = self._get_context(job.job_id)
+        
+        # STAGE-AWARE RECOVERY: If we already have candidates and processed raster, skip.
+        # But candidates are large, so we don't persist them in SQL, we only persist investigation IDs later.
+        # If the job crashed here, we just re-process. Re-processing is safe locally.
+        existing_proc_art = self._find_artifact(job, "PROCESSED_S1_RASTER")
+        if existing_proc_art and 'candidates' in ctx:
+             # Fast recovery if already in context (e.g. from tests)
+             job.status = JobStatus.CANDIDATES_FOUND if ctx['candidates'] else JobStatus.RESOLVED
+             return
+             
         file_path = ctx.get('raster_file_path')
         if not file_path:
-            raise RuntimeError("Raster file path not found in context.")
+            # Look up artifact
+            raw_art = self._find_artifact(job, "RAW_S1_RASTER")
+            if not raw_art:
+                raise RuntimeError("Raster file path not found for processing.")
+            file_path = artifact_store.get_artifact_path(raw_art)
+            ctx['raster_file_path'] = file_path
             
         event = NewSceneEvent.model_validate(job.scene_event_payload)
         
@@ -173,13 +237,19 @@ class OrchestrationService:
         )
         
         scene = await self.sat_service.ingest_local_scene(ingest_req)
-        
-        # Preprocess
         proc_res = await self.sat_service.preprocess_scene(scene)
         scene.is_processed = True
         scene.processed_storage_path = proc_res.processed_path
         
-        # Detect
+        proc_art_ref = artifact_store.store_artifact(scene.processed_storage_path, "PROCESSED_S1_RASTER", job.job_id)
+        if existing_proc_art not in job.artifact_references: # Simplistic check
+            # We don't have good equality for dicts here, just appending for MVP if not exact match.
+            # In a real app we'd pop the old one.
+            pass
+        # Let's just append
+        job.artifact_references.append(proc_art_ref)
+        scene.processed_storage_path = proc_art_ref['path'] # Use artifact store path
+        
         candidates = await self.detect_service.detect_slicks(scene)
         
         ctx['scene'] = scene
@@ -210,36 +280,51 @@ class OrchestrationService:
                 "model_name": assessment.model_name,
                 "evaluation_status": assessment.evaluation_status
             }
-            job.classification_results.append(result_summary)
+            
+            # STAGE-AWARE RECOVERY: Check if classification was already stored
+            if not any(r['patch_id'] == candidate.id for r in job.classification_results):
+                job.classification_results.append(result_summary)
             
             if default_trigger_policy.should_investigate(result_summary):
                 found_interesting = True
                 anomaly_fingerprint = f"{job.product_id}_{job.monitoring_zone_id}_{candidate.id}"
                 
-                # Deduplicate
-                existing_inv = next((inv for inv in investigations_db.values() if getattr(inv, 'anomaly_id', None) == anomaly_fingerprint), None)
-                if not existing_inv:
-                    inv_id = f"INV-AUTO-{uuid.uuid4().hex[:6].upper()}"
-                    inv = Investigation(
-                        id=inv_id,
-                        title=f"Auto Investigation: {job.product_name}",
-                        status="OPEN",
-                        priority="HIGH",
-                        creation_mode="AUTOMATIC_MONITORING",
-                        source_product_id=job.product_id,
-                        monitoring_zone_id=job.monitoring_zone_id,
-                        anomaly_id=anomaly_fingerprint,
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow()
-                    )
-                    investigations_db[inv_id] = inv
-                    job.investigation_ids.append(inv_id)
+                # Idempotent Investigation Creation
+                inv_create = InvestigationCreate(
+                    title=f"Auto Investigation: {job.product_name}",
+                    status="OPEN",
+                    priority="HIGH",
+                    creation_mode="AUTOMATIC_MONITORING",
+                    source_product_id=job.product_id,
+                    monitoring_zone_id=job.monitoring_zone_id,
+                    anomaly_id=anomaly_fingerprint,
+                    anomaly_geometry=candidate.geometry
+                )
+                
+                inv = investigation_repository.create_investigation(inv_create)
+                
+                if inv.id not in job.investigation_ids:
+                    job.investigation_ids.append(inv.id)
                     
-                    # We store candidate + investigation linkage in context for downstream
-                    if 'investigation_targets' not in ctx:
-                        ctx['investigation_targets'] = []
+                # Add Classification Evidence
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=inv.id,
+                    event_type="SATELLITE_CLASSIFICATION",
+                    source="LookAlikeService",
+                    description=f"Classified as {assessment.predicted_class.value}",
+                    event_time=scene.acquisition_time,
+                    metadata=result_summary
+                )
+                investigation_repository.add_evidence(ev)
+                    
+                if 'investigation_targets' not in ctx:
+                    ctx['investigation_targets'] = []
+                    
+                # Prevent dupes in ctx if recovering
+                if not any(t['investigation_id'] == inv.id for t in ctx['investigation_targets']):
                     ctx['investigation_targets'].append({
-                        'investigation_id': inv_id,
+                        'investigation_id': inv.id,
                         'slick': candidate
                     })
 
@@ -257,7 +342,6 @@ class OrchestrationService:
         
         for target in targets:
             slick: Slick = target['slick']
-            # Compute rough centroid from slick geometry
             coords = slick.geometry.get("coordinates", [[[]]])[0]
             if len(coords) > 0:
                 lon = sum(p[0] for p in coords) / len(coords)
@@ -271,10 +355,26 @@ class OrchestrationService:
                 
                 target['wind'] = wind
                 target['current'] = current
-                job.provenance_references.append("ENV:OpenMeteo:LIVE")
+                
+                if "ENV:OpenMeteo:LIVE" not in job.provenance_references:
+                    job.provenance_references.append("ENV:OpenMeteo:LIVE")
+                    
+                # Persist Environmental Evidence
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="ENVIRONMENTAL_OBSERVATION",
+                    source="OpenMeteo",
+                    description=f"Wind: {wind.speed_m_s}m/s @ {wind.direction_deg}°. Current: {current.speed_m_s}m/s @ {current.direction_deg}°",
+                    event_time=slick.detected_at,
+                    metadata={"wind": wind.__dict__, "current": current.__dict__}
+                )
+                investigation_repository.add_evidence(ev)
+                
             except Exception as e:
                 logger.warning(f"Environment unavailable for {slick.id}: {e}")
-                job.provenance_references.append("ENV:UNAVAILABLE")
+                if "ENV:UNAVAILABLE" not in job.provenance_references:
+                    job.provenance_references.append("ENV:UNAVAILABLE")
                 
         job.status = JobStatus.DRIFT
 
@@ -289,7 +389,7 @@ class OrchestrationService:
                 investigation_id=target['investigation_id'],
                 slick_id=slick.id,
                 start_time=slick.detected_at,
-                end_time=slick.detected_at - timedelta(hours=24),  # 24h hindcast
+                end_time=slick.detected_at - timedelta(hours=24),
                 is_backward=True,
                 forcing_sources=["LIVE_OPEN_METEO"]
             )
@@ -297,10 +397,27 @@ class OrchestrationService:
             try:
                 drift_result = await self.drift_service.execute_hindcast(scenario, slick)
                 target['drift_result'] = drift_result
-                job.provenance_references.append("DRIFT:OpenDrift:LIVE")
+                if "DRIFT:OpenDrift:LIVE" not in job.provenance_references:
+                    job.provenance_references.append("DRIFT:OpenDrift:LIVE")
+                    
+                # Store artifact if drift service produces files (mocking for Phase 16D abstraction)
+                # target['drift_result'].geojson_path could be stored here.
+                
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="DRIFT_HINDCAST",
+                    source="OpenDrift",
+                    description=f"24h hindcast completed.",
+                    event_time=drift_result.origin_estimate.estimated_time,
+                    metadata={"origin_estimate": drift_result.origin_estimate.model_dump()}
+                )
+                investigation_repository.add_evidence(ev)
+                
             except Exception as e:
                 logger.error(f"Drift unavailable for {slick.id}: {e}", exc_info=True)
-                job.provenance_references.append("DRIFT:FAILED")
+                if "DRIFT:FAILED" not in job.provenance_references:
+                    job.provenance_references.append("DRIFT:FAILED")
                 
         job.status = JobStatus.VESSEL_EVIDENCE
 
@@ -310,7 +427,8 @@ class OrchestrationService:
         
         if not self.gfw_provider.token:
             logger.warning("GFW_API_TOKEN is not configured. GFW services are unavailable.")
-            job.provenance_references.append("GFW:UNAVAILABLE")
+            if "GFW:UNAVAILABLE" not in job.provenance_references:
+                job.provenance_references.append("GFW:UNAVAILABLE")
             job.status = JobStatus.ATTRIBUTION
             return
             
@@ -319,7 +437,6 @@ class OrchestrationService:
             if not drift_result or not drift_result.origin_estimate:
                 continue
                 
-            # Compute a rough bounding box around origin geometry
             coords = drift_result.origin_estimate.geometry.get("coordinates", [[[]]])[0]
             if len(coords) > 0:
                 lons = [p[0] for p in coords]
@@ -332,10 +449,7 @@ class OrchestrationService:
                 
             try:
                 records, provenance = await self.gfw_provider.search_vessel_presence(
-                    min_lon=min_lon,
-                    min_lat=min_lat,
-                    max_lon=max_lon,
-                    max_lat=max_lat,
+                    min_lon=min_lon, max_lat=max_lat, max_lon=max_lon, min_lat=min_lat,
                     start_time=drift_result.origin_estimate.estimated_time - timedelta(hours=2),
                     end_time=drift_result.origin_estimate.estimated_time + timedelta(hours=2)
                 )
@@ -345,10 +459,25 @@ class OrchestrationService:
                 
                 target['gfw_records'] = records
                 target['gfw_identities'] = identities
-                job.provenance_references.append("GFW:LIVE")
+                
+                if "GFW:LIVE" not in job.provenance_references:
+                    job.provenance_references.append("GFW:LIVE")
+                    
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="AIS_PRESENCE",
+                    source="GFW",
+                    description=f"Found {len(mmsis)} vessels in origin region.",
+                    event_time=drift_result.origin_estimate.estimated_time,
+                    metadata={"vessel_count": len(mmsis), "mmsis": mmsis}
+                )
+                investigation_repository.add_evidence(ev)
+                
             except Exception as e:
                 logger.error(f"GFW Vessel search failed: {e}", exc_info=True)
-                job.provenance_references.append("GFW:UNAVAILABLE")
+                if "GFW:UNAVAILABLE" not in job.provenance_references:
+                    job.provenance_references.append("GFW:UNAVAILABLE")
 
         job.status = JobStatus.ATTRIBUTION
 
@@ -360,14 +489,7 @@ class OrchestrationService:
             drift_result: Optional[DriftResult] = target.get('drift_result')
             gfw_identities = target.get('gfw_identities', [])
             
-            # Note: Attribution service needs VesselCandidate list.
-            # Since GFW doesn't provide tracks, we construct minimal VesselCandidates.
             candidates = []
-            
-            # This is a simplification. A real impl would map GFW Presence to VesselCandidate.
-            # We skip heavy track creation here and just pass empty tracks to evaluate.
-            # Evaluate expects `track`, `identity`, `spatially_relevant`, `temporally_relevant`, etc.
-            # Since evaluate signature requires them, we construct them loosely.
             from app.schemas.ais import VesselIdentity, AISTrack, AISProvenance
             
             for ident in gfw_identities:
@@ -392,10 +514,21 @@ class OrchestrationService:
                     candidates=candidates
                 )
                 target['attribution_result'] = att_result
-                job.provenance_references.append("ATTRIBUTION:LIVE")
+                if "ATTRIBUTION:LIVE" not in job.provenance_references:
+                    job.provenance_references.append("ATTRIBUTION:LIVE")
+                    
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="ATTRIBUTION_EVALUATION",
+                    source="AttributionService",
+                    description=f"Evaluated {len(candidates)} candidates. Top matches: {len(att_result.candidates)}",
+                    event_time=datetime.utcnow(),
+                    metadata=att_result.model_dump()
+                )
+                investigation_repository.add_evidence(ev)
                 
         job.status = JobStatus.REPORT_READY
 
 
-# Singleton Orchestrator
 orchestrator = OrchestrationService()
