@@ -1,4 +1,4 @@
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -67,3 +67,55 @@ class VesselCandidate(BaseModel):
     inside_origin_region: bool = False
 
     provenance: AISProvenance = Field(default_factory=AISProvenance)
+
+
+class GFWPresenceRecord(BaseModel):
+    """Represents aggregated vessel presence from GFW, NOT a continuous track."""
+    vessel_id: str
+    timestamp: datetime
+    lon: float
+    lat: float
+    resolution: str = Field(default="~1 position per hour", description="Temporal resolution of the presence data")
+
+
+class GFWEvent(BaseModel):
+    """Represents a vessel event from GFW (e.g., gap, encounter, port_visit)"""
+    event_id: str
+    event_type: str
+    start_time: datetime
+    end_time: datetime
+    start_lon: Optional[float] = None
+    start_lat: Optional[float] = None
+    end_lon: Optional[float] = None
+    end_lat: Optional[float] = None
+    vessel_id: str
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class GFWAISProvenance(AISProvenance):
+    source: str = "GFW"
+    dataset: str = "public-global-presence:latest"
+    api_version: str = "v3"
+    api_endpoint: str = ""
+    requested_bbox: Optional[str] = None
+    requested_time_range: Optional[str] = None
+    spatial_resolution: str = "AIS-derived, ~vessel-level"
+    temporal_resolution: str = "~1 position per hour per vessel"
+    limitations: str = "GFW vessel presence is AIS-derived aggregated data, not raw high-frequency AIS tracks. Approximately one position per hour. Gaps in AIS coverage are possible."
+
+
+class GFWCandidateEvidence(BaseModel):
+    """Evidence model specifically for GFW candidate filtering, acknowledging it is not a high-frequency track."""
+    id: str
+    investigation_id: str
+    identity: VesselIdentity
+    presence_records: List[GFWPresenceRecord] = Field(default_factory=list)
+    events: List[GFWEvent] = Field(default_factory=list)
+
+    # Filtering context
+    spatially_relevant: bool = Field(..., description="Did it intersect or approach the origin region?")
+    temporally_relevant: bool = Field(..., description="Was it present during the release window?")
+    closest_approach_meters: Optional[float] = None
+    inside_origin_region: bool = False
+
+    provenance: GFWAISProvenance = Field(default_factory=GFWAISProvenance)

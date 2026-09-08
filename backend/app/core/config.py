@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ENVIRONMENTAL_PROVIDER: str = "DEMO_MOCK"  # Options: DEMO_MOCK, LIVE_OPEN_METEO
     
     # Global Fishing Watch
-    GFW_API_KEY: str = ""
+    GFW_API_TOKEN: str = ""
 
     # Environmental Data API
     COPERNICUS_API_KEY: str = ""
@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     CDSE_CLIENT_ID: str = ""
     CDSE_CLIENT_SECRET: str = ""
     CDSE_TOKEN_URL: str = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+    CDSE_ODATA_CATALOG_URL: str = "https://catalogue.dataspace.copernicus.eu/odata/v1"
 
     # Look-Alike Classifier Configuration
     LOOKALIKE_MODEL_PATH: str = "data/models/lookalike_svm_real_v1.joblib"

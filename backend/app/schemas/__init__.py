@@ -4,6 +4,8 @@ from .slick import Slick
 from .drift import OriginEstimate, DriftResult
 from .attribution import VesselCandidate, AttributionResult
 from .evidence import EvidenceEvent
+from .monitoring import MonitoringZone, NewSceneEvent, SceneDiscoveryCheckpoint
+from .ais import GFWCandidateEvidence, GFWAISProvenance, GFWPresenceRecord, GFWEvent
 
 __all__ = [
     "Investigation",
@@ -16,4 +18,11 @@ __all__ = [
     "VesselCandidate",
     "AttributionResult",
     "EvidenceEvent",
+    "MonitoringZone",
+    "NewSceneEvent",
+    "SceneDiscoveryCheckpoint",
+    "GFWCandidateEvidence",
+    "GFWAISProvenance",
+    "GFWPresenceRecord",
+    "GFWEvent",
 ]
