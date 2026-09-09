@@ -13,9 +13,15 @@ class FirestoreMonitoringZoneRepository(MonitoringZoneRepository):
         self.collection = self.db.collection('monitoring_zones')
 
     def create_zone(self, zone: MonitoringZone, is_demo: bool = False, is_enabled: bool = True) -> MonitoringZone:
+        import json
         doc_ref = self.collection.document(zone.id)
         now = datetime.utcnow()
         zone_data = zone.model_dump()
+        
+        # Firestore does not support nested arrays (GeoJSON coordinates). Store as string.
+        if "geometry" in zone_data and isinstance(zone_data["geometry"], dict):
+            zone_data["geometry"] = json.dumps(zone_data["geometry"])
+            
         zone_data.update({
             'is_demo': is_demo,
             'is_enabled': is_enabled,
@@ -26,14 +32,24 @@ class FirestoreMonitoringZoneRepository(MonitoringZoneRepository):
         return zone
 
     def get_zone(self, zone_id: str) -> Optional[MonitoringZone]:
+        import json
         doc_ref = self.collection.document(zone_id)
         doc = doc_ref.get()
         if doc.exists:
-            # We can strip the extra db fields before instantiating if needed, but Pydantic ignores extra by default
-            return MonitoringZone(**doc.to_dict())
+            zone_data = doc.to_dict()
+            if "geometry" in zone_data and isinstance(zone_data["geometry"], str):
+                zone_data["geometry"] = json.loads(zone_data["geometry"])
+            return MonitoringZone(**zone_data)
         return None
 
     def get_enabled_zones(self) -> List[MonitoringZone]:
+        import json
         query = self.collection.where('is_enabled', '==', True)
         docs = query.stream()
-        return [MonitoringZone(**doc.to_dict()) for doc in docs]
+        zones = []
+        for doc in docs:
+            zone_data = doc.to_dict()
+            if "geometry" in zone_data and isinstance(zone_data["geometry"], str):
+                zone_data["geometry"] = json.loads(zone_data["geometry"])
+            zones.append(MonitoringZone(**zone_data))
+        return zones

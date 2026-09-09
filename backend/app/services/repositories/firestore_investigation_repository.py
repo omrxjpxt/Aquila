@@ -16,18 +16,25 @@ class FirestoreInvestigationRepository(InvestigationRepository):
         self.collection = self.db.collection('investigations')
         self.evidence_collection = self.db.collection('evidence')
 
-    @firestore.transactional
     def _create_investigation_txn(self, transaction: Transaction, inv_create: InvestigationCreate) -> Investigation:
         # Idempotency check
-        if inv_create.source_product_id and inv_create.monitoring_zone_id and inv_create.anomaly_id:
+        if getattr(inv_create, 'source_product_id', None) and getattr(inv_create, 'monitoring_zone_id', None) and getattr(inv_create, 'anomaly_id', None):
             query = self.collection.where('source_product_id', '==', inv_create.source_product_id)\
                                    .where('monitoring_zone_id', '==', inv_create.monitoring_zone_id)\
                                    .where('anomaly_id', '==', inv_create.anomaly_id)
             docs = query.stream(transaction=transaction)
+            
             for doc in docs:
                 logger.info(f"Investigation for anomaly {inv_create.anomaly_id} already exists in Firestore.")
                 return Investigation(**doc.to_dict())
+        elif getattr(inv_create, 'monitoring_job_id', None):
+            query = self.collection.where('monitoring_job_id', '==', inv_create.monitoring_job_id)
+            docs = query.stream(transaction=transaction)
+            for doc in docs:
+                logger.info(f"Investigation for job {inv_create.monitoring_job_id} already exists.")
+                return Investigation(**doc.to_dict())
 
+        import uuid
         inv_id = f"INV-{datetime.utcnow().strftime('%Y')}-{str(uuid.uuid4())[:8].upper()}"
         now = datetime.utcnow()
         
@@ -46,7 +53,12 @@ class FirestoreInvestigationRepository(InvestigationRepository):
 
     def create_investigation(self, inv_create: InvestigationCreate) -> Investigation:
         transaction = self.db.transaction()
-        return self._create_investigation_txn(transaction, inv_create)
+        
+        @firestore.transactional
+        def _txn(t: Transaction) -> Investigation:
+            return self._create_investigation_txn(t, inv_create)
+
+        return _txn(transaction)
 
     def get_investigation(self, inv_id: str) -> Optional[Investigation]:
         doc_ref = self.collection.document(inv_id)
