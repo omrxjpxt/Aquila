@@ -189,6 +189,8 @@ async def get_scene_preview(scene_id: str):
 
     try:
         import rasterio
+        import matplotlib
+        matplotlib.use('Agg')
         from matplotlib import pyplot as plt
         import matplotlib.patches as patches
 

@@ -12,11 +12,20 @@ import { Investigation, MonitoringJob, SystemStatus, SatelliteScene } from "@/li
 import { useAuth } from "@/contexts/AuthContext";
 import { GeoJSONLayer } from "@/components/map/layers";
 
-// MapLibre Image Layer component
-function ImageOverlayLayer({ id, url, bbox, visible = true }: { id: string; url: string; bbox: [number, number, number, number]; visible?: boolean }) {
+function ImageOverlayLayer({ id, sceneId, bbox, visible = true }: { id: string; sceneId: string; bbox: [number, number, number, number]; visible?: boolean }) {
   const map = useMap();
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!map) return;
+    let active = true;
+    satelliteApi.getPreviewBlob(sceneId).then(url => {
+      if (active) setBlobUrl(url);
+    }).catch(console.error);
+    return () => { active = false; };
+  }, [sceneId]);
+
+  useEffect(() => {
+    if (!map || !blobUrl) return;
     
     // Coordinates format: [top-left, top-right, bottom-right, bottom-left]
     const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
@@ -29,7 +38,7 @@ function ImageOverlayLayer({ id, url, bbox, visible = true }: { id: string; url:
     if (!map.getSource(id)) {
       map.addSource(id, {
         type: "image",
-        url: url,
+        url: blobUrl,
         coordinates: coordinates
       });
       map.addLayer({
@@ -47,7 +56,7 @@ function ImageOverlayLayer({ id, url, bbox, visible = true }: { id: string; url:
     } else {
       const source = map.getSource(id) as unknown as { updateImage: (opts: { url: string; coordinates: [[number, number], [number, number], [number, number], [number, number]] }) => void };
       if (source && source.updateImage) {
-        source.updateImage({ url, coordinates });
+        source.updateImage({ url: blobUrl, coordinates });
       }
       if (map.getLayer(id)) {
         map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
@@ -57,7 +66,7 @@ function ImageOverlayLayer({ id, url, bbox, visible = true }: { id: string; url:
     return () => {
       // Cleanup happens when the map itself unmounts
     };
-  }, [map, id, url, bbox, visible]);
+  }, [map, id, blobUrl, bbox, visible]);
 
   return null;
 }
@@ -342,7 +351,7 @@ export default function CommandCenterPage() {
                    <ImageOverlayLayer 
                      key={scene.id} 
                      id={`preview-${scene.id}`} 
-                     url={satelliteApi.getPreviewUrl(scene.id)} 
+                     sceneId={scene.id} 
                      bbox={scene.bbox} 
                      visible={true}
                    />
