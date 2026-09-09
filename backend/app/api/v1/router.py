@@ -19,18 +19,3 @@ router.include_router(attribution_router, prefix="/attribution", tags=["attribut
 router.include_router(simulation_router, prefix="/simulation", tags=["simulation"], dependencies=[Depends(get_current_user)])
 
 
-@router.get("/status")
-async def get_status():
-    """
-    Returns the status of the AQUILA scientific engine and its services.
-    """
-    return {
-        "status": "online",
-        "service": settings.PROJECT_NAME,
-        "modules": {
-            "satellite_ingest": "ready",
-            "ml_detection": "ready",
-            "drift_engine": "ready",
-            "ais_attribution": "ready"
-        }
-    }

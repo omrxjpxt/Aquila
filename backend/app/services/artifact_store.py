@@ -16,6 +16,18 @@ class ArtifactStore:
         """Returns the local path or URL to access the artifact."""
         raise NotImplementedError
 
+    def exists(self, artifact_ref: Dict[str, Any]) -> bool:
+        """Checks if the artifact currently exists in storage."""
+        raise NotImplementedError
+
+    def get_metadata(self, artifact_ref: Dict[str, Any]) -> Dict[str, Any]:
+        """Retrieves current metadata, size, and hash without downloading."""
+        raise NotImplementedError
+
+    def list_orphans(self, active_job_ids: list[str], max_age_hours: int = 24) -> list[Dict[str, Any]]:
+        """Returns a list of artifacts not belonging to an active job, older than max_age."""
+        raise NotImplementedError
+
 
 class LocalArtifactStore(ArtifactStore):
     """
@@ -69,12 +81,53 @@ class LocalArtifactStore(ArtifactStore):
         path = artifact_ref.get("path")
         if not path or not os.path.exists(path):
             raise FileNotFoundError(f"Artifact missing: {artifact_ref}")
-        
-        # Optional: Re-verify integrity if required by strict policy
-        # current_hash = self._hash_file(path)
-        # if current_hash != artifact_ref.get("sha256"):
-        #     raise ValueError("Artifact integrity failed.")
-            
         return path
 
-artifact_store = LocalArtifactStore()
+    def exists(self, artifact_ref: Dict[str, Any]) -> bool:
+        path = artifact_ref.get("path")
+        return bool(path and os.path.exists(path))
+
+    def get_metadata(self, artifact_ref: Dict[str, Any]) -> Dict[str, Any]:
+        path = artifact_ref.get("path")
+        if not path or not os.path.exists(path):
+            raise FileNotFoundError(f"Artifact missing: {artifact_ref}")
+        
+        file_size = os.path.getsize(path)
+        file_hash = self._hash_file(path)
+        mime_type, _ = mimetypes.guess_type(path)
+        
+        return {
+            "size_bytes": file_size,
+            "sha256": file_hash,
+            "mime_type": mime_type or "application/octet-stream",
+            "last_modified": datetime.fromtimestamp(os.path.getmtime(path)).isoformat()
+        }
+
+    def list_orphans(self, active_job_ids: list[str], max_age_hours: int = 24) -> list[Dict[str, Any]]:
+        orphans = []
+        now = datetime.utcnow()
+        for job_id_dir in os.listdir(self.base_dir):
+            job_path = os.path.join(self.base_dir, job_id_dir)
+            if not os.path.isdir(job_path):
+                continue
+                
+            if job_id_dir in active_job_ids:
+                continue
+                
+            for file_name in os.listdir(job_path):
+                file_path = os.path.join(job_path, file_name)
+                if not os.path.isfile(file_path):
+                    continue
+                    
+                mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+                age_hours = (now - mtime).total_seconds() / 3600
+                
+                if age_hours > max_age_hours:
+                    orphans.append({
+                        "job_id": job_id_dir,
+                        "file_name": file_name,
+                        "path": file_path,
+                        "age_hours": age_hours,
+                        "size_bytes": os.path.getsize(file_path)
+                    })
+        return orphans

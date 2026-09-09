@@ -23,11 +23,8 @@ from app.services.repositories.factory import (
     get_scene_event_repository
 )
 
-# Initialize repositories from factory
-job_repository = get_job_repository()
-investigation_repository = get_investigation_repository()
-artifact_store = get_artifact_store()
-scene_event_repository = get_scene_event_repository()
+from app.services.failure_policy import classify_failure, FailureClassification
+
 from app.services.investigation_trigger_policy import default_trigger_policy
 from app.services.cdse_service import CDSEService
 from app.services.satellite_service import SatelliteService
@@ -53,6 +50,30 @@ class OrchestrationService:
         
         # Transient context storage to avoid dumping large artifacts into MonitoringJob
         self.job_contexts: Dict[str, Dict[str, Any]] = {}
+        
+    @property
+    def job_repository(self):
+        if not hasattr(self, '_job_repository'):
+            self._job_repository = get_job_repository()
+        return self._job_repository
+
+    @property
+    def investigation_repository(self):
+        if not hasattr(self, '_investigation_repository'):
+            self._investigation_repository = get_investigation_repository()
+        return self._investigation_repository
+        
+    @property
+    def artifact_store(self):
+        if not hasattr(self, '_artifact_store'):
+            self._artifact_store = get_artifact_store()
+        return self._artifact_store
+        
+    @property
+    def scene_event_repository(self):
+        if not hasattr(self, '_scene_event_repository'):
+            self._scene_event_repository = get_scene_event_repository()
+        return self._scene_event_repository
 
     def ingest_scene_event(self, event: NewSceneEvent) -> Optional[MonitoringJob]:
         job = MonitoringJob(
@@ -63,8 +84,18 @@ class OrchestrationService:
             scene_event_payload=event.model_dump(mode='json'),
             status=JobStatus.QUEUED
         )
-        # create_job is idempotent via SQLite constraint
-        return job_repository.create_job(job)
+        existing_job = self.job_repository.get_job_by_product_and_zone(
+            product_id=event.product_id,
+            monitoring_zone_id=event.monitoring_zone_id
+        )
+        if existing_job:
+            logger.info(f"Job for {event.product_id} in {event.monitoring_zone_id} already exists.")
+            return existing_job
+            
+        # Also store the raw event for provenance
+        self.scene_event_repository.create_event(event)
+
+        return self.job_repository.create_job(job)
 
     def _get_context(self, job_id: str) -> Dict[str, Any]:
         if job_id not in self.job_contexts:
@@ -73,7 +104,7 @@ class OrchestrationService:
 
     async def recover_stale_jobs(self):
         """Finds jobs with expired leases and safely transitions them based on stage."""
-        stale_jobs = job_repository.get_stale_jobs()
+        stale_jobs = self.job_repository.get_stale_jobs()
         for job in stale_jobs:
             logger.info(f"Recovering stale job {job.job_id} currently in state {job.status}")
             # Reset worker ownership
@@ -85,7 +116,7 @@ class OrchestrationService:
             # The actual stages handle avoiding duplicate work when retried
             job.status = JobStatus.RETRY_WAIT
             job.next_attempt_at = datetime.utcnow()
-            job_repository.update_job(job)
+            self.job_repository.update_job(job)
 
     async def process_job(self, job: MonitoringJob):
         """
@@ -96,9 +127,17 @@ class OrchestrationService:
             while job.status not in [JobStatus.RESOLVED, JobStatus.FAILED, JobStatus.REPORT_READY, JobStatus.RETRY_WAIT]:
                 # Renew lease
                 job.lease_until = datetime.utcnow() + timedelta(minutes=5)
-                job_repository.update_job(job)
+                self.job_repository.update_job(job)
                 
-                logger.info(f"Job {job.job_id} entering state {job.status}")
+                logger.info(
+                    f"Job {job.job_id} entering state {job.status}",
+                    extra={"structured_data": {
+                        "event": "JOB_STATE_CHANGE",
+                        "job_id": job.job_id,
+                        "status": job.status,
+                        "product_id": job.product_id
+                    }}
+                )
                 if job.status == JobStatus.QUEUED:
                     await self._handle_queued(job)
                 elif job.status == JobStatus.RETRIEVING:
@@ -121,34 +160,64 @@ class OrchestrationService:
                     await self._handle_attribution(job)
                 
                 job.updated_at = datetime.utcnow()
-                job_repository.update_job(job)
+                self.job_repository.update_job(job)
                 
             # Clear lease when done processing
             job.worker_id = None
             job.claimed_at = None
             job.lease_until = None
-            job_repository.update_job(job)
+            self.job_repository.update_job(job)
                 
         except Exception as e:
             logger.error(f"Error processing job {job.job_id} in state {job.status}: {str(e)}", exc_info=True)
-            self._handle_failure(job, str(e))
+            self._handle_failure(job, e)
 
-    def _handle_failure(self, job: MonitoringJob, error_msg: str):
+    def _handle_failure(self, job: MonitoringJob, error: Exception):
+        classification, reason = classify_failure(error, str(job.status))
+        
+        job.last_error = f"[{classification.value}] {reason}: {str(error)}"
         job.retry_count += 1
-        job.last_error = error_msg
+        
+        # We record the stage where it failed
+        if not hasattr(job, "failure_stage"): # ensure it's recorded (might need schema update but we can put it in last_error)
+            pass
+            
+        from app.core.config import settings
+        max_retries = settings.WORKER_MAX_RETRIES
+
         job.updated_at = datetime.utcnow()
         job.worker_id = None
         job.claimed_at = None
         job.lease_until = None
-        
-        if job.retry_count >= job.max_retries:
+
+        if classification == FailureClassification.PERMANENT or job.retry_count >= max_retries:
+            logger.error(
+                f"Job {job.job_id} permanently failed at {job.status}. Reason: {reason}",
+                extra={"structured_data": {
+                    "event": "JOB_FAILED_PERMANENT",
+                    "job_id": job.job_id,
+                    "status": job.status,
+                    "reason": reason
+                }}
+            )
             job.status = JobStatus.FAILED
+            job.next_attempt_at = None
         else:
+            logger.warning(
+                f"Job {job.job_id} transient failure at {job.status}. Retrying (Attempt {job.retry_count}/{max_retries}). Reason: {reason}",
+                extra={"structured_data": {
+                    "event": "JOB_FAILED_TRANSIENT",
+                    "job_id": job.job_id,
+                    "status": job.status,
+                    "retry_count": job.retry_count,
+                    "reason": reason
+                }}
+            )
             job.status = JobStatus.RETRY_WAIT
             # Bounded backoff: 2^retry_count * 15 seconds
             delay = (2 ** job.retry_count) * 15
             job.next_attempt_at = datetime.utcnow() + timedelta(seconds=delay)
-        job_repository.update_job(job)
+        self.job_repository.update_job(job)
 
     def _find_artifact(self, job: MonitoringJob, artifact_type: str) -> Optional[Dict[str, Any]]:
         for art in job.artifact_references:
@@ -167,7 +236,7 @@ class OrchestrationService:
         if existing_artifact:
             try:
                 # verify it exists
-                file_path = artifact_store.get_artifact_path(existing_artifact)
+                file_path = self.artifact_store.get_artifact_path(existing_artifact)
                 logger.info(f"Recovered RETRIEVING stage using existing artifact: {file_path}")
                 ctx['raster_file_path'] = file_path
                 job.status = JobStatus.PROCESSING
@@ -199,7 +268,7 @@ class OrchestrationService:
         )
         
         # Persist artifact
-        artifact_ref = artifact_store.store_artifact(file_path, "RAW_S1_RASTER", job.job_id)
+        artifact_ref = self.artifact_store.store_artifact(file_path, "RAW_S1_RASTER", job.job_id)
         job.artifact_references.append(artifact_ref)
         
         ctx['raster_file_path'] = artifact_ref['path']
@@ -226,7 +295,7 @@ class OrchestrationService:
             raw_art = self._find_artifact(job, "RAW_S1_RASTER")
             if not raw_art:
                 raise RuntimeError("Raster file path not found for processing.")
-            file_path = artifact_store.get_artifact_path(raw_art)
+            file_path = self.artifact_store.get_artifact_path(raw_art)
             ctx['raster_file_path'] = file_path
             
         event = NewSceneEvent.model_validate(job.scene_event_payload)
@@ -248,7 +317,7 @@ class OrchestrationService:
         scene.is_processed = True
         scene.processed_storage_path = proc_res.processed_path
         
-        proc_art_ref = artifact_store.store_artifact(scene.processed_storage_path, "PROCESSED_S1_RASTER", job.job_id)
+        proc_art_ref = self.artifact_store.store_artifact(scene.processed_storage_path, "PROCESSED_S1_RASTER", job.job_id)
         if existing_proc_art not in job.artifact_references: # Simplistic check
             # We don't have good equality for dicts here, just appending for MVP if not exact match.
             # In a real app we'd pop the old one.
@@ -309,7 +378,7 @@ class OrchestrationService:
                     anomaly_geometry=candidate.geometry
                 )
                 
-                inv = investigation_repository.create_investigation(inv_create)
+                inv = self.investigation_repository.create_investigation(inv_create)
                 
                 if inv.id not in job.investigation_ids:
                     job.investigation_ids.append(inv.id)
@@ -324,7 +393,7 @@ class OrchestrationService:
                     event_time=scene.acquisition_time,
                     metadata=result_summary
                 )
-                investigation_repository.add_evidence(ev)
+                self.investigation_repository.add_evidence(ev)
                     
                 if 'investigation_targets' not in ctx:
                     ctx['investigation_targets'] = []
@@ -377,7 +446,7 @@ class OrchestrationService:
                     event_time=slick.detected_at,
                     metadata={"wind": wind.__dict__, "current": current.__dict__}
                 )
-                investigation_repository.add_evidence(ev)
+                self.investigation_repository.add_evidence(ev)
                 
             except Exception as e:
                 logger.warning(f"Environment unavailable for {slick.id}: {e}")
@@ -420,7 +489,7 @@ class OrchestrationService:
                     event_time=drift_result.origin_estimate.estimated_time,
                     metadata={"origin_estimate": drift_result.origin_estimate.model_dump()}
                 )
-                investigation_repository.add_evidence(ev)
+                self.investigation_repository.add_evidence(ev)
                 
             except Exception as e:
                 logger.error(f"Drift unavailable for {slick.id}: {e}", exc_info=True)
@@ -480,7 +549,7 @@ class OrchestrationService:
                     event_time=drift_result.origin_estimate.estimated_time,
                     metadata={"vessel_count": len(mmsis), "mmsis": mmsis}
                 )
-                investigation_repository.add_evidence(ev)
+                self.investigation_repository.add_evidence(ev)
                 
             except Exception as e:
                 logger.error(f"GFW Vessel search failed: {e}", exc_info=True)
@@ -534,7 +603,7 @@ class OrchestrationService:
                     event_time=datetime.utcnow(),
                     metadata=att_result.model_dump()
                 )
-                investigation_repository.add_evidence(ev)
+                self.investigation_repository.add_evidence(ev)
                 
         job.status = JobStatus.REPORT_READY
 

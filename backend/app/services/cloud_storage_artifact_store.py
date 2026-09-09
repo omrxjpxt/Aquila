@@ -79,3 +79,57 @@ class CloudStorageArtifactStore(ArtifactStore):
             blob.download_to_filename(local_path)
             
         return local_path
+
+    def exists(self, artifact_ref: Dict[str, Any]) -> bool:
+        blob_path = artifact_ref.get("path")
+        if not blob_path:
+            return False
+        bucket = storage.bucket()
+        blob = bucket.blob(blob_path)
+        return blob.exists()
+
+    def get_metadata(self, artifact_ref: Dict[str, Any]) -> Dict[str, Any]:
+        blob_path = artifact_ref.get("path")
+        if not blob_path:
+            raise ValueError("Artifact reference missing 'path'")
+            
+        bucket = storage.bucket()
+        blob = bucket.blob(blob_path)
+        if not blob.exists():
+            raise FileNotFoundError(f"Artifact not found in GCS: {blob_path}")
+            
+        blob.reload()
+        return {
+            "size_bytes": blob.size,
+            "mime_type": blob.content_type,
+            "last_modified": blob.updated.isoformat() if blob.updated else None,
+            "md5_hash": blob.md5_hash
+        }
+
+    def list_orphans(self, active_job_ids: list[str], max_age_hours: int = 24) -> list[Dict[str, Any]]:
+        # In GCS, we'd list blobs under artifacts/ and check age
+        bucket = storage.bucket()
+        blobs = bucket.list_blobs(prefix="artifacts/")
+        
+        orphans = []
+        now = datetime.utcnow()
+        import pytz
+        
+        for blob in blobs:
+            parts = blob.name.split('/')
+            if len(parts) >= 3:
+                job_id = parts[1]
+                if job_id in active_job_ids:
+                    continue
+                    
+                if blob.updated:
+                    # blob.updated is aware datetime
+                    age_hours = (now.replace(tzinfo=pytz.UTC) - blob.updated).total_seconds() / 3600
+                    if age_hours > max_age_hours:
+                        orphans.append({
+                            "job_id": job_id,
+                            "path": blob.name,
+                            "age_hours": age_hours,
+                            "size_bytes": blob.size
+                        })
+        return orphans

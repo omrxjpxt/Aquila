@@ -40,3 +40,15 @@ def synthetic_scene_path(tmp_path):
         dst.update_tags(POLARIZATION="VV", PRODUCT_TYPE="GRD", MISSION="TEST DATA ONLY")
         
     return path
+
+from app.main import app
+from app.api.deps import get_current_user
+
+def mock_get_current_user():
+    return {"uid": "test_user_123", "email": "test@example.com"}
+
+@pytest.fixture(autouse=True)
+def override_auth():
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    yield
+    app.dependency_overrides.clear()

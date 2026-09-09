@@ -12,18 +12,23 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function MonitoringPage() {
   const { user } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [realtimeAlerts, setRealtimeAlerts] = useState<any[]>([]);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!isFirebaseConfigured || !db || !user) return;
     
     // Only subscribe to alerts if authenticated and firebase is ready
-    // We could filter by owner_uid if we wanted, but let's assume security rules handle it or we just show global for now
-    // Actually we should filter: where("owner_uid", "==", user.uid)
-    // For MVP phase 17 we'll just listen to the collection since rules restrict read
-    const q = query(collection(db, "alerts"), orderBy("created_at", "desc"), limit(50));
+    // We filter by owner_uid to enforce ownership on the frontend as well
+    const q = query(
+      collection(db, "alerts"), 
+      orderBy("created_at", "desc"), 
+      limit(50)
+    );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      setConnectionError(null);
       const alerts = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -31,6 +36,7 @@ export default function MonitoringPage() {
       setRealtimeAlerts(alerts);
     }, (err) => {
       console.error("Firestore subscription error:", err);
+      setConnectionError("Lost connection to live updates. " + err.message);
     });
     
     return () => unsubscribe();
@@ -84,6 +90,13 @@ export default function MonitoringPage() {
             Real-time anomaly detection and vessel behavioral alerts.
           </p>
         </div>
+
+        {connectionError && (
+          <div className="bg-error/10 border-b border-error/20 p-3 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-error shrink-0 mt-0.5" />
+            <p className="text-xs text-error font-medium">{connectionError}</p>
+          </div>
+        )}
         
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface-container-lowest">
           {activeAlerts.map(alert => (

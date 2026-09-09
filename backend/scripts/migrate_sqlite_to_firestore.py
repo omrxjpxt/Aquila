@@ -28,23 +28,24 @@ from app.services.repositories.firestore_scene_event_repository import Firestore
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def migrate_zones():
+def migrate_zones(dry_run: bool):
     logger.info("Migrating Monitoring Zones...")
     sqlite_repo = SqliteMonitoringZoneRepository()
-    firestore_repo = FirestoreMonitoringZoneRepository()
     
-    zones = sqlite_repo.get_all_zones()
+    zones = sqlite_repo.get_enabled_zones()
     for zone in zones:
         logger.info(f"  -> Migrating zone: {zone.id}")
-        firestore_repo.create_zone(zone)
+        if not dry_run:
+            import firebase_admin.firestore
+            db = firebase_admin.firestore.client()
+            db.collection("monitoring_zones").document(zone.id).set(zone.model_dump(mode='json'))
     logger.info(f"Migrated {len(zones)} zones.")
+    return len(zones)
 
-def migrate_investigations():
+def migrate_investigations(dry_run: bool):
     logger.info("Migrating Investigations and Evidence...")
     sqlite_repo = SqliteInvestigationRepository()
-    firestore_repo = FirestoreInvestigationRepository()
     
-    # We don't have a get_all_investigations in sqlite_repo. We might need to write custom SQL here or just use sqlite3
     import sqlite3
     from app.services.repositories.db import get_db_connection
     from app.schemas.investigation import Investigation
@@ -65,26 +66,24 @@ def migrate_investigations():
             
     for inv in investigations:
         logger.info(f"  -> Migrating investigation: {inv.id}")
-        # Firestore Repo doesn't have direct create_investigation with full model, it has create_investigation (InvestigationCreate)
-        # We need to manually set the data to keep exact IDs.
-        # But wait, FirestoreInvestigationRepository.create_investigation generates the ID?
-        # Actually it's best to use firebase_admin directly to preserve IDs, or bypass the create method.
-        import firebase_admin.firestore
-        db = firebase_admin.firestore.client()
-        db.collection("investigations").document(inv.id).set(inv.model_dump(mode='json'))
+        if not dry_run:
+            import firebase_admin.firestore
+            db = firebase_admin.firestore.client()
+            db.collection("investigations").document(inv.id).set(inv.model_dump(mode='json'))
         
     for ev in evidence_events:
         logger.info(f"  -> Migrating evidence: {ev.id} for {ev.investigation_id}")
-        import firebase_admin.firestore
-        db = firebase_admin.firestore.client()
-        db.collection("investigations").document(ev.investigation_id).collection("evidence").document(ev.id).set(ev.model_dump(mode='json'))
+        if not dry_run:
+            import firebase_admin.firestore
+            db = firebase_admin.firestore.client()
+            db.collection("investigations").document(ev.investigation_id).collection("evidence").document(ev.id).set(ev.model_dump(mode='json'))
         
     logger.info(f"Migrated {len(investigations)} investigations and {len(evidence_events)} evidence records.")
+    return len(investigations), len(evidence_events)
 
-def migrate_jobs():
+def migrate_jobs(dry_run: bool):
     logger.info("Migrating Jobs...")
     sqlite_repo = SqliteJobRepository()
-    firestore_repo = FirestoreJobRepository()
     
     import sqlite3
     from app.services.repositories.db import get_db_connection
@@ -97,13 +96,15 @@ def migrate_jobs():
             
     for job in jobs:
         logger.info(f"  -> Migrating job: {job.job_id}")
-        import firebase_admin.firestore
-        db = firebase_admin.firestore.client()
-        db.collection("monitoring_jobs").document(job.job_id).set(job.model_dump(mode='json'))
+        if not dry_run:
+            import firebase_admin.firestore
+            db = firebase_admin.firestore.client()
+            db.collection("monitoring_jobs").document(job.job_id).set(job.model_dump(mode='json'))
         
     logger.info(f"Migrated {len(jobs)} jobs.")
+    return len(jobs)
 
-def migrate_scene_events():
+def migrate_scene_events(dry_run: bool):
     logger.info("Migrating Scene Events...")
     import sqlite3
     from app.services.repositories.db import get_db_connection
@@ -113,7 +114,6 @@ def migrate_scene_events():
     events = []
     with get_db_connection() as conn:
         conn.row_factory = sqlite3.Row
-        # check if scene_events exists
         try:
             cursor = conn.execute("SELECT * FROM scene_events")
             for row in cursor.fetchall():
@@ -123,25 +123,35 @@ def migrate_scene_events():
             
     for event in events:
         logger.info(f"  -> Migrating scene event: {event.id}")
-        import firebase_admin.firestore
-        db = firebase_admin.firestore.client()
-        db.collection("scene_events").document(event.id).set(event.model_dump(mode='json'))
+        if not dry_run:
+            import firebase_admin.firestore
+            db = firebase_admin.firestore.client()
+            db.collection("scene_events").document(event.id).set(event.model_dump(mode='json'))
         
     logger.info(f"Migrated {len(events)} scene events.")
+    return len(events)
 
 
 async def main():
-    logger.info("Starting SQLite -> Firestore Migration")
+    dry_run = "--dry-run" in sys.argv
+    logger.info(f"Starting SQLite -> Firestore Migration {'[DRY RUN]' if dry_run else ''}")
     
     if os.environ.get("FIREBASE_PROJECT_ID") == "demo-aquila":
          logger.info("Using demo-aquila project. Ensure Firestore emulator is running if local.")
          
-    migrate_zones()
-    migrate_scene_events()
-    migrate_jobs()
-    migrate_investigations()
+    z_count = migrate_zones(dry_run)
+    e_count = migrate_scene_events(dry_run)
+    j_count = migrate_jobs(dry_run)
+    inv_count, ev_count = migrate_investigations(dry_run)
     
-    logger.info("Migration Complete!")
+    logger.info("\n=== MIGRATION SUMMARY ===")
+    logger.info(f"Mode: {'DRY RUN (No data written)' if dry_run else 'LIVE'}")
+    logger.info(f"Zones migrated: {z_count}")
+    logger.info(f"Scene events migrated: {e_count}")
+    logger.info(f"Jobs migrated: {j_count}")
+    logger.info(f"Investigations migrated: {inv_count}")
+    logger.info(f"Evidence records migrated: {ev_count}")
+    logger.info("=========================")
 
 if __name__ == "__main__":
     asyncio.run(main())

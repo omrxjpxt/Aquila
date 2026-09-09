@@ -25,12 +25,7 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001"
-    ],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,8 +35,54 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """
-    Basic health check endpoint.
+    Basic health check endpoint. Liveness only.
     """
     return {"status": "ok"}
+
+@app.get("/readiness")
+async def readiness_check():
+    """
+    Readiness check evaluating dependency configuration.
+    """
+    from app.core.config import settings
+    import os
+    
+    status = {
+        "ready": True,
+        "cdse": "configured" if settings.CDSE_CLIENT_ID else "unavailable",
+        "firebase": "unavailable",
+        "model": "present" if os.path.exists(settings.LOOKALIKE_MODEL_PATH) else "missing",
+        "worker": "running" if worker._task and not worker._task.done() else "unavailable"
+    }
+    
+    if settings.PERSISTENCE_BACKEND == "firestore":
+        from app.core.firebase_admin import _firebase_initialized
+        status["firebase"] = "initialized" if _firebase_initialized else "configured (not initialized)"
+        if not _firebase_initialized:
+            status["ready"] = False
+    else:
+        status["firebase"] = "not requested (sqlite mode)"
+        
+    if not status["ready"]:
+        from fastapi import Response
+        return Response(content=str(status), status_code=503)
+        
+    return status
+
+@app.get("/api/v1/status")
+async def get_status():
+    """
+    Returns the status of the AQUILA scientific engine and its services.
+    """
+    return {
+        "status": "online",
+        "service": settings.PROJECT_NAME,
+        "modules": {
+            "satellite_ingest": "ready",
+            "ml_detection": "ready",
+            "drift_engine": "ready",
+            "ais_attribution": "ready"
+        }
+    }
 
 app.include_router(api_v1_router, prefix=settings.API_V1_STR)

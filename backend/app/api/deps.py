@@ -28,3 +28,13 @@ def get_current_user(user: Optional[Dict[str, Any]] = Depends(get_optional_user)
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+def enforce_ownership(user: Dict[str, Any], resource_owner_uid: str):
+    """
+    Raises 403 if the authenticated user does not own the resource.
+    """
+    if user.get("uid") != resource_owner_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this resource"
+        )

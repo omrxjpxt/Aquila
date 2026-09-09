@@ -12,6 +12,7 @@ export const aisApi = {
     });
   },
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async uploadByodData(investigationId: string, file: File, declaredSource?: string): Promise<any> {
     const formData = new FormData();
     formData.append('investigation_id', investigationId);
