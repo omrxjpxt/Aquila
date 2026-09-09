@@ -24,3 +24,6 @@ out/
 backend/data/csiro_synthetic/
 backend/data/scenes/*.tif
 
+# Local Artifacts
+backend/.DS_Store
+backend/data/aquila.db
