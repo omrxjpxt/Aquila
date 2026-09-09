@@ -14,10 +14,7 @@ def initialize_firebase_admin():
     if _firebase_initialized:
         return
         
-    if settings.PERSISTENCE_BACKEND != "firestore" and settings.ARTIFACT_STORAGE_BACKEND != "gcs":
-        logger.info("Firebase Admin not initialized (PERSISTENCE_BACKEND is not 'firestore' and ARTIFACT_STORAGE_BACKEND is not 'gcs')")
-        return
-
+    # Firebase Auth is always required for API token verification.
     if not settings.FIREBASE_SERVICE_ACCOUNT_PATH or not os.path.exists(settings.FIREBASE_SERVICE_ACCOUNT_PATH):
         logger.warning(f"Firebase Admin Service Account file not found at {settings.FIREBASE_SERVICE_ACCOUNT_PATH}")
         return

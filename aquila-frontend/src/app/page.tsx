@@ -24,8 +24,8 @@ export default function CommandCenterPage() {
     ]).then(([invs, fetchedJobs]) => {
       setInvestigations(invs);
       setJobs(fetchedJobs);
-      setIsLoading(false);
-    }).catch(console.error);
+    }).catch(console.error)
+    .finally(() => setIsLoading(false));
   }, [user]);
 
   const activeInvs = investigations.filter(i => i.status !== 'CLOSED');
