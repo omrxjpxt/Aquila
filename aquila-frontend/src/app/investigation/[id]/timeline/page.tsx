@@ -1,22 +1,29 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import { Satellite, Droplet, Flag, Activity, CheckCircle, MapPin, AlertTriangle } from "lucide-react";
-import { mockIncident } from "@/lib/mockData";
-
 import { useInvestigation } from "@/contexts/InvestigationContext";
 
 export default function EvidenceTimelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { scene, candidates, selectedCandidateId, assessments, fusionResults, driftResults, vesselCandidates, attributionResults } = useInvestigation();
+  const { investigation, scene, candidates, selectedCandidateId, assessments, fusionResults, driftResults, vesselCandidates, attributionResults, loadInvestigation, isLoading, error } = useInvestigation();
   
-  const isDemo = id === "INC-AQ-001" || (!scene);
-  const fallback = mockIncident;
+  useEffect(() => {
+    loadInvestigation(id);
+  }, [id, loadInvestigation]);
 
-  const candidate = candidates.find(c => c.id === selectedCandidateId);
-  const assessment = selectedCandidateId ? assessments[selectedCandidateId] : null;
-  const fusion = selectedCandidateId ? fusionResults[selectedCandidateId] : null;
+  if (isLoading && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">Loading timeline...</div>;
+  }
+
+  if (error && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load timeline: {error}</div>;
+  }
+
+  const candidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
+  const assessment = candidate ? assessments[candidate.id] : null;
+  const fusion = candidate ? fusionResults[candidate.id] : null;
   const scenarioId = Object.keys(driftResults)[0];
   const drift = scenarioId ? driftResults[scenarioId] : null;
   const ais = scenarioId ? vesselCandidates[scenarioId] : null;
@@ -31,8 +38,8 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
     : null;
     
   const displayId = id;
-  const targetName = topVessel ? topVessel.identity.name : (isDemo ? fallback.vesselCandidates[0].name : 'UNAVAILABLE');
-  const timeframe = scene ? new Date(scene.acquisition_time).toISOString().split('T')[0] : (isDemo ? '2023-10-23' : 'UNAVAILABLE');
+  const targetName = topVessel ? topVessel.identity.name : 'UNAVAILABLE';
+  const timeframe = scene ? new Date(scene.acquisition_time).toISOString().split('T')[0] : 'UNAVAILABLE';
 
   interface TimelineEvent {
     id: string;
@@ -48,12 +55,12 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   const events: TimelineEvent[] = [];
 
   // 1. Scene Ingestion / Detection
-  if (scene || isDemo) {
+  if (scene) {
     events.push({
       id: "detection",
       title: "Initial SAR Detection",
       source: "Candidate Slick Detected",
-      description: `Sentinel-1 GRD observation detects presence of surface anomaly spanning ${candidate ? candidate.area_km2.toFixed(2) : fallback.slick.surfaceAreaKm2} km².`,
+      description: `Sentinel-1 observation detects presence of surface anomaly spanning ${candidate ? candidate.area_km2.toFixed(2) : 'unknown'} km².`,
       timeLabel: "T-0h",
       icon: Satellite,
       colorClass: "primary",
@@ -62,12 +69,12 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   }
 
   // 2. Model Assessment
-  if (assessment || isDemo) {
+  if (assessment) {
     events.push({
       id: "assessment",
       title: "Model Assessment Completed",
       source: "HOG+SVM",
-      description: `Classifier output raw decision score of ${assessment ? assessment.raw_score?.toFixed(2) : '1.2'} for ${candidate?.classification || 'OIL_LIKE'} anomaly.`,
+      description: `Classifier output raw decision score of ${assessment.raw_score?.toFixed(2)} for ${candidate?.classification || 'OIL_LIKE'} anomaly.`,
       timeLabel: "T+1h",
       icon: Activity,
       colorClass: "primary",
@@ -76,12 +83,12 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   }
 
   // 3. Evidence Fusion
-  if (fusion || isDemo) {
+  if (fusion) {
     events.push({
       id: "fusion",
       title: "Evidence Fusion Completed",
       source: "Environmental Data",
-      description: `Multi-modal evidence fusion confirms physical environmental conditions ${fusion?.overall_assessment_state || 'support'} the hypothesis.`,
+      description: `Multi-modal evidence fusion confirms physical environmental conditions ${fusion.overall_assessment_state} the hypothesis.`,
       timeLabel: "T+2h",
       icon: CheckCircle,
       colorClass: "primary",
@@ -90,11 +97,11 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   }
 
   // 4. Drift Scenario
-  if (drift || isDemo) {
+  if (drift) {
     events.push({
       id: "drift",
       title: "Estimated release window begins",
-      source: "MockDriftEngine",
+      source: "Drift Engine",
       description: `Backward simulation from detection time indicates release likely commenced within this window.`,
       timeLabel: "T-24h",
       icon: Droplet,
@@ -104,12 +111,12 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   }
 
   // 5. AIS Discovery
-  if (ais || isDemo) {
+  if (ais && ais.length > 0) {
     events.push({
       id: "ais",
-      title: "Target enters candidate region",
+      title: "Targets enter candidate region",
       source: "AIS",
-      description: `Target crossed the established geofence boundary corresponding to the primary search matrix.`,
+      description: `Targets crossed the established geofence boundary corresponding to the primary search matrix.`,
       timeLabel: "T-48h",
       icon: MapPin,
       colorClass: "on-surface-variant",
@@ -118,12 +125,12 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   }
 
   // 6. Attribution Evaluated
-  if (attribution || isDemo) {
+  if (attribution) {
     events.push({
       id: "attribution",
       title: "AIS anomaly/gap detected",
       source: "Criticality: HIGH",
-      description: `Transponder signal lost abruptly without navigational justification. Highest-ranked candidate evaluated.`,
+      description: `Highest-ranked candidate evaluated with score ${topCandidate?.evidence_ranking_score}.`,
       timeLabel: "T-36h",
       icon: AlertTriangle,
       colorClass: "error",
@@ -180,6 +187,10 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
             
             {/* Vertical Line (Spine) */}
             <div className="absolute top-4 bottom-4 left-[96px] md:left-[120px] w-px bg-outline-variant hidden sm:block"></div>
+
+            {events.length === 0 && (
+              <div className="text-center text-sm text-on-surface-variant py-8 border border-dashed border-outline-variant rounded">No events recorded yet.</div>
+            )}
 
             {events.map((evt) => (
               <div key={evt.id} className={`flex flex-col sm:flex-row items-start gap-4 md:gap-6 mb-8 relative ${evt.colorClass === 'error' || evt.colorClass === 'primary' ? 'group' : ''}`}>

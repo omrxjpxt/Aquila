@@ -10,9 +10,7 @@ from app.schemas.orchestration import JobStatus, MonitoringJob
 from app.services.repositories.factory import get_job_repository
 from app.services.orchestrator import orchestrator
 from app.services.investigation_trigger_policy import InvestigationTriggerPolicy
-from app.api.v1.satellite import candidates_db
 from app.schemas.slick import Slick
-
 
 @pytest.fixture(autouse=True)
 def reset_repositories():
@@ -21,7 +19,6 @@ def reset_repositories():
     if hasattr(repo, '_jobs'):
         repo._jobs.clear()
     investigations_db = {}
-    candidates_db.clear()
     yield
 
 

@@ -4,8 +4,8 @@ from typing import Dict, Any, Optional
 
 from app.schemas.drift import DriftScenario, DriftResult, ForecastResult
 from app.services.drift_service import DriftService
-from app.api.v1.satellite import candidates_db
 
+candidates_db = {}
 router = APIRouter(prefix="/drift", tags=["drift"])
 
 # In-memory storage for origin estimates for demo/forecast chaining

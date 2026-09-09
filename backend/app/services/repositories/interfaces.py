@@ -33,6 +33,9 @@ class InvestigationRepository:
     def get_investigation(self, inv_id: str) -> Optional[Investigation]:
         raise NotImplementedError
 
+    def list_investigations(self) -> List[Investigation]:
+        raise NotImplementedError
+
     def add_evidence(self, evidence: EvidenceEvent) -> EvidenceEvent:
         raise NotImplementedError
 
@@ -58,4 +61,16 @@ class SceneEventRepository:
         raise NotImplementedError
 
     def get_event(self, event_id: str) -> Optional[NewSceneEvent]:
+        raise NotImplementedError
+
+
+class SceneRepository:
+    """Protocol/Interface for SatelliteScene Storage."""
+    def save_scene(self, scene: "SatelliteScene") -> "SatelliteScene":
+        raise NotImplementedError
+
+    def get_scene(self, scene_id: str) -> Optional["SatelliteScene"]:
+        raise NotImplementedError
+        
+    def list_scenes(self, limit: int = 50) -> List["SatelliteScene"]:
         raise NotImplementedError

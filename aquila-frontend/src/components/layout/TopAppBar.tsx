@@ -20,8 +20,8 @@ export function TopAppBar() {
             Live Monitoring
           </Link>
           <Link 
-            href="/investigation/INC-AQ-001" 
-            className={`font-medium h-full flex items-center px-1 transition-colors ${pathname.startsWith('/investigation') ? 'text-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}
+            href="/reports" 
+            className={`font-medium h-full flex items-center px-1 transition-colors ${pathname.startsWith('/investigation') || pathname.startsWith('/reports') ? 'text-primary border-b-2 border-primary font-bold' : 'text-on-surface-variant hover:text-primary'}`}
           >
             Investigations
           </Link>

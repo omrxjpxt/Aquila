@@ -3,7 +3,8 @@ from app.services.repositories.interfaces import (
     JobRepository,
     InvestigationRepository,
     MonitoringZoneRepository,
-    SceneEventRepository
+    SceneEventRepository,
+    SceneRepository
 )
 from app.services.artifact_store import ArtifactStore, LocalArtifactStore
 
@@ -38,6 +39,14 @@ def get_scene_event_repository() -> SceneEventRepository:
     else:
         from app.services.repositories.sqlite_scene_event_repository import SqliteSceneEventRepository
         return SqliteSceneEventRepository()
+
+def get_scene_repository() -> SceneRepository:
+    if settings.PERSISTENCE_BACKEND == "firestore":
+        from app.services.repositories.firestore_scene_repository import FirestoreSceneRepository
+        return FirestoreSceneRepository()
+    else:
+        from app.services.repositories.sqlite_scene_repository import SqliteSceneRepository
+        return SqliteSceneRepository()
 
 def get_artifact_store() -> ArtifactStore:
     if settings.ARTIFACT_STORAGE_BACKEND == "gcs":

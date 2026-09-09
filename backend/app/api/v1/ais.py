@@ -10,6 +10,7 @@ from app.schemas.drift import OriginEstimate
 from app.services.ais_service import AISService, MockAISProvider, AISProvider
 from app.services.byod_ais_provider import BYODAISProvider
 
+candidates_db = {}
 router = APIRouter()
 
 class CandidateQuery(BaseModel):

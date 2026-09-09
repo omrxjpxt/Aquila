@@ -21,8 +21,29 @@ export const satelliteApi = {
   /**
    * Get an ingested scene by ID
    */
-  getScene: async (sceneId: string): Promise<SatelliteScene> => {
-    return apiClient.get<SatelliteScene>(`/satellite/scenes/${sceneId}`);
+  async listScenes(): Promise<SatelliteScene[]> {
+    return apiClient.get('/satellite/scenes');
+  },
+
+  async getScene(id: string): Promise<SatelliteScene> {
+    return apiClient.get(`/satellite/scenes/${id}`);
+  },
+
+  getPreviewUrl(id: string): string {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+    return `${baseUrl}/api/v1/satellite/scenes/${id}/preview`;
+  },
+  
+  async getPreviewBlob(id: string): Promise<string> {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+    const token = typeof window !== 'undefined' ? localStorage.getItem('aquila_auth_token') : null;
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const response = await fetch(`${baseUrl}/api/v1/satellite/scenes/${id}/preview`, { headers });
+    if (!response.ok) throw new Error('Failed to fetch preview');
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
   },
 
   /**

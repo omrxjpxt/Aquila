@@ -67,6 +67,14 @@ class FirestoreInvestigationRepository(InvestigationRepository):
             return Investigation(**doc.to_dict())
         return None
 
+    def list_investigations(self) -> List[Investigation]:
+        # Simple non-transactional list
+        query = self.collection.order_by("created_at", direction="DESCENDING")
+        results = []
+        for doc in query.stream():
+            results.append(Investigation(**doc.to_dict()))
+        return results
+
     @firestore.transactional
     def _add_evidence_txn(self, transaction: Transaction, evidence: EvidenceEvent) -> EvidenceEvent:
         # Check idempotency

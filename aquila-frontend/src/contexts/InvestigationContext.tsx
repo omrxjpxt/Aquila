@@ -1,32 +1,31 @@
 "use client";
 
 import React, { createContext, useContext, useState } from "react";
-import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate, AttributionResult, CounterfactualScenario, CounterfactualResult } from "@/lib/api/types";
+import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate, AttributionResult, CounterfactualScenario, CounterfactualResult, Investigation } from "@/lib/api/types";
 import { satelliteApi } from "@/lib/api/satellite";
 import { analysisApi } from "@/lib/api/analysis";
 import { driftApi } from "@/lib/api/drift";
-// aisApi is imported lazily to avoid circular dependencies if any
+import { investigationsApi } from "@/lib/api/investigations";
 
 interface InvestigationState {
+  investigation: Investigation | null;
   scene: SatelliteScene | null;
   candidates: Slick[];
   selectedCandidateId: string | null;
-  assessments: Record<string, LookAlikeAssessment>; // keyed by slick_id
-  fusionResults: Record<string, EvidenceFusionResult>; // keyed by slick_id
-  driftResults: Record<string, DriftResult>; // keyed by scenario_id
-  forecastResults: Record<string, ForecastResult>; // keyed by scenario_id
-  vesselCandidates: Record<string, VesselCandidate[]>; // keyed by scenario_id
-  attributionResults: Record<string, AttributionResult>; // keyed by scenario_id
-  counterfactualResults: Record<string, CounterfactualResult>; // keyed by candidate_mmsi or scenario
+  assessments: Record<string, LookAlikeAssessment>;
+  fusionResults: Record<string, EvidenceFusionResult>;
+  driftResults: Record<string, DriftResult>;
+  forecastResults: Record<string, ForecastResult>;
+  vesselCandidates: Record<string, VesselCandidate[]>;
+  attributionResults: Record<string, AttributionResult>;
+  counterfactualResults: Record<string, CounterfactualResult>;
   
   isLoading: boolean;
   error: string | null;
   
-  setScene: (scene: SatelliteScene) => void;
-  setCandidates: (candidates: Slick[]) => void;
   setSelectedCandidateId: (id: string | null) => void;
   
-  loadInvestigation: (sceneId: string) => Promise<void>;
+  loadInvestigation: (id: string) => Promise<void>;
   assessCandidate: (slickId: string) => Promise<void>;
   fuseEvidence: (slickId: string) => Promise<void>;
   runHindcast: (scenario: DriftScenario) => Promise<void>;
@@ -39,6 +38,7 @@ interface InvestigationState {
 const InvestigationContext = createContext<InvestigationState | undefined>(undefined);
 
 export function InvestigationProvider({ children }: { children: React.ReactNode }) {
+  const [investigation, setInvestigation] = useState<Investigation | null>(null);
   const [scene, setScene] = useState<SatelliteScene | null>(null);
   const [candidates, setCandidates] = useState<Slick[]>([]);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
@@ -53,34 +53,30 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadInvestigation = async (sceneId: string) => {
-    // If we already have this scene fully loaded, do nothing
-    if (scene?.id === sceneId && candidates.length > 0) return;
+  const loadInvestigation = async (invId: string) => {
+    if (investigation?.id === invId) return;
     
     setIsLoading(true);
     setError(null);
     try {
-      // 1. Fetch Scene
-      const fetchedScene = await satelliteApi.getScene(sceneId);
-      setScene(fetchedScene);
-      
-      // 2. Fetch Candidates if processed
-      if (fetchedScene.is_processed) {
-        const fetchedCandidates = await satelliteApi.getCandidates(sceneId);
-        setCandidates(fetchedCandidates);
+      const inv = await investigationsApi.getInvestigation(invId);
+      setInvestigation(inv);
+
+      if (inv.source_product_id) {
+        const fetchedScene = await satelliteApi.getScene(inv.source_product_id);
+        setScene(fetchedScene);
         
-        // Auto-select first candidate if none selected
-        if (fetchedCandidates.length > 0 && !selectedCandidateId) {
-          setSelectedCandidateId(fetchedCandidates[0].id);
+        if (fetchedScene.is_processed) {
+          const fetchedCandidates = await satelliteApi.getCandidates(fetchedScene.id);
+          setCandidates(fetchedCandidates);
+          
+          if (fetchedCandidates.length > 0 && !selectedCandidateId) {
+            setSelectedCandidateId(fetchedCandidates[0].id);
+          }
         }
       }
     } catch (err: unknown) {
-      if (sceneId === "INC-AQ-001") {
-        console.warn("Backend unavailable for INC-AQ-001, falling back to DEMO/MOCK state");
-        // We do not throw error for INC-AQ-001 to allow DEMO mode to function
-      } else {
-        setError(err instanceof Error ? err.message : "Failed to load investigation state");
-      }
+      setError(err instanceof Error ? err.message : "Failed to load investigation state");
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +84,6 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
 
   const assessCandidate = async (slickId: string) => {
     if (!scene) return;
-    
     setIsLoading(true);
     setError(null);
     try {
@@ -105,14 +100,13 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   };
 
   const fuseEvidence = async (slickId: string) => {
-    if (!scene) return;
-    
+    if (!scene || !investigation) return;
     setIsLoading(true);
     setError(null);
     try {
       const assessment = assessments[slickId];
       const result = await analysisApi.fuseEvidence({
-        investigation_id: scene.id,
+        investigation_id: investigation.id,
         scene_id: scene.id,
         slick_id: slickId,
         look_alike_assessment: assessment
@@ -158,7 +152,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
-  const findVesselCandidates = async (investigationId: string, scenarioId: string, origin: OriginEstimate, start: string, end: string, mode: string = "MOCK") => {
+  const findVesselCandidates = async (investigationId: string, scenarioId: string, origin: OriginEstimate, start: string, end: string, mode: string = "GFW") => {
     setIsLoading(true);
     setError(null);
     try {
@@ -202,6 +196,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
 
   return (
     <InvestigationContext.Provider value={{
+      investigation,
       scene,
       candidates,
       selectedCandidateId,
@@ -214,8 +209,6 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       counterfactualResults,
       isLoading,
       error,
-      setScene,
-      setCandidates,
       setSelectedCandidateId,
       loadInvestigation,
       assessCandidate,

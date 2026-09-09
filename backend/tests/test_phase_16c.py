@@ -54,6 +54,9 @@ async def test_full_pipeline_invocation(mock_event, monkeypatch):
     # 1. Mock CDSE Retrieval
     async def mock_retrieve(bbox, scene, width, height):
         assert scene.id == mock_event.product_id
+        import os
+        from pathlib import Path
+        Path("/tmp/mock_raster.tif").touch()
         return "/tmp/mock_raster.tif"
     monkeypatch.setattr(orchestrator.cdse_service, "retrieve_raster", mock_retrieve)
 
@@ -71,6 +74,8 @@ async def test_full_pipeline_invocation(mock_event, monkeypatch):
     monkeypatch.setattr(orchestrator.sat_service, "ingest_local_scene", mock_ingest)
 
     async def mock_preprocess(scene):
+        from pathlib import Path
+        Path("/tmp/processed.tif").touch()
         return ProcessingResult(scene_id=scene.id, processed_path="/tmp/processed.tif", processing_time_ms=10.0, message="done")
     monkeypatch.setattr(orchestrator.sat_service, "preprocess_scene", mock_preprocess)
 

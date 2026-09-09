@@ -34,9 +34,12 @@ def synthetic_scene_path(tmp_path):
         dtype=str(data.dtype),
         crs='EPSG:4326',
         transform=transform,
-        nodata=0.0
+        nodata=0.0,
+        tiled=True
     ) as dst:
         dst.write(data, 1)
+        
+    with rasterio.open(path, 'r+') as dst:
         dst.update_tags(POLARIZATION="VV", PRODUCT_TYPE="GRD", MISSION="TEST DATA ONLY")
         
     return path

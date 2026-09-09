@@ -81,6 +81,11 @@ class SqliteInvestigationRepository(InvestigationRepository):
             row = cursor.fetchone()
             return self._row_to_investigation(row) if row else None
 
+    def list_investigations(self) -> List[Investigation]:
+        with get_db_connection() as conn:
+            cursor = conn.execute("SELECT * FROM investigations ORDER BY created_at DESC")
+            return [self._row_to_investigation(row) for row in cursor.fetchall()]
+
     def add_evidence(self, evidence: EvidenceEvent) -> EvidenceEvent:
         with get_db_connection() as conn:
             # Idempotency for evidence: avoid duplicating the same evidence type for the same investigation from the same source

@@ -1,26 +1,29 @@
 "use client";
 
-import { use, useState } from "react";
-import { Crosshair, Droplet, ZoomIn, ZoomOut } from "lucide-react";
+import { use, useState, useEffect } from "react";
+import { Crosshair, Droplet, ZoomIn, ZoomOut, MapPin, Clock } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer, OriginRegionLayer, GeoJSONLayer } from "@/components/map/layers";
-import { mockIncident } from "@/lib/mockData";
+import { GeoJSONLayer } from "@/components/map/layers";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 
 export default function InvestigationWorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   
-  const { scene, candidates, selectedCandidateId, setSelectedCandidateId, fusionResults } = useInvestigation();
+  const { investigation, scene, candidates, selectedCandidateId, setSelectedCandidateId, fusionResults, loadInvestigation, isLoading, error } = useInvestigation();
   
-  const fusion = selectedCandidateId ? fusionResults[selectedCandidateId] : null;
-  
-  // Fallback to mock data if no real backend data is available for this ID
-  const isDemo = id === "INC-AQ-001" || (!scene);
-  const incident = mockIncident;
+  useEffect(() => {
+    loadInvestigation(id);
+  }, [id, loadInvestigation]);
 
-  // Interactive State
-  const [showSlick] = useState(true);
-  const [showOrigin] = useState(true);
+  const fusion = selectedCandidateId ? fusionResults[selectedCandidateId] : null;
+
+  if (isLoading && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">Loading investigation...</div>;
+  }
+
+  if (error && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load investigation: {error}</div>;
+  }
 
   return (
     <div className="flex w-full h-full relative overflow-hidden flex-col bg-surface">
@@ -35,8 +38,10 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                 <h2 className="text-xl font-bold text-primary mb-1">{id}</h2>
                 <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">ACTIVE INVESTIGATION</span>
               </div>
-              <span className="px-2 py-1 bg-error/10 text-error font-mono text-[10px] font-bold rounded uppercase tracking-wider border border-error/20">
-                OPEN
+              <span className={`px-2 py-1 font-mono text-[10px] font-bold rounded uppercase tracking-wider border ${
+                investigation?.status === 'OPEN' ? 'bg-error/10 text-error border-error/20' : 'bg-success/10 text-success border-success/20'
+              }`}>
+                {investigation?.status || 'OPEN'}
               </span>
             </div>
             
@@ -46,7 +51,7 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
             </h3>
 
             <div className="space-y-3">
-              {!isDemo && candidates.length > 0 && candidates.map((candidate, idx) => (
+              {candidates.length > 0 && candidates.map((candidate, idx) => (
                 <div 
                   key={candidate.id} 
                   onClick={() => setSelectedCandidateId(candidate.id)}
@@ -72,28 +77,9 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                 </div>
               ))}
               
-              {!isDemo && candidates.length === 0 && (
+              {candidates.length === 0 && (
                 <div className="text-xs text-on-surface-variant italic p-4 text-center border border-dashed border-outline-variant rounded">
-                  No candidate slicks detected in this scene.
-                </div>
-              )}
-
-              {isDemo && (
-                <div className="bg-surface border border-error shadow-sm bg-error/5 p-3 rounded cursor-pointer">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-sm bg-error"></span>
-                      <span className="font-bold text-xs text-on-surface uppercase tracking-wider">Target Slick (Mock)</span>
-                    </div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant px-1.5 py-0.5 rounded bg-surface-container-high">OIL_LIKE</span>
-                  </div>
-                  <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                    High confidence anomaly characterized by distinct sharp gradients and morphological conformity with known spills.
-                  </p>
-                  <div className="flex justify-between text-[11px] font-mono mt-2">
-                    <span className="text-on-surface-variant">AREA</span>
-                    <span className="text-on-surface font-bold">{incident.slick.surfaceAreaKm2} km²</span>
-                  </div>
+                  No candidate slicks detected or processed yet.
                 </div>
               )}
             </div>
@@ -102,55 +88,20 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
               <div className="flex justify-between border-b border-outline-variant/30 pb-2">
                 <span className="text-on-surface-variant">Center Coord</span>
                 <span className="text-on-surface">
-                  {isDemo ? (
-                    `${incident.incident.centerCoord[1].toFixed(4)}° N, ${incident.incident.centerCoord[0].toFixed(4)}° E`
-                  ) : scene ? (
-                    `${((scene.bbox[1] + scene.bbox[3]) / 2).toFixed(4)}° N, ${((scene.bbox[0] + scene.bbox[2]) / 2).toFixed(4)}° E`
-                  ) : 'N/A'}
+                  {scene ? `${((scene.bbox[1] + scene.bbox[3]) / 2).toFixed(4)}° N, ${((scene.bbox[0] + scene.bbox[2]) / 2).toFixed(4)}° E` : 'N/A'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Acquisition Time</span>
                 <span className="text-on-surface">
-                  {isDemo ? (
-                    `${new Date(incident.incident.initialDetectionTime).toISOString().slice(11, 16)}Z`
-                  ) : scene ? (
-                    `${new Date(scene.acquisition_time).toISOString().slice(11, 16)}Z`
-                  ) : 'N/A'}
+                  {scene ? `${new Date(scene.acquisition_time).toISOString().slice(11, 16)}Z` : 'N/A'}
                 </span>
               </div>
             </div>
           </div>
 
           <div className="p-4 flex-1 overflow-y-auto">
-            {isDemo && (
-              <>
-                <h3 className="text-xs font-bold tracking-wider uppercase text-on-surface mb-4 flex items-center gap-2">
-                  <Droplet className="w-4 h-4 text-primary" />
-                  SLICK CHARACTERISTICS
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-[10px] font-bold tracking-widest text-on-surface-variant mb-1">OIL TYPE CLASSIFICATION</div>
-                    <div className="font-mono text-xs text-on-surface font-medium">{incident.slick.classification}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold tracking-widest text-on-surface-variant mb-1">WEATHERING STATE</div>
-                    <div className="font-mono text-xs text-on-surface font-medium">{incident.slick.weatheringState}</div>
-                  </div>
-                  <div className="pt-4 border-t border-outline-variant/30">
-                    <div className="text-[10px] font-bold tracking-widest text-on-surface-variant mb-3">EVIDENCE CATEGORIES</div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center p-2 border border-outline-variant rounded bg-surface-container-lowest">
-                        <span className="text-[11px] font-medium text-on-surface">SAR Backscatter</span>
-                        <span className="text-[10px] font-bold uppercase text-primary bg-primary/10 px-2 py-0.5 rounded">Observed</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-            {!isDemo && candidates.length > 0 && selectedCandidateId && (
+            {candidates.length > 0 && selectedCandidateId && (
               <div className="flex flex-col h-full gap-4">
                 {fusion ? (
                   <>
@@ -201,16 +152,15 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
 
         {/* CENTER PANEL: Map Workspace */}
         <main className="flex-1 relative bg-[#eef4f8] flex flex-col">
-          
           <MapLibreCanvas 
-            center={isDemo ? incident.incident.centerCoord : (scene ? [
+            center={scene ? [
               (scene.bbox[0] + scene.bbox[2]) / 2, 
               (scene.bbox[1] + scene.bbox[3]) / 2
-            ] : [0, 0])} 
-            zoom={isDemo ? 10 : 8}
+            ] : [0, 0]} 
+            zoom={8}
           >
             {/* Real Data Layer */}
-            {!isDemo && candidates.map((candidate) => (
+            {candidates.map((candidate) => (
               <GeoJSONLayer 
                 key={candidate.id}
                 id={`candidate-${candidate.id}`}
@@ -234,25 +184,13 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                 }}
               />
             ))}
-
-            {/* Mock Data Fallback */}
-            {isDemo && (
-              <>
-                <SlickLayer center={incident.incident.centerCoord} visible={showSlick} />
-                <OriginRegionLayer center={incident.originEstimate.center} radiusKm={incident.originEstimate.radiusKm} visible={showOrigin} />
-              </>
-            )}
           </MapLibreCanvas>
 
           {/* Top Controls Overlay */}
           <div className="absolute top-4 left-4 z-10 flex gap-2 pointer-events-auto">
             <div className="bg-surface/90 backdrop-blur border border-outline-variant rounded p-3 shadow-sm flex flex-col gap-1">
               <div className="flex items-center gap-2 mb-1">
-                {isDemo ? (
-                  <span className="text-[9px] font-bold tracking-widest text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded border border-outline-variant">DEMO / MOCK</span>
-                ) : (
-                  <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">LIVE / BACKEND</span>
-                )}
+                <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">LIVE / BACKEND</span>
               </div>
             </div>
           </div>
@@ -266,7 +204,6 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
               <ZoomOut className="w-4 h-4" />
             </button>
           </div>
-
         </main>
       </div>
     </div>

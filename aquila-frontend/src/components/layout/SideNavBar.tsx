@@ -12,7 +12,6 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const NAV_ITEMS = [
   { href: "/", icon: Radar, label: "Overview" },
-  { href: "/investigation/INC-AQ-001", icon: Microscope, label: "Investigations" },
   { href: "/monitoring", icon: Radio, label: "Monitoring" },
   { href: "/vessels", icon: Ship, label: "Vessels" },
   { href: "/reports", icon: FileText, label: "Reports" },

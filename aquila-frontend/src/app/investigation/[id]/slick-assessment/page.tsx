@@ -3,20 +3,20 @@
 import { use, useEffect } from "react";
 import { Activity, AlertTriangle, CheckCircle, XCircle, Info, HelpCircle } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
-import { SlickLayer, GeoJSONLayer } from "@/components/map/layers";
-import { mockIncident } from "@/lib/mockData";
+import { GeoJSONLayer } from "@/components/map/layers";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 
 export default function SlickAssessmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { 
-    scene, candidates, selectedCandidateId, 
+    investigation, scene, candidates, selectedCandidateId, 
     assessments, fusionResults, 
-    assessCandidate, fuseEvidence, isLoading 
+    assessCandidate, fuseEvidence, loadInvestigation, isLoading, error 
   } = useInvestigation();
   
-  const isDemo = id === "INC-AQ-001" || (!scene);
-  const incident = mockIncident;
+  useEffect(() => {
+    loadInvestigation(id);
+  }, [id, loadInvestigation]);
 
   const selectedCandidate = candidates.find(c => c.id === selectedCandidateId);
   const assessment = selectedCandidateId ? assessments[selectedCandidateId] : null;
@@ -24,14 +24,14 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
 
   // Pipeline execution
   useEffect(() => {
-    if (isDemo || !selectedCandidateId || isLoading) return;
+    if (!selectedCandidateId || isLoading || !investigation || !scene) return;
     
     if (!assessment) {
       assessCandidate(selectedCandidateId);
     } else if (!fusion) {
       fuseEvidence(selectedCandidateId);
     }
-  }, [isDemo, selectedCandidateId, assessment, fusion, isLoading, assessCandidate, fuseEvidence]);
+  }, [selectedCandidateId, assessment, fusion, isLoading, assessCandidate, fuseEvidence, investigation, scene]);
 
   const renderStatusIcon = (status: string) => {
     switch (status) {
@@ -53,53 +53,52 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  if (isLoading && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">Loading assessment...</div>;
+  }
+
+  if (error && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load assessment: {error}</div>;
+  }
+
   return (
     <div className="flex w-full h-full relative overflow-hidden bg-surface-lowest p-4 gap-4">
       {/* Left: SAR Scene Layer */}
       <div className="flex-1 relative rounded-lg border border-outline-variant overflow-hidden shadow-sm bg-[#eef4f8]">
         
-        <MapLibreCanvas center={isDemo ? incident.incident.centerCoord : (scene ? [
+        <MapLibreCanvas center={scene ? [
           (scene.bbox[0] + scene.bbox[2]) / 2, 
           (scene.bbox[1] + scene.bbox[3]) / 2
-        ] : [0,0])} zoom={isDemo ? 11 : 9}>
-          
-          {isDemo ? (
-            <SlickLayer center={incident.incident.centerCoord} visible={true} />
-          ) : (
-            selectedCandidate && (
-              <GeoJSONLayer 
-                id={`slick-focus-${selectedCandidate.id}`}
-                data={{
-                  type: "Feature",
-                  geometry: selectedCandidate.geometry,
-                  properties: {}
-                } as unknown as GeoJSON.Feature}
-                type="fill"
-                paint={{
-                  "fill-color": "#ba1a1a",
-                  "fill-opacity": 0.6,
-                  "fill-outline-color": "#ffffff"
-                }}
-              />
-            )
+        ] : [0,0]} zoom={9}>
+          {selectedCandidate && (
+            <GeoJSONLayer 
+              id={`slick-focus-${selectedCandidate.id}`}
+              data={{
+                type: "Feature",
+                geometry: selectedCandidate.geometry,
+                properties: {}
+              } as unknown as GeoJSON.Feature}
+              type="fill"
+              paint={{
+                "fill-color": "#ba1a1a",
+                "fill-opacity": 0.6,
+                "fill-outline-color": "#ffffff"
+              }}
+            />
           )}
         </MapLibreCanvas>
 
         {/* HUD Elements */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
           <div className="bg-surface/90 backdrop-blur border border-outline-variant px-3 py-1.5 rounded flex items-center gap-2 shadow-sm">
-            {isDemo ? (
-              <span className="text-[9px] font-bold tracking-widest text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded border border-outline-variant uppercase">DEMO / MOCK</span>
-            ) : (
-              <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 uppercase">LIVE / BACKEND</span>
-            )}
+            <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 uppercase">LIVE / BACKEND</span>
             <span className="font-mono text-on-surface text-xs font-medium border-l border-outline-variant pl-2">
-              Sensor: {isDemo ? incident.satellite.source : scene?.provider}
+              Sensor: {scene?.provider || 'UNKNOWN'}
             </span>
           </div>
           <div className="bg-surface/90 backdrop-blur border border-outline-variant px-3 py-1.5 rounded flex items-center gap-2 shadow-sm">
             <span className="font-mono text-on-surface text-xs font-medium">
-              Time: {isDemo ? new Date(incident.satellite.acquisitionTime).toISOString().slice(11, 19) + 'Z' : (scene ? new Date(scene.acquisition_time).toISOString().slice(11, 19) + 'Z' : '')}
+              Time: {scene ? new Date(scene.acquisition_time).toISOString().slice(11, 19) + 'Z' : 'UNAVAILABLE'}
             </span>
           </div>
         </div>
@@ -109,12 +108,7 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
             <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
             <span className="text-[10px] font-bold tracking-widest uppercase text-error">SELECTED CANDIDATE</span>
           </div>
-          {isDemo ? (
-            <>
-              <span className="font-mono text-xs text-on-surface-variant font-medium">LAT: {incident.incident.centerCoord[1].toFixed(4)}° N</span>
-              <span className="font-mono text-xs text-on-surface-variant font-medium">LON: {incident.incident.centerCoord[0].toFixed(4)}° E</span>
-            </>
-          ) : selectedCandidate ? (
+          {selectedCandidate ? (
             <>
               <span className="font-mono text-xs text-on-surface-variant font-medium">ID: {selectedCandidate.id.split('-')[0]}...</span>
               <span className="font-mono text-xs text-on-surface-variant font-medium">LAT: {selectedCandidate.centroid[1].toFixed(4)}° N</span>
@@ -124,8 +118,6 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
             <span className="font-mono text-xs text-on-surface-variant font-medium">No candidate selected</span>
           )}
         </div>
-
-
       </div>
 
       {/* Right: Analytical Assessment Panel */}
@@ -155,7 +147,7 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
           <div className="flex flex-col gap-4">
             <div className="bg-surface-container-lowest border border-outline-variant rounded p-4 relative overflow-hidden">
               <div className={`absolute top-0 left-0 w-full h-1 ${
-                isDemo ? 'bg-error' : (assessment?.predicted_class === 'OIL_LIKE' ? 'bg-error' : assessment?.predicted_class === 'LOOKALIKE' ? 'bg-success' : 'bg-tertiary')
+                assessment?.predicted_class === 'OIL_LIKE' ? 'bg-error' : assessment?.predicted_class === 'LOOKALIKE' ? 'bg-success' : 'bg-tertiary'
               }`}></div>
               
               <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant block mb-2">MODEL CLASSIFICATION</span>
@@ -165,14 +157,14 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
                   <span className="text-xl font-bold text-on-surface-variant animate-pulse">EVALUATING...</span>
                 ) : (
                   <span className={`text-2xl font-bold ${
-                    isDemo ? 'text-error' : (assessment?.predicted_class === 'OIL_LIKE' ? 'text-error' : assessment?.predicted_class === 'LOOKALIKE' ? 'text-success' : 'text-tertiary')
+                    assessment?.predicted_class === 'OIL_LIKE' ? 'text-error' : assessment?.predicted_class === 'LOOKALIKE' ? 'text-success' : 'text-tertiary'
                   }`}>
-                    {isDemo ? 'OIL_LIKE' : assessment?.predicted_class || 'PENDING'}
+                    {assessment?.predicted_class || 'PENDING'}
                   </span>
                 )}
               </div>
               
-              {!isDemo && assessment && (
+              {assessment && (
                 <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-outline-variant/50">
                   <div className="flex justify-between items-center text-xs font-mono">
                     <span className="text-on-surface-variant">MODEL VERSION:</span>
@@ -196,8 +188,7 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
                   </div>
                   <div className="mt-2 text-[10px] leading-relaxed text-on-surface-variant font-medium border border-tertiary/20 bg-tertiary/5 p-2 rounded">
                     <AlertTriangle className="w-3 h-3 inline mr-1 text-tertiary" />
-                    <strong>Scientific Notice:</strong> Raw decision function scores represent distance from the hyperplane. They are not calibrated probabilities. 
-                    Trained on synthetic demonstration dataset. Not validated on real-world SAR targets.
+                    <strong>Scientific Notice:</strong> Raw decision function scores represent distance from the hyperplane. They are not calibrated probabilities.
                   </div>
                 </div>
               )}
@@ -208,13 +199,13 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
           <div>
             <h3 className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant mb-2 pb-1 border-b border-outline-variant">EVIDENCE FUSION CHAIN</h3>
             
-            {!isDemo && isLoading && !fusion && (
+            {isLoading && !fusion && (
               <div className="text-xs text-on-surface-variant p-4 border border-outline-variant rounded bg-surface-container-lowest animate-pulse text-center">
                 Fetching environmental context and fusing evidence...
               </div>
             )}
 
-            {!isDemo && fusion && (
+            {fusion && (
               <div className="space-y-3">
                 {fusion.evidence_items.map((item, idx) => (
                   <div key={idx} className="bg-surface-container-lowest border border-outline-variant rounded p-3 text-xs">
@@ -245,34 +236,6 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {isDemo && (
-              <div className="space-y-3">
-                <div className="bg-surface-container-lowest border border-outline-variant rounded p-3 text-xs">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold uppercase tracking-wider">WIND CONTEXT</span>
-                    <div className="flex items-center gap-1 font-bold tracking-widest text-[9px] text-success">
-                      <CheckCircle className="w-4 h-4 text-success" />
-                      SUPPORTING
-                    </div>
-                  </div>
-                  <div className="space-y-2 mt-2">
-                    <div>
-                      <span className="text-[10px] text-on-surface-variant block uppercase tracking-wider">Observation</span>
-                      <span className="font-mono">Speed: 4.5 m/s, Dir: 275.0°</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-on-surface-variant block uppercase tracking-wider">Interpretation</span>
-                      <span>FAVORABLE DETECTION CONTEXT. Optimal wind regime for SAR slick contrast.</span>
-                    </div>
-                    <div className="bg-surface-variant/30 p-2 rounded mt-2">
-                      <span className="text-[9px] text-on-surface-variant block uppercase tracking-wider mb-0.5">Provenance</span>
-                      <span className="font-mono text-[9px] text-on-surface-variant">DEMO / MOCK ERA5</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
           </div>

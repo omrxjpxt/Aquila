@@ -2,7 +2,7 @@ import { VesselCandidate, OriginEstimate } from './types';
 import { apiClient } from './client';
 
 export const aisApi = {
-  async discoverCandidates(investigationId: string, origin: OriginEstimate, startTime: string, endTime: string, mode: string = "MOCK"): Promise<VesselCandidate[]> {
+  async discoverCandidates(investigationId: string, origin: OriginEstimate, startTime: string, endTime: string, mode: string = "GFW"): Promise<VesselCandidate[]> {
     return apiClient.post<VesselCandidate[]>('/ais/candidates', {
         investigation_id: investigationId,
         origin,

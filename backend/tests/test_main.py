@@ -14,4 +14,4 @@ def test_status_endpoint():
     data = response.json()
     assert data["status"] == "online"
     assert "service" in data
-    assert "modules" in data
+    assert "providers" in data

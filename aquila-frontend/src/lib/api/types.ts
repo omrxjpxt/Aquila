@@ -1,5 +1,88 @@
 // Types matching FastAPI Pydantic schemas
 
+export interface MonitoringZone {
+  id: string;
+  name: string;
+  geometry: GeoJSON.Polygon;
+  product_types: string[];
+  owner_uid: string;
+  is_enabled: boolean;
+  is_demo: boolean;
+}
+
+export type JobStatus = 
+  | "DISCOVERED" | "QUEUED" | "RETRIEVING" | "PROCESSING" | "CANDIDATES_FOUND" 
+  | "CLASSIFYING" | "INVESTIGATION_CREATED" | "ENVIRONMENT" | "DRIFT" 
+  | "VESSEL_EVIDENCE" | "ATTRIBUTION" | "REPORT_READY" | "RESOLVED" 
+  | "RETRY_WAIT" | "FAILED";
+
+export interface MonitoringJob {
+  job_id: string;
+  product_id: string;
+  product_name: string;
+  monitoring_zone_id: string;
+  owner_uid: string;
+  status: JobStatus;
+  created_at: string;
+  updated_at: string;
+  retry_count: number;
+  max_retries: number;
+  last_error?: string | null;
+  next_attempt_at?: string | null;
+  scene_event_payload: Record<string, unknown>;
+  investigation_ids: string[];
+  classification_results: Record<string, unknown>[];
+  provenance_references: string[];
+  artifact_references: Record<string, unknown>[];
+  worker_id?: string | null;
+  claimed_at?: string | null;
+  lease_until?: string | null;
+}
+
+export interface Investigation {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  creation_mode: string;
+  owner_uid: string;
+  source_product_id: string;
+  monitoring_zone_id: string;
+  anomaly_id: string;
+  anomaly_geometry?: GeoJSON.Geometry | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EvidenceEvent {
+  id: string;
+  investigation_id: string;
+  owner_uid: string;
+  event_type: string;
+  source: string;
+  status: string;
+  description: string;
+  metadata?: Record<string, unknown> | null;
+  artifact_reference?: Record<string, unknown> | null;
+  event_time: string;
+  logged_at: string;
+  provenance?: string | null;
+}
+
+export interface SystemStatus {
+  status: string;
+  service: string;
+  persistence: string;
+  providers: {
+    cdse: string;
+    firebase: string;
+    gfw: string;
+    open_meteo: string;
+    opendrift: string;
+    ml_model: string;
+  };
+}
+
 export interface SatelliteScene {
   id: string;
   provider: string;
