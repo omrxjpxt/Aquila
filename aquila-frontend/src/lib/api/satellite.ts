@@ -30,15 +30,12 @@ export const satelliteApi = {
   },
 
   getPreviewUrl(id: string): string {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
-    return `${baseUrl}/api/v1/satellite/scenes/${id}/preview`;
+    return `${apiClient.baseUrl}/satellite/scenes/${id}/preview`;
   },
   
   async getPreviewBlob(id: string): Promise<string> {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
     const headers = await apiClient.getAuthHeaders();
-    
-    const response = await fetch(`${baseUrl}/api/v1/satellite/scenes/${id}/preview`, { headers });
+    const response = await fetch(`${apiClient.baseUrl}/satellite/scenes/${id}/preview`, { headers });
     if (!response.ok) throw new Error('Failed to fetch preview');
     const blob = await response.blob();
     return URL.createObjectURL(blob);

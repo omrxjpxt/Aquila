@@ -3,7 +3,7 @@
 import { MapLibreCanvas, useMap } from "@/components/map/MapLibreCanvas";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { AlertTriangle, MapPin, Clock, Radar, Layers, Ship, ChevronRight, Activity, Satellite } from "lucide-react";
+import { AlertTriangle, MapPin, Radar, Layers, Ship, ChevronRight, Activity, Satellite } from "lucide-react";
 import { investigationsApi } from "@/lib/api/investigations";
 import { monitoringApi } from "@/lib/api/monitoring";
 import { systemApi } from "@/lib/api/system";
@@ -12,61 +12,170 @@ import { Investigation, MonitoringJob, SystemStatus, SatelliteScene } from "@/li
 import { useAuth } from "@/contexts/AuthContext";
 import { GeoJSONLayer } from "@/components/map/layers";
 
-function ImageOverlayLayer({ id, sceneId, bbox, visible = true }: { id: string; sceneId: string; bbox: [number, number, number, number]; visible?: boolean }) {
+function ImageOverlayLayer({ 
+  id, 
+  sceneId, 
+  bbox, 
+  visible = true 
+}: { 
+  id: string; 
+  sceneId: string; 
+  bbox: [number, number, number, number]; 
+  visible?: boolean 
+}) {
   const map = useMap();
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  const [west, south, east, north] = bbox;
 
   useEffect(() => {
-    let active = true;
-    satelliteApi.getPreviewBlob(sceneId).then(url => {
-      if (active) setBlobUrl(url);
-    }).catch(console.error);
-    return () => { active = false; };
-  }, [sceneId]);
+    if (!map) return;
 
-  useEffect(() => {
-    if (!map || !blobUrl) return;
-    
-    // Coordinates format: [top-left, top-right, bottom-right, bottom-left]
-    const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
-      [bbox[0], bbox[3]], // min_lon, max_lat
-      [bbox[2], bbox[3]], // max_lon, max_lat
-      [bbox[2], bbox[1]], // max_lon, min_lat
-      [bbox[0], bbox[1]]  // min_lon, min_lat
-    ];
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    const sourceId = `source-${id}`;
+    const layerId = `layer-${id}`;
 
-    if (!map.getSource(id)) {
-      map.addSource(id, {
+    const cleanup = () => {
+
+      try {
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+        }
+      } catch (err) {
+        console.warn("Failed to remove layer:", err);
+      }
+
+      try {
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
+        }
+      } catch (err) {
+        console.warn("Failed to remove source:", err);
+      }
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+        objectUrl = null;
+      }
+    };
+
+    const addLayer = (url: string) => {
+      if (cancelled) return;
+
+      const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [
+        [west, north], // top-left
+        [east, north], // top-right
+        [east, south], // bottom-right
+        [west, south]  // bottom-left
+      ];
+
+      // Remove existing layer and source if they exist
+      if (map.getLayer(layerId)) {
+        try { map.removeLayer(layerId); } catch {}
+      }
+      if (map.getSource(sourceId)) {
+        try { map.removeSource(sourceId); } catch {}
+      }
+
+      map.addSource(sourceId, {
         type: "image",
-        url: blobUrl,
+        url: url,
         coordinates: coordinates
       });
+
       map.addLayer({
-        id: id,
+        id: layerId,
         type: "raster",
-        source: id,
+        source: sourceId,
         paint: {
-          "raster-opacity": 0.8,
-          "raster-fade-duration": 0
+          "raster-opacity": 0.78,
+          "raster-fade-duration": 0,
+          "raster-resampling": "nearest"
         },
         layout: {
           visibility: visible ? "visible" : "none"
         }
       });
-    } else {
-      const source = map.getSource(id) as unknown as { updateImage: (opts: { url: string; coordinates: [[number, number], [number, number], [number, number], [number, number]] }) => void };
-      if (source && source.updateImage) {
-        source.updateImage({ url: blobUrl, coordinates });
+
+      // Automatically fit map to scene bbox with surrounding geographic context
+      try {
+        map.resize();
+        map.fitBounds(
+          [
+            [west, south],
+            [east, north]
+          ],
+          {
+            padding: 100,
+            duration: 800,
+            maxZoom: 7.8
+          }
+        );
+      } catch (e) {
+        console.error("Failed to fit bounds to scene:", e);
       }
-      if (map.getLayer(id)) {
-        map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+    };
+
+    const tryAddLayer = (url: string) => {
+      if (cancelled) return;
+      try {
+        addLayer(url);
+      } catch (err) {
+        console.warn("Retrying SAR overlay when style loads:", err);
+        const retry = () => {
+          if (!cancelled && objectUrl) {
+            try { addLayer(objectUrl); } catch {}
+          }
+        };
+        map.once("style.load", retry);
+        map.once("load", retry);
       }
-    }
+    };
+
+    satelliteApi.getPreviewBlob(sceneId)
+      .then(url => {
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        objectUrl = url;
+        setPreviewError(null);
+        tryAddLayer(url);
+      })
+      .catch(err => {
+        if (!cancelled) {
+          console.error("Failed to fetch satellite preview blob:", err);
+          setPreviewError("Unable to load satellite preview.");
+        }
+      });
 
     return () => {
-      // Cleanup happens when the map itself unmounts
+      cancelled = true;
+      cleanup();
     };
-  }, [map, id, blobUrl, bbox, visible]);
+  }, [map, id, sceneId, west, south, east, north, visible]);
+
+  useEffect(() => {
+    if (!map) return;
+    const layerId = `layer-${id}`;
+    if (map.getLayer(layerId)) {
+      try {
+        map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+      } catch {}
+    }
+  }, [map, id, visible]);
+
+  if (previewError) {
+    return (
+      <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+        <div className="bg-surface/90 backdrop-blur p-4 rounded-lg shadow-md border border-error/30 text-center pointer-events-auto max-w-xs">
+          <AlertTriangle className="w-6 h-6 text-error mx-auto mb-2" />
+          <p className="text-sm font-semibold text-error">{previewError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return null;
 }
@@ -77,7 +186,8 @@ export default function CommandCenterPage() {
   const [jobs, setJobs] = useState<MonitoringJob[]>([]);
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [scenes, setScenes] = useState<SatelliteScene[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [retryTrigger, setRetryTrigger] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const [email, setEmail] = useState("operator@aquila.system");
@@ -85,45 +195,43 @@ export default function CommandCenterPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchData = async () => {
-    try {
-      const [invs, fetchedJobs, fetchedStatus, fetchedScenes] = await Promise.all([
-        investigationsApi.listInvestigations(),
-        monitoringApi.getJobs(undefined, 20),
-        systemApi.getStatus().catch(() => null),
-        satelliteApi.listScenes().catch(() => [])
-      ]);
-      setInvestigations(invs);
-      setJobs(fetchedJobs);
-      setStatus(fetchedStatus);
-      setScenes(fetchedScenes);
-      setError(null);
-    } catch (err: unknown) {
-      setError("Unable to load live data.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (authLoading) return;
-    
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-    
-    setIsLoading(true);
-    const runFetch = async () => {
-      await fetchData();
-    };
-    
-    runFetch();
-    const interval = setInterval(runFetch, 10000);
-    return () => clearInterval(interval);
-  }, [authLoading, user]);
+    if (authLoading || !user) return;
 
-  if (authLoading || (isLoading && user)) {
+    let ignore = false;
+    const loadData = async () => {
+      try {
+        const [invs, fetchedJobs, fetchedStatus, fetchedScenes] = await Promise.all([
+          investigationsApi.listInvestigations(),
+          monitoringApi.getJobs(undefined, 20),
+          systemApi.getStatus().catch(() => null),
+          satelliteApi.listScenes().catch(() => [])
+        ]);
+        if (!ignore) {
+          setInvestigations(invs);
+          setJobs(fetchedJobs);
+          setStatus(fetchedStatus);
+          setScenes(fetchedScenes);
+          setError(null);
+          setDataLoaded(true);
+        }
+      } catch {
+        if (!ignore) {
+          setError("Unable to load live data.");
+          setDataLoaded(true);
+        }
+      }
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 10000);
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, [authLoading, user, retryTrigger]);
+
+  if (authLoading || (!dataLoaded && user)) {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-[#F6FAFD]">
         <div className="flex items-center gap-2 text-on-surface-variant">
@@ -249,7 +357,7 @@ export default function CommandCenterPage() {
             <AlertTriangle className="w-10 h-10 text-error mx-auto mb-4" />
             <h2 className="text-error font-bold text-lg mb-2">Unable to load live data.</h2>
             <p className="text-sm text-error/80 mb-6">There was a problem connecting to the AQUILA scientific engine.</p>
-            <button onClick={() => { setIsLoading(true); fetchData(); }} className="px-4 py-2 bg-error text-white rounded text-sm font-medium hover:bg-error/90 transition-colors">
+            <button onClick={() => { setDataLoaded(false); setError(null); setRetryTrigger(c => c + 1); }} className="px-4 py-2 bg-error text-white rounded text-sm font-medium hover:bg-error/90 transition-colors">
               Retry Connection
             </button>
          </div>
@@ -260,6 +368,18 @@ export default function CommandCenterPage() {
   const activeInvs = investigations.filter(i => i.status !== 'CLOSED');
   const highPriorityInvs = activeInvs.filter(i => i.priority === 'HIGH' || i.priority === 'CRITICAL');
   const activeJobs = jobs.filter(j => j.status !== 'RESOLVED' && j.status !== 'FAILED');
+
+  // Select the latest usable processed Sentinel-1 SAR scene
+  const processedScenes = scenes.filter(s => s.is_processed);
+  const sortedProcessedScenes = [...processedScenes].sort(
+    (a, b) => new Date(b.acquisition_time).getTime() - new Date(a.acquisition_time).getTime()
+  );
+  const activeScene = sortedProcessedScenes[0] || null;
+
+  const defaultCenter: [number, number] = activeScene
+    ? [(activeScene.bbox[0] + activeScene.bbox[2]) / 2, (activeScene.bbox[1] + activeScene.bbox[3]) / 2]
+    : [58.025, 24.474];
+  const defaultZoom = activeScene ? 7.8 : 6;
 
   const lastUpdated = new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
 
@@ -437,10 +557,10 @@ export default function CommandCenterPage() {
         </div>
 
         {/* Right Column - Map */}
-        <div className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm flex flex-col overflow-hidden relative">
+        <div className="flex-1 bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm flex flex-col overflow-hidden relative min-h-[450px] h-full">
            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10 pointer-events-none">
               <div className="bg-surface/95 backdrop-blur shadow-sm border border-outline-variant p-3 rounded-lg pointer-events-auto">
-                 <h2 className="text-[15px] font-bold text-on-surface mb-0.5">Live Satellite View</h2>
+                 <h2 className="text-[15px] font-bold text-on-surface mb-0.5 uppercase tracking-wide">LIVE SATELLITE VIEW</h2>
                  <p className="text-[12px] text-outline">Latest Sentinel-1 acquisitions and detected anomalies</p>
               </div>
               <div className="bg-surface border border-outline-variant px-3 py-1.5 rounded shadow-sm text-[13px] font-bold text-on-surface pointer-events-auto flex items-center gap-2">
@@ -449,30 +569,55 @@ export default function CommandCenterPage() {
               </div>
            </div>
 
-           <div className="flex-1 relative bg-[#eef4f8]">
-              <MapLibreCanvas center={[112, 12]} zoom={4}>
+           <div className="flex-1 relative bg-[#eef4f8] min-h-[400px] h-full">
+              <MapLibreCanvas center={defaultCenter} zoom={defaultZoom} className="h-full min-h-[400px]">
                  
                  {/* Empty State Overlay */}
-                 {scenes.length === 0 && (
+                 {!activeScene && (
                    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
-                      <div className="bg-surface/90 backdrop-blur p-6 rounded-lg shadow-lg border border-outline-variant text-center pointer-events-auto">
+                      <div className="bg-surface/90 backdrop-blur p-6 rounded-lg shadow-lg border border-outline-variant text-center pointer-events-auto max-w-sm">
                          <Satellite className="w-10 h-10 text-outline-variant mx-auto mb-3" />
-                         <h3 className="text-lg font-bold text-on-surface mb-2">NO SATELLITE SCENES AVAILABLE</h3>
-                         <p className="text-sm text-outline">Waiting for the next acquisition...</p>
+                         <h3 className="text-sm font-bold text-on-surface mb-1">NO PROCESSED SATELLITE SCENES AVAILABLE</h3>
+                         <p className="text-xs text-outline">Waiting for satellite acquisitions...</p>
                       </div>
                    </div>
                  )}
 
-                 {/* Imagery Overlays */}
-                 {scenes.map(scene => (
-                   <ImageOverlayLayer 
-                     key={scene.id} 
-                     id={`preview-${scene.id}`} 
-                     sceneId={scene.id} 
-                     bbox={scene.bbox} 
-                     visible={true}
-                   />
-                 ))}
+                 {/* Active Processed Sentinel-1 SAR Imagery Overlay */}
+                 {activeScene && (
+                   <>
+                     <ImageOverlayLayer 
+                       key={activeScene.id} 
+                       id={`sar-${activeScene.id}`} 
+                       sceneId={activeScene.id} 
+                       bbox={activeScene.bbox} 
+                       visible={true}
+                     />
+                     <GeoJSONLayer
+                       id={`scene-bbox-${activeScene.id}`}
+                       data={{
+                         type: "Feature",
+                         geometry: {
+                           type: "Polygon",
+                           coordinates: [[
+                             [activeScene.bbox[0], activeScene.bbox[1]],
+                             [activeScene.bbox[2], activeScene.bbox[1]],
+                             [activeScene.bbox[2], activeScene.bbox[3]],
+                             [activeScene.bbox[0], activeScene.bbox[3]],
+                             [activeScene.bbox[0], activeScene.bbox[1]],
+                           ]]
+                         },
+                         properties: {}
+                       }}
+                       type="line"
+                       paint={{
+                         "line-color": "#00e5ff",
+                         "line-width": 2,
+                         "line-dasharray": [3, 2]
+                       }}
+                     />
+                   </>
+                 )}
 
                  {/* Anomaly Polygons from Investigations */}
                  <GeoJSONLayer
@@ -517,10 +662,10 @@ export default function CommandCenterPage() {
                     <div className="w-3 h-3 rounded-full bg-white border-2 border-outline" />
                     <span className="text-[11px] font-bold text-on-surface">Vessel (AIS)</span>
                  </div>
-                 <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-outline border border-white" />
-                    <span className="text-[11px] font-bold text-on-surface">Sentinel-1 Coverage</span>
-                 </div>
+                  <div className="flex items-center gap-2">
+                     <div className="w-3 h-3 border-2 border-dashed border-[#00e5ff] bg-[#00e5ff]/20" />
+                     <span className="text-[11px] font-bold text-on-surface">Sentinel-1 Coverage</span>
+                  </div>
               </div>
            </div>
         </div>

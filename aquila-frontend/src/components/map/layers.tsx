@@ -23,26 +23,49 @@ export function GeoJSONLayer({
   useEffect(() => {
     if (!map) return;
 
-    if (!map.getSource(id)) {
-      map.addSource(id, {
-        type: "geojson",
-        data: data as GeoJSON.GeoJSON,
-      });
-    }
+    let cancelled = false;
 
-    if (!map.getLayer(id)) {
-      map.addLayer({
-        id,
-        type,
-        source: id,
-        paint,
-        layout,
-      } as LayerSpecification);
+    const add = () => {
+      if (cancelled) return;
+      try {
+        if (!map.getSource(id)) {
+          map.addSource(id, {
+            type: "geojson",
+            data: data as GeoJSON.GeoJSON,
+          });
+        }
+
+        if (!map.getLayer(id)) {
+          map.addLayer({
+            id,
+            type,
+            source: id,
+            paint,
+            layout,
+          } as LayerSpecification);
+        }
+      } catch (e) {
+        console.warn(`[GeoJSONLayer] Deferring layer ${id}:`, e);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      add();
+    } else {
+      map.once("style.load", add);
+      map.once("load", add);
     }
 
     return () => {
-      if (map.getLayer(id)) map.removeLayer(id);
-      if (map.getSource(id)) map.removeSource(id);
+      cancelled = true;
+      map.off("style.load", add);
+      map.off("load", add);
+      try {
+        if (map.getLayer(id)) map.removeLayer(id);
+      } catch {}
+      try {
+        if (map.getSource(id)) map.removeSource(id);
+      } catch {}
     };
   }, [map, id, data, type, paint, layout]);
 

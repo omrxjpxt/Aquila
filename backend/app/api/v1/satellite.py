@@ -204,28 +204,31 @@ async def get_scene_preview(scene_id: str):
             else:
                 data = src.read(1)
         
-        # Replace NaN/nodata with 0
-        data = np.nan_to_num(data, nan=0.0)
+        # Identify valid pixels (not NaN/inf and not nodata)
+        valid_mask = np.isfinite(data)
+        if hasattr(src, 'nodata') and src.nodata is not None:
+            valid_mask &= (data != src.nodata)
 
-        # Apply a display stretch (2nd to 98th percentile) for visualization
-        p2, p98 = np.percentile(data[data > 0], (2, 98)) if np.any(data > 0) else (0, 1)
-        data_clipped = np.clip(data, p2, p98)
-        data_normalized = (data_clipped - p2) / (p98 - p2 + 1e-9)
+        if np.any(valid_mask):
+            p2, p98 = np.percentile(data[valid_mask], (2, 98))
+            if p98 <= p2:
+                p2, p98 = float(np.min(data[valid_mask])), float(np.max(data[valid_mask]))
+            if p98 > p2:
+                clipped = np.clip(data, p2, p98)
+                data_normalized = (clipped - p2) / (p98 - p2)
+            else:
+                data_normalized = np.zeros_like(data)
+        else:
+            data_normalized = np.zeros_like(data)
 
-        # Plot
-        fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
-        ax.imshow(data_normalized, cmap='gray', vmin=0, vmax=1)
-        ax.axis('off')
+        from PIL import Image
+        gray = (data_normalized * 255).astype(np.uint8)
+        alpha = np.where(valid_mask, 255, 0).astype(np.uint8)
+        rgba = np.stack([gray, gray, gray, alpha], axis=-1)
 
-        # Add watermark
-        ax.text(0.5, 0.02, "Display stretch applied for visualization — scientific raster unchanged.", 
-                color='white', fontsize=10, ha='center', va='bottom', transform=ax.transAxes,
-                bbox=dict(facecolor='black', alpha=0.5, edgecolor='none', pad=2))
-
+        img = Image.fromarray(rgba, mode='RGBA')
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0, facecolor='black')
-        plt.close(fig)
-        
+        img.save(buf, format='PNG')
         buf.seek(0)
         return Response(content=buf.read(), media_type="image/png")
     except Exception as e:
