@@ -296,7 +296,11 @@ export default function MonitoringPage() {
               <div className="flex items-center gap-2">
                 <Satellite className="w-4 h-4 text-primary" />
                 <h2 className="text-xs font-bold text-on-surface uppercase tracking-widest">
-                  Active Pipeline Job
+                  {activeJobs.length > 0
+                    ? "Active Pipeline Job"
+                    : jobs.length > 0
+                    ? "Latest Monitoring Run"
+                    : "No Monitoring Runs"}
                 </h2>
               </div>
               {focusJob && (
@@ -553,7 +557,7 @@ export default function MonitoringPage() {
 
           <div className="bg-surface/90 backdrop-blur border border-outline-variant/60 p-3.5 rounded-lg shadow-lg pointer-events-auto min-w-[170px]">
             <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-              Open Investigations
+              Active Investigations
             </div>
             <div className="text-2xl font-bold font-mono text-error">
               {investigations.filter(i => i.status !== 'CLOSED').length}

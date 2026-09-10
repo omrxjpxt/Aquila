@@ -169,9 +169,10 @@ class OpenMeteoForcingAdapter:
         if start_time > end_time:
             start_time, end_time = end_time, start_time
 
-        # Ensure we fetch enough days to cover the window (pad by 1 day to be safe)
+        # Ensure we fetch enough days to cover the window (pad by 1 day to be safe, capped at current time for archive api)
         start_date_str = (start_time - timedelta(days=1)).strftime("%Y-%m-%d")
-        end_date_str = (end_time + timedelta(days=1)).strftime("%Y-%m-%d")
+        effective_end = min(end_time + timedelta(days=1), retrieval_time)
+        end_date_str = effective_end.strftime("%Y-%m-%d")
 
         # Build grid
         # Add a small epsilon to the end to ensure range inclusive of boundary

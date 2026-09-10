@@ -152,7 +152,8 @@ def initialize_db(db_path: str = DB_PATH):
 @contextmanager
 def get_db_connection():
     """Provides a transactional database connection."""
-    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+    target_path = os.getenv("AQUILA_DB_PATH", DB_PATH)
+    conn = sqlite3.connect(target_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
     conn.row_factory = sqlite3.Row
     try:
         yield conn

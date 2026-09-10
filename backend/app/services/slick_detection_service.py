@@ -1,4 +1,6 @@
 import uuid
+import hashlib
+import json
 from typing import List
 from datetime import datetime
 import numpy as np
@@ -27,36 +29,31 @@ class SlickDetectionService:
         detected_slicks = []
 
         with rasterio.open(scene.processed_storage_path) as src:
-            data = src.read(1)
-            nodata = src.nodata
+            image = src.read(1)
             transform = src.transform
 
-            # Mask valid data
-            if nodata is not None:
-                valid_mask = data != nodata
-            else:
-                valid_mask = ~np.isnan(data)
-
-            # If no valid data, return empty
+            # Normalize to 0-1 for thresholding if needed, or work with float
+            # Handling nodata / infs
+            valid_mask = np.isfinite(image)
             if not np.any(valid_mask):
                 return []
 
-            # Baseline parameters
-            block_size = 51  # Local area size for adaptive threshold
-            offset = 2.0     # dB offset below the local mean to be considered "anomalous"
+            # Background adaptive threshold
+            # Slicks appear as low-backscatter (dark) anomalies against sea clutter
+            # We use threshold_local to find a local mean, then flag pixels significantly below it.
+            block_size = 51  # roughly 500m window at 10m/pixel
+            offset = 2.0  # dB drop from local mean to be considered anomaly
             min_area_pixels = 50  # Filter out tiny noise
 
-            # Compute adaptive threshold (local mean)
-            # threshold_local handles the local mean computation
-            local_thresh = threshold_local(data, block_size, method='gaussian')
+            # Fill invalid data with mean for local thresholding
+            clean_image = np.copy(image)
+            clean_image[~valid_mask] = np.nanmean(image)
 
-            # A candidate dark patch is one where the backscatter is lower than the local mean by at least `offset` dB
-            anomaly_mask = (data < (local_thresh - offset)) & valid_mask
+            local_thresh = threshold_local(clean_image, block_size=block_size, offset=offset)
+            anomaly_mask = (clean_image < local_thresh) & valid_mask
 
-            # Extract geometries using rasterio
-            # anomaly_mask must be uint8 or int32 for rasterio.features.shapes
+            # Polygonize anomalies
             mask_uint8 = anomaly_mask.astype(np.uint8)
-
             results = shapes(mask_uint8, mask=anomaly_mask, transform=transform)
 
             for geom, value in results:
@@ -75,8 +72,10 @@ class SlickDetectionService:
                     if s.area > 0 and min_area_pixels >= 0:  # Filter empty
                         # For baseline, we just accept it if it's a polygon
 
-                        # Generate random UUID for detection
-                        detection_id = str(uuid.uuid4())
+                        # Deterministic candidate ID based on geometry coordinates
+                        coords_str = json.dumps(geom.get("coordinates", []), sort_keys=True)
+                        geom_hash = hashlib.sha256(coords_str.encode()).hexdigest()[:12]
+                        detection_id = f"cand-{geom_hash}"
 
                         slick = Slick(
                             id=detection_id,

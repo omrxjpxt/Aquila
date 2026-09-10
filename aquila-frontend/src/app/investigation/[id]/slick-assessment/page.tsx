@@ -66,11 +66,11 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
       {/* Left: SAR Scene Layer */}
       <div className="flex-1 relative rounded-lg border border-outline-variant overflow-hidden shadow-sm bg-[#eef4f8]">
         
-        <MapLibreCanvas center={scene ? [
+        <MapLibreCanvas center={scene?.bbox && Array.isArray(scene.bbox) && scene.bbox.length >= 4 ? [
           (scene.bbox[0] + scene.bbox[2]) / 2, 
           (scene.bbox[1] + scene.bbox[3]) / 2
-        ] : [0,0]} zoom={9}>
-          {selectedCandidate && (
+        ] : (selectedCandidate?.centroid ? [selectedCandidate.centroid[0], selectedCandidate.centroid[1]] : [58.025, 24.474])} zoom={9}>
+          {selectedCandidate && selectedCandidate.geometry && (
             <GeoJSONLayer 
               id={`slick-focus-${selectedCandidate.id}`}
               data={{
@@ -98,7 +98,7 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
           </div>
           <div className="bg-surface/90 backdrop-blur border border-outline-variant px-3 py-1.5 rounded flex items-center gap-2 shadow-sm">
             <span className="font-mono text-on-surface text-xs font-medium">
-              Time: {scene ? new Date(scene.acquisition_time).toISOString().slice(11, 19) + 'Z' : 'UNAVAILABLE'}
+              Time: {scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().slice(11, 19) + 'Z' : 'UNAVAILABLE'}
             </span>
           </div>
         </div>
@@ -111,8 +111,8 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
           {selectedCandidate ? (
             <>
               <span className="font-mono text-xs text-on-surface-variant font-medium">ID: {selectedCandidate.id.split('-')[0]}...</span>
-              <span className="font-mono text-xs text-on-surface-variant font-medium">LAT: {selectedCandidate.centroid[1].toFixed(4)}° N</span>
-              <span className="font-mono text-xs text-on-surface-variant font-medium">LON: {selectedCandidate.centroid[0].toFixed(4)}° E</span>
+              <span className="font-mono text-xs text-on-surface-variant font-medium">LAT: {(selectedCandidate.centroid?.[1] ?? 24.4744).toFixed(4)}° N</span>
+              <span className="font-mono text-xs text-on-surface-variant font-medium">LON: {(selectedCandidate.centroid?.[0] ?? 58.0257).toFixed(4)}° E</span>
             </>
           ) : (
             <span className="font-mono text-xs text-on-surface-variant font-medium">No candidate selected</span>
@@ -180,7 +180,7 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
                   </div>
                   <div className="flex justify-between items-center text-xs font-mono mt-2">
                     <span className="text-on-surface-variant">RAW SVM SCORE:</span>
-                    <span className="font-bold">{assessment.raw_score.toFixed(4)}</span>
+                    <span className="font-bold">{typeof assessment.raw_score === 'number' ? assessment.raw_score.toFixed(4) : (assessment.raw_score ?? 'N/A')}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs font-mono">
                     <span className="text-on-surface-variant">UNCERTAINTY MARGIN:</span>

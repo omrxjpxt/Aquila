@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from '../firebase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
@@ -50,15 +51,24 @@ export const setAuthToken = (token: string | null) => {
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   if (memoryToken) return { 'Authorization': `Bearer ${memoryToken}` };
-  if (auth && auth.currentUser) {
-    try {
-      const token = await auth.currentUser.getIdToken();
-      if (token) {
-        memoryToken = token;
-        return { 'Authorization': `Bearer ${token}` };
+  if (auth) {
+    if (typeof (auth as any).authStateReady === 'function') {
+      try {
+        await (auth as any).authStateReady();
+      } catch {
+        // ignore
       }
-    } catch (e) {
-      console.warn("Failed to get auth token from auth.currentUser:", e);
+    }
+    if (auth.currentUser) {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        if (token) {
+          memoryToken = token;
+          return { 'Authorization': `Bearer ${token}` };
+        }
+      } catch (e) {
+        console.warn("Failed to get auth token from auth.currentUser:", e);
+      }
     }
   }
   return {};

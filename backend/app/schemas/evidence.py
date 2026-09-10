@@ -18,4 +18,6 @@ class EvidenceEvent(BaseModel):
     source: str = Field(..., description="Where this evidence came from (e.g. Sentinel-1, AIS, Attribution Engine)")
     description: str
 
+    status: Optional[str] = Field(default="ATTACHED", description="Status of the evidence item")
+    provenance: Optional[str] = Field(default=None, description="Data provenance: LIVE, REAL_DATA_TRAINED, DEMO_MOCK, or UNAVAILABLE")
     metadata: Optional[Any] = Field(default=None, description="Optional structured data related to the event")

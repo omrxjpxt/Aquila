@@ -334,4 +334,107 @@ class OpenDriftEngine(DriftEngine):
         )
 
     async def run_forecast(self, scenario: DriftScenario, origin: OriginEstimate) -> ForecastResult:
-        raise NotImplementedError("Forecast not yet supported for OpenDriftEngine in Phase 13B")
+        poly_coords = origin.geometry["coordinates"][0]
+        lon = sum(p[0] for p in poly_coords[:-1]) / (len(poly_coords) - 1)
+        lat = sum(p[1] for p in poly_coords[:-1]) / (len(poly_coords) - 1)
+
+        result_data = await self._run_simulation(
+            scenario=scenario, lon=lon, lat=lat, 
+            start_time=scenario.start_time, is_backward=False
+        )
+
+        lons = result_data["lons"]
+        lats = result_data["lats"]
+        timestamps = result_data["timestamps"]
+
+        centroid_coords = []
+        for t_idx in range(len(timestamps)):
+            t_lons = lons[:, t_idx]
+            t_lats = lats[:, t_idx]
+            if hasattr(t_lons, 'mask'):
+                valid_lons = t_lons[~t_lons.mask]
+                valid_lats = t_lats[~t_lats.mask]
+            else:
+                valid_lons = t_lons[~np.isnan(t_lons)]
+                valid_lats = t_lats[~np.isnan(t_lats)]
+            if len(valid_lons) > 0:
+                centroid_coords.append([float(np.mean(valid_lons)), float(np.mean(valid_lats))])
+            else:
+                break
+
+        traj = DriftTrajectory(
+            id=f"ftraj_{scenario.scenario_id}",
+            coordinates=centroid_coords,
+            timestamps=timestamps[:len(centroid_coords)],
+            particle_count=result_data["particle_count"]
+        )
+
+        final_lons = []
+        final_lats = []
+        for p_idx in range(lons.shape[0]):
+            p_lons = lons[p_idx, :]
+            p_lats = lats[p_idx, :]
+            if hasattr(p_lons, 'mask'):
+                valid_t = np.where(~p_lons.mask)[0]
+            else:
+                valid_t = np.where(~np.isnan(p_lons))[0]
+            if len(valid_t) > 0:
+                last_t = valid_t[-1]
+                final_lons.append(p_lons[last_t])
+                final_lats.append(p_lats[last_t])
+
+        if not final_lons:
+            final_lons = [lon]
+            final_lats = [lat]
+
+        v_lons = np.array(final_lons)
+        v_lats = np.array(final_lats)
+        points = np.column_stack((v_lons, v_lats))
+        if len(points) > 2:
+            from scipy.spatial import ConvexHull
+            hull = ConvexHull(points)
+            hull_points = points[hull.vertices]
+            hull_points = np.vstack((hull_points, hull_points[0]))
+            forecast_coords = hull_points.tolist()
+        else:
+            forecast_coords = [[v_lons[0], v_lats[0]], [v_lons[0]+0.001, v_lats[0]], [v_lons[0]+0.001, v_lats[0]+0.001], [v_lons[0], v_lats[0]+0.001], [v_lons[0], v_lats[0]]]
+
+        forecast_geom = {
+            "type": "Polygon",
+            "coordinates": [forecast_coords]
+        }
+        uncert = DriftUncertainty(geometry=forecast_geom, label="Simulated Forecast Extent")
+
+        forcing = result_data["forcing"]
+        provenance = DriftProvenance(
+            mode="LIVE",
+            engine="OpenDriftEngine",
+            engine_version="1.14.12",
+            model="OceanDrift",
+            simulation_mode="FORECAST",
+            simulation_start=result_data["sim_start"],
+            simulation_end=result_data["sim_end"],
+            timestep=result_data["time_step"],
+            particle_count=result_data["particle_count"],
+            forcing_provider=forcing.provider,
+            forcing_dataset=forcing.dataset,
+            forcing_start=forcing.start_timestamp,
+            forcing_end=forcing.end_timestamp,
+            forcing_units=forcing.units,
+            hindcast_duration=result_data["duration"],
+            simulation_status="COMPLETED",
+            model_status="LIVE_OPERATIONAL",
+            limitations="Forward drift forecast driven by Open-Meteo real ECMWF/CMEMS forcing."
+        )
+
+        return ForecastResult(
+            id=f"fres_{scenario.scenario_id}",
+            scenario_id=scenario.scenario_id,
+            origin_id=origin.id,
+            run_time=datetime.now(timezone.utc),
+            forecast_geometry=forecast_geom,
+            trajectories=[traj],
+            uncertainty=uncert,
+            provenance=provenance
+        )
+

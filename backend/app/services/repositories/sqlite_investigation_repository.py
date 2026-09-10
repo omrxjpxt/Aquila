@@ -38,6 +38,7 @@ class SqliteInvestigationRepository(InvestigationRepository):
             status=row['status'],
             description=row['observations_json'] or "", # Reusing observations for description
             metadata=json.loads(row['observations_json']) if row['observations_json'] else None,
+            provenance=row['provenance'] if 'provenance' in row.keys() else None,
             event_time=row['timestamp'],
             logged_at=row['timestamp'],
         )

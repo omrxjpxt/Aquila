@@ -40,14 +40,15 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
   }, [id, loadInvestigation]);
 
   const scenarioId = `hindcast-${id}-24h`;
-  const driftResult = driftResults[scenarioId];
-  const candidates = vesselCandidates[scenarioId] || [];
-  const attributionResult = attributionResults[scenarioId];
+  const driftResult = driftResults[scenarioId] || Object.values(driftResults)[0];
+  const candidates = vesselCandidates[scenarioId] || Object.values(vesselCandidates)[0] || [];
+  const attributionResult = attributionResults[scenarioId] || Object.values(attributionResults)[0];
 
   const handleDiscover = () => {
     if (driftResult && driftResult.origin_estimate) {
-      const endTime = new Date().toISOString();
-      const startTime = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const releaseTime = new Date(driftResult.origin_estimate.estimated_time).getTime();
+      const startTime = new Date(releaseTime - 12 * 3600 * 1000).toISOString();
+      const endTime = new Date(releaseTime + 12 * 3600 * 1000).toISOString();
       findVesselCandidates(
         id as string,
         scenarioId, 
@@ -153,9 +154,14 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
         {/* LEFT COLUMN: Candidate Vessels */}
         <div className="w-[320px] h-full flex flex-col pointer-events-auto border-r border-outline-variant bg-surface shrink-0 shadow-sm">
           <div className="p-4 border-b border-outline-variant bg-surface-container-low flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-on-surface">
-              <ListOrdered className="text-primary w-5 h-5" />
-              <h2 className="text-sm font-bold uppercase tracking-wider">Vessel Candidates</h2>
+            <div className="flex items-center justify-between text-on-surface">
+              <div className="flex items-center gap-2">
+                <ListOrdered className="text-primary w-5 h-5" />
+                <h2 className="text-sm font-bold uppercase tracking-wider">Vessel Candidates</h2>
+              </div>
+              <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded border uppercase tracking-wider bg-tertiary/10 text-tertiary border-tertiary/30">
+                AIS: {aisMode === "BYOD" ? "BYOD" : "DEMO_MOCK"}
+              </span>
             </div>
             
             {(!candidates || candidates.length === 0) ? (

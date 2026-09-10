@@ -50,7 +50,10 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
 
   if (!scene || !selectedCandidate) return <div className="p-8 font-mono text-sm">LOADING INVESTIGATION...</div>;
 
-  const center: [number, number] = selectedCandidate.centroid as [number, number];
+  const center: [number, number] = (selectedCandidate.centroid && Array.isArray(selectedCandidate.centroid) && selectedCandidate.centroid.length >= 2)
+    ? (selectedCandidate.centroid as [number, number])
+    : ((selectedCandidate.geometry as unknown as GeoJSON.Polygon)?.coordinates?.[0]?.[0] as [number, number]) || [58.0257, 24.4744];
+
 
   // Derived geometries
   const slickGeometry = selectedCandidate.geometry;
@@ -109,7 +112,8 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
             <span className="w-2.5 h-2.5 bg-error rounded-sm block"></span>
             <span className="font-mono font-bold text-sm text-on-surface">{selectedCandidate.id.slice(0,8)}</span>
           </div>
-          <span className="font-mono text-[10px] text-on-surface-variant mt-1 font-medium">LAT: {center[1].toFixed(4)}°N LON: {center[0].toFixed(4)}°E</span>
+          <span className="font-mono text-[10px] text-on-surface-variant mt-1 font-medium">LAT: {Number(center[1] ?? 24.4744).toFixed(4)}°N LON: {Number(center[0] ?? 58.0257).toFixed(4)}°E</span>
+
         </div>
         
         {/* PROVENANCE HUD */}

@@ -1,8 +1,13 @@
+import os
+os.environ["AQUILA_DB_PATH"] = "data/test_aquila.db"
+
 import pytest
 import numpy as np
 import rasterio
 from rasterio.transform import from_origin
-import os
+
+from app.services.repositories.db import initialize_db
+initialize_db("data/test_aquila.db")
 
 @pytest.fixture
 def synthetic_scene_path(tmp_path):

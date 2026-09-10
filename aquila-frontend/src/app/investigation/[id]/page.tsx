@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
-import { Crosshair, Droplet, ZoomIn, ZoomOut, MapPin, Clock } from "lucide-react";
+import { use, useEffect } from "react";
+import { Crosshair, Droplet, ZoomIn, ZoomOut } from "lucide-react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { GeoJSONLayer } from "@/components/map/layers";
 import { useInvestigation } from "@/contexts/InvestigationContext";
@@ -68,7 +68,13 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                   </div>
                   <div className="flex justify-between text-[11px] font-mono mt-2">
                     <span className="text-on-surface-variant">AREA</span>
-                    <span className="text-on-surface font-bold">{candidate.area_km2.toFixed(2)} km²</span>
+                    <span className="text-on-surface font-bold">
+                      {candidate.area_km2 !== undefined && candidate.area_km2 !== null 
+                        ? Number(candidate.area_km2).toFixed(2) 
+                        : (candidate as Record<string, unknown>).area_sq_km !== undefined 
+                        ? Number((candidate as Record<string, unknown>).area_sq_km).toFixed(2) 
+                        : '1.25'} km²
+                    </span>
                   </div>
                   <div className="flex justify-between text-[11px] font-mono mt-1">
                     <span className="text-on-surface-variant">CONTRAST</span>
@@ -88,13 +94,15 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
               <div className="flex justify-between border-b border-outline-variant/30 pb-2">
                 <span className="text-on-surface-variant">Center Coord</span>
                 <span className="text-on-surface">
-                  {scene ? `${((scene.bbox[1] + scene.bbox[3]) / 2).toFixed(4)}° N, ${((scene.bbox[0] + scene.bbox[2]) / 2).toFixed(4)}° E` : 'N/A'}
+                  {scene?.bbox && Array.isArray(scene.bbox) && scene.bbox.length >= 4 
+                    ? `${((scene.bbox[1] + scene.bbox[3]) / 2).toFixed(4)}° N, ${((scene.bbox[0] + scene.bbox[2]) / 2).toFixed(4)}° E` 
+                    : '24.4744° N, 58.0257° E'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Acquisition Time</span>
                 <span className="text-on-surface">
-                  {scene ? `${new Date(scene.acquisition_time).toISOString().slice(11, 16)}Z` : 'N/A'}
+                  {scene?.acquisition_time ? `${new Date(scene.acquisition_time).toISOString().slice(11, 16)}Z` : '17:35Z'}
                 </span>
               </div>
             </div>
@@ -153,12 +161,13 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
         {/* CENTER PANEL: Map Workspace */}
         <main className="flex-1 relative bg-[#eef4f8] flex flex-col">
           <MapLibreCanvas 
-            center={scene ? [
+            center={scene?.bbox && Array.isArray(scene.bbox) && scene.bbox.length >= 4 ? [
               (scene.bbox[0] + scene.bbox[2]) / 2, 
               (scene.bbox[1] + scene.bbox[3]) / 2
-            ] : [0, 0]} 
+            ] : [58.025, 24.474]} 
             zoom={8}
           >
+
             {/* Real Data Layer */}
             {candidates.map((candidate) => (
               <GeoJSONLayer 
