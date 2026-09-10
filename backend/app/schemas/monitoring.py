@@ -21,6 +21,10 @@ class MonitoringZone(BaseModel):
         default="sentinel-1-grd",
         description="Collection to monitor, e.g., 'sentinel-1-grd'"
     )
+    is_enabled: bool = Field(
+        default=True,
+        description="Whether continuous monitoring is active for this zone"
+    )
 
 
 class NewSceneEvent(BaseModel):

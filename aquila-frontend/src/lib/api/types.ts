@@ -3,11 +3,24 @@
 export interface MonitoringZone {
   id: string;
   name: string;
-  geometry: GeoJSON.Polygon;
-  product_types: string[];
+  bbox?: [number, number, number, number];
+  geometry?: GeoJSON.Polygon | null;
+  product_types?: string[];
+  collection_filter?: string;
   owner_uid: string;
-  is_enabled: boolean;
-  is_demo: boolean;
+  is_enabled?: boolean;
+  is_demo?: boolean;
+}
+
+export interface MonitoringStatus {
+  monitoring_active: boolean;
+  worker_status: "RUNNING" | "INACTIVE";
+  cdse_status: "CONFIGURED" | "UNAVAILABLE";
+  monitored_zone: string | null;
+  source: string;
+  last_poll_time: string | null;
+  active_jobs_count: number;
+  total_jobs_count: number;
 }
 
 export type JobStatus = 

@@ -38,6 +38,12 @@ class CDSEDiscoveryService:
             f"PublicationDate gt {last_pub_str}"
         )
         
+        # Spatial filtering: restrict OData query directly to monitoring zone AOI
+        if zone.bbox:
+            min_lon, min_lat, max_lon, max_lat = zone.bbox
+            poly = f"POLYGON(({min_lon} {min_lat}, {max_lon} {min_lat}, {max_lon} {max_lat}, {min_lon} {max_lat}, {min_lon} {min_lat}))"
+            filter_str += f" and OData.CSC.Intersects(area=geography'SRID=4326;{poly}')"
+        
         query_url = f"{self.odata_url}/Products"
         params: Dict[str, str | int] = {
             "$filter": filter_str,

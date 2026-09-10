@@ -1,19 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-"use client";
+with open("aquila-frontend/src/app/investigation/[id]/report/page.tsx", "w") as f:
+    f.write('''"use client";
 
 import { use, useEffect } from "react";
 import { FileText, Share2, Save, AlertTriangle, Image as ImageIcon, Search, ListChecks, RadioTower, Satellite, Wind, MapPin, Anchor, Activity, Clock, Server } from "lucide-react";
 import { useInvestigation } from "@/contexts/InvestigationContext";
-
-
-const ProvenanceBadge = ({ prov }: { prov?: any }) => {
-  if (!prov) return <span className="text-[9px] bg-surface-variant text-on-surface-variant px-1 rounded font-bold uppercase tracking-widest border border-outline-variant">UNAVAILABLE</span>;
-  if (prov.toUpperCase().includes("MOCK") || prov.toUpperCase().includes("DEMO")) {
-    return <span className="text-[9px] bg-tertiary/10 text-tertiary px-1 rounded font-bold uppercase tracking-widest border border-tertiary/30">DEMO_MOCK</span>;
-  }
-  return <span className="text-[9px] bg-success/10 text-success px-1 rounded font-bold uppercase tracking-widest border border-success/30">LIVE</span>;
-};
 
 export default function InvestigationReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -27,9 +17,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
     driftResults, 
     vesselCandidates, 
     attributionResults, 
-    // @ts-ignore
     environmentalData,
-    // @ts-ignore
     simulationResults,
     loadInvestigation, 
     isLoading, 
@@ -71,7 +59,15 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
     ? ais.find(v => v.identity.mmsi === topCandidate.vessel_identity.mmsi)
     : null;
 
-
+  // Provenance Helper
+  const ProvenanceBadge = ({ prov }: { prov?: string }) => {
+    if (!prov) return <span className="text-[9px] bg-surface-variant text-on-surface-variant px-1 rounded font-bold uppercase tracking-widest border border-outline-variant">UNAVAILABLE</span>;
+    
+    if (prov.toUpperCase().includes("MOCK") || prov.toUpperCase().includes("DEMO")) {
+      return <span className="text-[9px] bg-tertiary/10 text-tertiary px-1 rounded font-bold uppercase tracking-widest border border-tertiary/30">DEMO_MOCK</span>;
+    }
+    return <span className="text-[9px] bg-success/10 text-success px-1 rounded font-bold uppercase tracking-widest border border-success/30">LIVE</span>;
+  };
 
   return (
     <div className="flex-1 p-6 flex justify-center overflow-y-auto h-full bg-[#eef4f8]">
@@ -135,7 +131,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant col-span-2">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scene/Product ID</span>
-              <span className="font-bold text-on-surface truncate">{(scene as any)?.scene_id || 'UNAVAILABLE'}</span>
+              <span className="font-bold text-on-surface truncate">{scene?.scene_id || 'UNAVAILABLE'}</span>
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Acquisition Time</span>
@@ -156,7 +152,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs font-mono mb-2">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Classification</span>
-              <span className="font-bold text-on-surface">{(assessment as any)?.classification || 'UNAVAILABLE'}</span>
+              <span className="font-bold text-on-surface">{assessment?.classification || 'UNAVAILABLE'}</span>
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Raw Decision Score</span>
@@ -169,7 +165,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
             <div className="col-span-2 text-[10px] text-on-surface-variant flex items-center gap-2">
-              <strong>Model:</strong> {assessment?.model_version || 'UNAVAILABLE'} <ProvenanceBadge prov={(assessment as any)?.provenance} />
+              <strong>Model:</strong> {assessment?.model_version || 'UNAVAILABLE'} <ProvenanceBadge prov={assessment?.provenance} />
             </div>
           </div>
         </section>
@@ -184,19 +180,19 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-xs font-mono">
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Wind (U, V)</span>
-                  <span className="font-bold text-on-surface">{(envData as any).wind_u?.toFixed(2)}, {(envData as any).wind_v?.toFixed(2)} m/s</span>
+                  <span className="font-bold text-on-surface">{envData.wind_u?.toFixed(2)}, {envData.wind_v?.toFixed(2)} m/s</span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Current (U, V)</span>
-                  <span className="font-bold text-on-surface">{(envData as any).current_u?.toFixed(2)}, {(envData as any).current_v?.toFixed(2)} m/s</span>
+                  <span className="font-bold text-on-surface">{envData.current_u?.toFixed(2)}, {envData.current_v?.toFixed(2)} m/s</span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Timestamp</span>
-                  <span className="font-bold text-on-surface">{new Date((envData as any).timestamp).toISOString().slice(11, 16)}Z</span>
+                  <span className="font-bold text-on-surface">{new Date(envData.timestamp).toISOString().slice(11, 16)}Z</span>
                 </div>
                 <div className="col-span-2 flex justify-end items-start gap-2">
-                  <span className="font-bold text-[10px] uppercase text-on-surface-variant">Provider: {(envData as any).provider}</span>
-                  <ProvenanceBadge prov={(envData as any).provenance} />
+                  <span className="font-bold text-[10px] uppercase text-on-surface-variant">Provider: {envData.provider}</span>
+                  <ProvenanceBadge prov={envData.provenance} />
                 </div>
               </div>
             ) : (
@@ -215,15 +211,15 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Type</span>
-                  <span className="font-bold text-on-surface">{(drift as any).is_hindcast ? 'HINDCAST' : 'FORECAST'}</span>
+                  <span className="font-bold text-on-surface">{drift.is_hindcast ? 'HINDCAST' : 'FORECAST'}</span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Duration</span>
-                  <span className="font-bold text-on-surface">{Math.abs((drift as any).duration_hours)} hours</span>
+                  <span className="font-bold text-on-surface">{Math.abs(drift.duration_hours)} hours</span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Status</span>
-                  <span className="font-bold text-on-surface">{(drift as any).status}</span>
+                  <span className="font-bold text-on-surface">{drift.status}</span>
                 </div>
                 <div className="flex justify-end">
                   <ProvenanceBadge prov={drift.provenance} />
@@ -316,15 +312,15 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
                 <div className="col-span-2">
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Interpretation</span>
-                  <span className="font-bold text-on-surface">{(sim as any).interpretation}</span>
+                  <span className="font-bold text-on-surface">{sim.interpretation}</span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">IoU Score</span>
-                  <span className="font-bold text-primary">{(sim as any).overlap_iou?.toFixed(3) || 'N/A'}</span>
+                  <span className="font-bold text-primary">{sim.overlap_iou?.toFixed(3) || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Centroid Distance</span>
-                  <span className="font-bold text-on-surface">{(sim as any).centroid_distance_km?.toFixed(2)} km</span>
+                  <span className="font-bold text-on-surface">{sim.centroid_distance_km?.toFixed(2)} km</span>
                 </div>
               </div>
             ) : (
@@ -387,3 +383,4 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
     </div>
   );
 }
+''')

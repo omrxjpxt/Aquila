@@ -5,10 +5,12 @@ from app.core.config import settings
 from app.api.v1.router import router as api_v1_router
 from app.core.worker import worker
 from app.core.firebase_admin import initialize_firebase_admin
+from app.services.repositories.db import initialize_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    initialize_db()
     initialize_firebase_admin()
     worker.start()
     yield

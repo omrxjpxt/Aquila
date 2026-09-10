@@ -17,6 +17,7 @@ class SqliteMonitoringZoneRepository(MonitoringZoneRepository):
             name=row['name'],
             owner_uid=row['owner_uid'],
             bbox=tuple(json.loads(row['bbox_json'])),
+            is_enabled=bool(row['is_enabled']) if 'is_enabled' in row.keys() else True
         )
         return zone
 
@@ -43,6 +44,11 @@ class SqliteMonitoringZoneRepository(MonitoringZoneRepository):
     def get_enabled_zones(self) -> List[MonitoringZone]:
         with get_db_connection() as conn:
             cursor = conn.execute("SELECT * FROM monitoring_zones WHERE is_enabled = 1")
+            return [self._row_to_zone(row) for row in cursor.fetchall()]
+
+    def get_all_zones(self) -> List[MonitoringZone]:
+        with get_db_connection() as conn:
+            cursor = conn.execute("SELECT * FROM monitoring_zones")
             return [self._row_to_zone(row) for row in cursor.fetchall()]
 
 monitoring_zone_repository = SqliteMonitoringZoneRepository()

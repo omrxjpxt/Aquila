@@ -88,6 +88,16 @@ CREATE TABLE IF NOT EXISTS evidence (
     FOREIGN KEY(investigation_id) REFERENCES investigations(id)
 );
 
+-- Worker Heartbeats
+CREATE TABLE IF NOT EXISTS worker_heartbeats (
+    worker_id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    last_heartbeat TIMESTAMP NOT NULL,
+    last_poll_time TIMESTAMP,
+    active_zone_id TEXT,
+    updated_at TIMESTAMP NOT NULL
+);
+
 -- Alerts
 CREATE TABLE IF NOT EXISTS alerts (
     id TEXT PRIMARY KEY,
@@ -101,7 +111,10 @@ CREATE TABLE IF NOT EXISTS alerts (
 """
 
 def initialize_db(db_path: str = DB_PATH):
-    """Initializes the SQLite database with WAL and schemas."""
+    """Initializes the SQLite database with WAL, schemas, and default deployment monitoring zone."""
+    import json
+    from datetime import datetime
+
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     
     with sqlite3.connect(db_path) as conn:
@@ -113,6 +126,26 @@ def initialize_db(db_path: str = DB_PATH):
         
         # Initialize schema
         conn.executescript(SCHEMA)
+
+        # Idempotent default monitoring zone seeding:
+        # Create exactly one zone only when the monitoring_zones table is empty.
+        cursor = conn.execute("SELECT COUNT(*) FROM monitoring_zones")
+        if cursor.fetchone()[0] == 0:
+            default_zone_id = "zone-gulf-of-oman"
+            default_name = "Gulf of Oman (Sentinel-1)"
+            default_owner = "SYSTEM"
+            default_bbox_json = json.dumps([58.0, 24.0, 58.5, 24.5])
+            now = datetime.utcnow()
+            conn.execute(
+                """
+                INSERT INTO monitoring_zones (
+                    id, name, owner_uid, bbox_json, is_demo, is_enabled, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 0, 1, ?, ?)
+                """,
+                (default_zone_id, default_name, default_owner, default_bbox_json, now, now)
+            )
+            logger.info("Seeded default deployment monitoring zone: Gulf of Oman (Sentinel-1)")
+
         conn.commit()
     logger.info(f"Initialized SQLite database at {db_path} with WAL mode")
 

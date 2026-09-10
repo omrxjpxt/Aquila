@@ -13,13 +13,16 @@ from app.services.repositories.sqlite_investigation_repository import SqliteInve
 from app.schemas.investigation import InvestigationCreate
 from app.schemas.evidence import EvidenceEvent
 
+TEST_DB_PATH = "data/test_aquila.db"
+
 # Setup clean DB for tests
 @pytest.fixture(autouse=True)
-def clean_db():
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
-    initialize_db()
-    conn = sqlite3.connect(DB_PATH)
+def clean_db(monkeypatch):
+    monkeypatch.setattr("app.services.repositories.db.DB_PATH", TEST_DB_PATH)
+    if os.path.exists(TEST_DB_PATH):
+        os.remove(TEST_DB_PATH)
+    initialize_db(TEST_DB_PATH)
+    conn = sqlite3.connect(TEST_DB_PATH)
     conn.execute("DELETE FROM evidence")
     conn.execute("DELETE FROM investigations")
     conn.execute("DELETE FROM monitoring_jobs")
@@ -28,10 +31,15 @@ def clean_db():
     conn.commit()
     conn.close()
     yield
+    if os.path.exists(TEST_DB_PATH):
+        try:
+            os.remove(TEST_DB_PATH)
+        except Exception:
+            pass
 
 def test_sqlite_initializes():
-    assert os.path.exists(DB_PATH)
-    conn = sqlite3.connect(DB_PATH)
+    assert os.path.exists(TEST_DB_PATH)
+    conn = sqlite3.connect(TEST_DB_PATH)
     cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
     tables = [row[0] for row in cursor.fetchall()]
     conn.close()

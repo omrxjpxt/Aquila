@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from typing import Optional
 
 from app.schemas.monitoring import SceneDiscoveryCheckpoint, MonitoringZone
 from app.services.cdse_discovery_service import CDSEDiscoveryService
@@ -20,9 +21,45 @@ class MonitoringWorker:
         self.shutdown_event = asyncio.Event()
         self.poll_interval = settings.WORKER_POLL_INTERVAL_SECONDS
         self.lease_duration = settings.WORKER_LEASE_DURATION_SECONDS
+        self.last_poll_time: Optional[datetime] = None
+
+    def _record_heartbeat(self, status: str = "RUNNING", last_poll: Optional[datetime] = None, active_zone_id: Optional[str] = None):
+        """Records durable worker state in SQLite for inter-process visibility."""
+        try:
+            from app.services.repositories.db import get_db_connection
+            now = datetime.utcnow()
+            with get_db_connection() as conn:
+                if last_poll is not None:
+                    conn.execute("""
+                        INSERT INTO worker_heartbeats (worker_id, status, last_heartbeat, last_poll_time, active_zone_id, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(worker_id) DO UPDATE SET
+                            status = excluded.status,
+                            last_heartbeat = excluded.last_heartbeat,
+                            last_poll_time = excluded.last_poll_time,
+                            active_zone_id = coalesce(excluded.active_zone_id, worker_heartbeats.active_zone_id),
+                            updated_at = excluded.updated_at
+                    """, (self.worker_id, status, now, last_poll, active_zone_id, now))
+                else:
+                    conn.execute("""
+                        INSERT INTO worker_heartbeats (worker_id, status, last_heartbeat, active_zone_id, updated_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(worker_id) DO UPDATE SET
+                            status = excluded.status,
+                            last_heartbeat = excluded.last_heartbeat,
+                            active_zone_id = coalesce(excluded.active_zone_id, worker_heartbeats.active_zone_id),
+                            updated_at = excluded.updated_at
+                    """, (self.worker_id, status, now, active_zone_id, now))
+        except Exception as e:
+            logger.warning(f"Failed to record worker heartbeat: {e}")
         
     async def _run_discovery(self):
         zones = self.monitoring_zone_repository.get_enabled_zones()
+        now = datetime.utcnow()
+        self.last_poll_time = now
+        active_zone_id = zones[0].id if zones else None
+        self._record_heartbeat("RUNNING", last_poll=now, active_zone_id=active_zone_id)
+
         if not zones:
             logger.info("No enabled monitoring zones found.", extra={"structured_data": {"event": "DISCOVERY_SKIP_NO_ZONES"}})
             return
@@ -87,6 +124,7 @@ class MonitoringWorker:
                 
     async def start(self):
         self.shutdown_event.clear()
+        self._record_heartbeat("RUNNING")
         logger.info(f"Starting Monitoring Worker {self.worker_id}", 
                     extra={"structured_data": {"event": "WORKER_START", "worker_id": self.worker_id}})
         
@@ -95,18 +133,21 @@ class MonitoringWorker:
             if not self.shutdown_event.is_set():
                 await self._run_processing()
             
+            self._record_heartbeat("RUNNING")
             # Sleep in small increments to allow responsive shutdown
             try:
                 await asyncio.wait_for(self.shutdown_event.wait(), timeout=self.poll_interval)
             except asyncio.TimeoutError:
                 pass # Expected timeout, loop continues
 
+        self._record_heartbeat("STOPPED")
         logger.info(f"Monitoring Worker {self.worker_id} cleanly shut down.", 
                     extra={"structured_data": {"event": "WORKER_STOP", "worker_id": self.worker_id}})
 
     def stop(self):
         logger.info(f"Stop signal received for Monitoring Worker {self.worker_id}")
         self.shutdown_event.set()
+        self._record_heartbeat("STOPPED")
 
 if __name__ == "__main__":
     from app.core.logging_config import setup_logging

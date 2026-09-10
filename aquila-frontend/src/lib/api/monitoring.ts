@@ -1,7 +1,11 @@
 import { apiClient } from './client';
-import { MonitoringZone, MonitoringJob, JobStatus } from './types';
+import { MonitoringZone, MonitoringJob, JobStatus, MonitoringStatus } from './types';
 
 export const monitoringApi = {
+  async getStatus(): Promise<MonitoringStatus> {
+    return apiClient.get('/monitoring/status');
+  },
+
   async getZones(): Promise<MonitoringZone[]> {
     return apiClient.get('/monitoring/zones');
   },
