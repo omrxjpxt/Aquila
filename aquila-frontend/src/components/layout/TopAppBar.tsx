@@ -3,9 +3,11 @@
 import { Bell, Clock, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function TopAppBar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   return (
     <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 h-14 bg-surface border-b border-outline-variant">
       <div className="flex items-center gap-6 h-full">
@@ -47,12 +49,23 @@ export function TopAppBar() {
         >
           <Clock className="w-5 h-5" />
         </button>
-        <button 
-          className="text-on-surface-variant hover:bg-surface-container-high transition-colors duration-200 p-2 rounded-full"
-          onClick={() => alert('Profile unavailable in DEMO.')}
-        >
-          <UserCircle2 className="w-5 h-5" />
-        </button>
+        {user ? (
+          <div className="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-full border border-outline-variant/30 text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="font-medium text-on-surface-variant max-w-[160px] truncate">{user.email || 'Authenticated'}</span>
+            <button 
+              onClick={() => logout()}
+              className="ml-1 text-red-500 hover:underline font-semibold"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-xs text-outline px-2 py-1">
+            <UserCircle2 className="w-4 h-4 text-on-surface-variant" />
+            <span>Not Signed In</span>
+          </div>
+        )}
       </div>
     </header>
   );

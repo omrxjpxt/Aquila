@@ -72,13 +72,18 @@ function ImageOverlayLayer({ id, sceneId, bbox, visible = true }: { id: string; 
 }
 
 export default function CommandCenterPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, login, loginWithGoogle } = useAuth();
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [jobs, setJobs] = useState<MonitoringJob[]>([]);
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [scenes, setScenes] = useState<SatelliteScene[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [email, setEmail] = useState("operator@aquila.system");
+  const [password, setPassword] = useState("AquilaPassword123!");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -94,7 +99,6 @@ export default function CommandCenterPage() {
       setScenes(fetchedScenes);
       setError(null);
     } catch (err: unknown) {
-      console.error(err);
       setError("Unable to load live data.");
     } finally {
       setIsLoading(false);
@@ -102,9 +106,14 @@ export default function CommandCenterPage() {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (authLoading) return;
     
-    // Create an async IIFE to avoid synchronous state updates in effect body
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
     const runFetch = async () => {
       await fetchData();
     };
@@ -112,14 +121,122 @@ export default function CommandCenterPage() {
     runFetch();
     const interval = setInterval(runFetch, 10000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [authLoading, user]);
 
-  if (isLoading) {
+  if (authLoading || (isLoading && user)) {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-[#F6FAFD]">
         <div className="flex items-center gap-2 text-on-surface-variant">
            <RefreshCw className="w-5 h-5 animate-spin" />
            <span>Loading AQUILA Dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      setAuthError(null);
+      try {
+        await login(email, password);
+      } catch (err: unknown) {
+        setAuthError(err instanceof Error ? err.message : "Failed to sign in");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    const handleGoogle = async () => {
+      setIsSubmitting(true);
+      setAuthError(null);
+      try {
+        await loginWithGoogle();
+      } catch (err: unknown) {
+        setAuthError(err instanceof Error ? err.message : "Failed to sign in with Google");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <div className="flex-1 h-full flex items-center justify-center bg-[#F6FAFD] p-4">
+        <div className="bg-white rounded-xl shadow-lg border border-outline-variant/40 max-w-md w-full p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
+              🦅
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-[#001f28]">AQUILA Command Center</h2>
+              <p className="text-xs text-outline">Maritime Intelligence & Surveillance</p>
+            </div>
+          </div>
+
+          <div className="mb-5 bg-primary/5 border border-primary/20 rounded-lg p-3 text-xs text-primary">
+            🔐 <strong>Authentication Required</strong> &mdash; Sign in to access live satellite feeds, investigations, and monitoring jobs.
+          </div>
+
+          {authError && (
+            <div className="mb-4 p-3 bg-error/10 border border-error/20 rounded-lg text-xs text-error">
+              {authError}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-1">Operator Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary text-[#001f28]"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary text-[#001f28]"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full py-2.5 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Authenticating...</span>
+                </>
+              ) : (
+                <span>Sign In as Operator</span>
+              )}
+            </button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-outline-variant/50" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-outline">or</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogle}
+            disabled={isSubmitting}
+            className="w-full py-2.5 border border-outline-variant bg-surface hover:bg-surface-container-high text-[#001f28] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <span>Sign In with Google</span>
+          </button>
         </div>
       </div>
     );

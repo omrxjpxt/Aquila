@@ -42,13 +42,23 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+let memoryToken: string | null = null;
+
+export const setAuthToken = (token: string | null) => {
+  memoryToken = token;
+};
+
+export async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (memoryToken) return { 'Authorization': `Bearer ${memoryToken}` };
   if (auth && auth.currentUser) {
     try {
       const token = await auth.currentUser.getIdToken();
-      return { 'Authorization': `Bearer ${token}` };
+      if (token) {
+        memoryToken = token;
+        return { 'Authorization': `Bearer ${token}` };
+      }
     } catch (e) {
-      console.warn("Failed to get auth token", e);
+      console.warn("Failed to get auth token from auth.currentUser:", e);
     }
   }
   return {};
@@ -56,6 +66,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export const apiClient = {
   baseUrl: API_V1,
+  getAuthHeaders,
   get: async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
     const authHeaders = await getAuthHeaders();
     let response: Response;

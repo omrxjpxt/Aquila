@@ -12,4 +12,4 @@ async def run_counterfactual(scenario: CounterfactualScenario):
     """
     Runs a forward counterfactual simulation for a candidate vessel release hypothesis.
     """
-    return service.run_scenario(scenario)
+    return await service.run_scenario(scenario)

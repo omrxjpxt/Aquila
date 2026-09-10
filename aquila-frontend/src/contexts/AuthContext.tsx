@@ -3,12 +3,14 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, isFirebaseConfigured } from "../lib/firebase";
+import { setAuthToken } from "../lib/api/client";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isFirebaseConfigured: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isFirebaseConfigured: false,
   login: async () => {},
+  loginWithGoogle: async () => {},
   logout: async () => {},
 });
 
@@ -27,8 +30,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!auth) return;
 
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    const unsubscribe = auth.onIdTokenChanged(async (u) => {
+      setLoading(true);
+      
+      if (u) {
+        try {
+          const token = await u.getIdToken();
+          setAuthToken(token);
+          setUser(u);
+        } catch (e) {
+          console.error("Failed to get ID token in AuthContext:", e);
+          setAuthToken(null);
+          setUser(null);
+        }
+      } else {
+        setAuthToken(null);
+        setUser(null);
+      }
+      
       setLoading(false);
     });
 
@@ -40,13 +59,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithEmailAndPassword(auth, email, pass);
   };
 
+  const loginWithGoogle = async () => {
+    if (!auth) throw new Error("Firebase Auth is not initialized.");
+    const { GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  };
+
   const logout = async () => {
     if (!auth) return;
     await signOut(auth);
+    setAuthToken(null);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isFirebaseConfigured, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, isFirebaseConfigured, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
