@@ -1,29 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Search, Download, ExternalLink, Calendar, MapPin } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FileText, Search, ExternalLink, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
-import { investigationsApi } from "@/lib/api/investigations";
-import { Investigation } from "@/lib/api/types";
+import { reportsApi } from "@/lib/api/reports";
+import { ReportArchiveItem } from "@/lib/api/types";
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [investigations, setInvestigations] = useState<Investigation[]>([]);
+  const [reports, setReports] = useState<ReportArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    investigationsApi.listInvestigations().then(invs => {
-      setInvestigations(invs.filter(i => i.status === 'REPORT_READY' || i.status === 'CLOSED'));
-      setIsLoading(false);
-    }).catch(err => {
-      console.error(err);
-      setError(err.message || 'API is unavailable.');
-      setIsLoading(false);
-    });
+    reportsApi.listReports()
+      .then(data => {
+        setReports(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load reports archive:", err);
+        setError(err.message || "Reports archive API is unavailable.");
+        setIsLoading(false);
+      });
   }, []);
 
-  const filteredReports = investigations.filter(r => 
+  const filteredReports = reports.filter(r => 
     r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (r.title && r.title.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -71,27 +75,36 @@ export default function ReportsPage() {
             <tbody className="divide-y divide-outline-variant/50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">
+                  <td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant font-mono text-xs">
                     Loading reports...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-error">
+                  <td colSpan={5} className="px-6 py-8 text-center text-error font-mono text-xs">
                     {error}
                   </td>
                 </tr>
               ) : filteredReports.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant">
-                    No reports found.
+                  <td colSpan={5} className="px-6 py-8 text-center text-on-surface-variant font-mono text-xs">
+                    {searchQuery.trim() ? "No reports match your search." : "No reports found."}
                   </td>
                 </tr>
               ) : (
                 filteredReports.map(report => (
-                  <tr key={report.id} className="hover:bg-surface-container-lowest transition-colors group">
+                  <tr 
+                    key={report.id} 
+                    onClick={() => router.push(`/investigation/${report.id}/report`)}
+                    className="hover:bg-surface-container-lowest transition-colors group cursor-pointer"
+                  >
                     <td className="px-6 py-4">
                       <div className="font-bold text-primary font-mono">{report.id}</div>
+                      {report.title && (
+                        <div className="text-[11px] text-on-surface-variant truncate max-w-sm mt-0.5">
+                          {report.title}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded inline-block ${
@@ -103,19 +116,35 @@ export default function ReportsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-surface-variant text-on-surface-variant font-bold text-[10px] rounded uppercase tracking-widest border border-outline-variant">
-                        {report.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-surface-variant text-on-surface-variant font-bold text-[10px] rounded uppercase tracking-widest border border-outline-variant font-mono">
+                          {report.status}
+                        </span>
+                        {report.provenance_mode === 'DEMO_MOCK' && (
+                          <span className="text-[9px] bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-widest border border-amber-500/30">
+                            DEMO_MOCK
+                          </span>
+                        )}
+                        {report.provenance_mode === 'LIVE' && (
+                          <span className="text-[9px] bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-widest border border-emerald-500/30">
+                            LIVE
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-[11px] text-on-surface-variant mt-1 flex items-center gap-1.5">
-                        <Calendar className="w-3 h-3" />
+                      <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 font-mono">
+                        <Calendar className="w-3 h-3 text-on-surface-variant shrink-0" />
                         {new Date(report.created_at).toISOString().slice(0, 16).replace('T', ' ')}Z
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
-                        <Link href={`/investigation/${report.id}/report`} className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors rounded" title="View Report">
+                        <Link 
+                          href={`/investigation/${report.id}/report`} 
+                          className="p-2 text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors rounded" 
+                          title="View Report"
+                        >
                           <ExternalLink className="w-4 h-4" />
                         </Link>
                       </div>

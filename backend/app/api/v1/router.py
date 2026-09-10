@@ -10,6 +10,7 @@ from .attribution import router as attribution_router
 from .simulation import router as simulation_router
 from .monitoring import router as monitoring_router
 from .investigations import router as investigations_router
+from .reports import router as reports_router
 
 router = APIRouter()
 
@@ -21,3 +22,5 @@ router.include_router(attribution_router, prefix="/attribution", tags=["attribut
 router.include_router(simulation_router, prefix="/simulation", tags=["simulation"], dependencies=[Depends(get_current_user)])
 router.include_router(monitoring_router, prefix="/monitoring", tags=["monitoring"], dependencies=[Depends(get_current_user)])
 router.include_router(investigations_router, prefix="/investigations", tags=["investigations"], dependencies=[Depends(get_current_user)])
+router.include_router(reports_router, prefix="/reports", tags=["reports"], dependencies=[Depends(get_current_user)])
+

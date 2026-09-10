@@ -7,7 +7,11 @@ from app.schemas.ais import (
     VesselIdentity, 
     GFWPresenceRecord, 
     GFWEvent, 
-    GFWAISProvenance
+    GFWAISProvenance,
+    FleetVessel,
+    FleetResponse,
+    VesselDetailResponse,
+    AISProvenance
 )
 from app.services.ais_service import AISProvider
 from app.core.config import settings
@@ -170,5 +174,157 @@ class GFWAISProvider(AISProvider):
             logger.error(f"Failed to fetch GFW events for vessel {gfw_vessel_id}: {str(e)}")
             
         return events
+
+    async def get_fleet(self, query: Optional[str] = None, limit: int = 50) -> FleetResponse:
+        """
+        Query real Global Fishing Watch vessels when configured.
+        Returns UNAVAILABLE truthfully if GFW_API_TOKEN is missing or API call fails.
+        """
+        if not self.token:
+            return FleetResponse(
+                provider="Global Fishing Watch",
+                status="UNAVAILABLE",
+                reason="GFW_API_TOKEN is not configured in backend environment. Live global AIS fleet tracking is unavailable.",
+                retrieved_at=datetime.utcnow(),
+                total=0,
+                vessels=[]
+            )
+
+        search_url = f"{self.base_url}/vessels/search"
+        headers = {"Authorization": f"Bearer {self.token}"}
+        params: Dict[str, Any] = {
+            "query": query.strip() if query and query.strip() else "tanker",
+            "limit": min(limit, 100)
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(search_url, headers=headers, params=params, timeout=12.0)
+                resp.raise_for_status()
+                data = resp.json()
+
+                entries = data.get("entries", [])
+                vessels: List[FleetVessel] = []
+                for entry in entries:
+                    v_id = str(entry.get("id") or entry.get("mmsi") or f"gfw-{len(vessels)+1}")
+                    mmsi = str(entry.get("mmsi")) if entry.get("mmsi") else None
+                    imo = str(entry.get("imo")) if entry.get("imo") else None
+                    name = entry.get("shipname") or entry.get("name")
+                    vessel_type = entry.get("vesselType") or entry.get("geartype")
+                    flag = entry.get("flag")
+
+                    last_pos = entry.get("lastPosition") or entry.get("position") or {}
+                    lat = last_pos.get("lat")
+                    lon = last_pos.get("lon")
+                    ts_str = last_pos.get("timestamp") or entry.get("lastTimestamp")
+                    last_ts = None
+                    if ts_str:
+                        try:
+                            last_ts = datetime.fromisoformat(str(ts_str).replace("Z", "+00:00")).replace(tzinfo=None)
+                        except Exception:
+                            pass
+
+                    vessels.append(FleetVessel(
+                        id=v_id,
+                        mmsi=mmsi,
+                        imo=imo,
+                        name=name,
+                        vessel_type=vessel_type,
+                        flag=flag,
+                        last_position_lat=lat,
+                        last_position_lon=lon,
+                        last_timestamp=last_ts,
+                        status="ACTIVE" if lat is not None else "UNKNOWN",
+                        risk_level="NOT_ASSESSED",
+                        provider="Global Fishing Watch",
+                        provenance=AISProvenance(
+                            source="Global Fishing Watch",
+                            mode="LIVE",
+                            retrieval_time=datetime.utcnow(),
+                            limitations="GFW vessel search registry record. Position reflects latest available presence report, not continuous real-time track."
+                        )
+                    ))
+
+                return FleetResponse(
+                    provider="Global Fishing Watch",
+                    status="LIVE" if vessels else "EMPTY",
+                    reason=None if vessels else "No vessels matched the specified query.",
+                    retrieved_at=datetime.utcnow(),
+                    total=len(vessels),
+                    vessels=vessels
+                )
+        except httpx.HTTPStatusError as e:
+            logger.warning("GFW API returned HTTP status error %s", e.response.status_code)
+            return FleetResponse(
+                provider="Global Fishing Watch",
+                status="UNAVAILABLE",
+                reason=f"Global Fishing Watch API error: HTTP {e.response.status_code}",
+                retrieved_at=datetime.utcnow(),
+                total=0,
+                vessels=[]
+            )
+        except Exception as e:
+            logger.warning("GFW API query failed: %s", type(e).__name__)
+            return FleetResponse(
+                provider="Global Fishing Watch",
+                status="UNAVAILABLE",
+                reason="Global Fishing Watch connection failed",
+                retrieved_at=datetime.utcnow(),
+                total=0,
+                vessels=[]
+            )
+
+    async def get_vessel_by_mmsi(self, mmsi: str) -> VesselDetailResponse:
+        """
+        Query real vessel details from Global Fishing Watch by MMSI.
+        """
+        if not self.token:
+            return VesselDetailResponse(
+                mmsi=mmsi,
+                provider="Global Fishing Watch",
+                status="UNAVAILABLE",
+                reason="GFW_API_TOKEN is not configured in backend environment. Live global AIS vessel lookup is unavailable.",
+                vessel=None,
+                historical_track_available=False,
+                historical_track_message="Historical track unavailable from current provider."
+            )
+
+        fleet_resp = await self.get_fleet(query=f"mmsi:{mmsi}", limit=5)
+        if fleet_resp.status != "LIVE":
+            return VesselDetailResponse(
+                mmsi=mmsi,
+                provider="Global Fishing Watch",
+                status=fleet_resp.status,
+                reason=fleet_resp.reason,
+                vessel=None,
+                historical_track_available=False,
+                historical_track_message="Historical track unavailable from current provider."
+            )
+
+        matched = next((v for v in fleet_resp.vessels if v.mmsi == mmsi), None)
+        if not matched and fleet_resp.vessels:
+            matched = fleet_resp.vessels[0]
+
+        if not matched:
+            return VesselDetailResponse(
+                mmsi=mmsi,
+                provider="Global Fishing Watch",
+                status="NOT_FOUND",
+                reason=f"No vessel with MMSI {mmsi} found in Global Fishing Watch registry.",
+                vessel=None,
+                historical_track_available=False,
+                historical_track_message="Historical track unavailable from current provider."
+            )
+
+        return VesselDetailResponse(
+            mmsi=mmsi,
+            provider="Global Fishing Watch",
+            status="LIVE",
+            vessel=matched,
+            historical_track_available=False,
+            historical_track_message="Historical track unavailable from current provider. High-frequency continuous AIS tracks require raw terrestrial/satellite AIS feeds.",
+            retrieved_at=datetime.utcnow()
+        )
+
 
 

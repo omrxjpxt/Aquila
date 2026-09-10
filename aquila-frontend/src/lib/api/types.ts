@@ -360,6 +360,44 @@ export interface VesselCandidate {
   provenance: AISProvenance;
 }
 
+export interface FleetVessel {
+  id: string;
+  mmsi: string | null;
+  imo: string | null;
+  name: string | null;
+  vessel_type: string | null;
+  flag: string | null;
+  last_position_lat: number | null;
+  last_position_lon: number | null;
+  last_timestamp: string | null;
+  status: string;
+  risk_level: string;
+  provider: string;
+  provenance?: AISProvenance | null;
+}
+
+export interface FleetResponse {
+  provider: string;
+  status: 'LIVE' | 'UNAVAILABLE' | 'EMPTY';
+  reason: string | null;
+  retrieved_at: string;
+  total: number;
+  vessels: FleetVessel[];
+  active_investigations_count: number;
+}
+
+export interface VesselDetailResponse {
+  mmsi: string;
+  provider: string;
+  status: 'LIVE' | 'UNAVAILABLE' | 'NOT_FOUND';
+  reason: string | null;
+  vessel: FleetVessel | null;
+  historical_track_available: boolean;
+  historical_track_message: string;
+  retrieved_at: string;
+}
+
+
 
 export interface AttributionFactor {
   factor_name: string;
@@ -448,3 +486,18 @@ export interface CounterfactualResult {
   comparison: SimulationComparison;
   provenance: SimulationProvenance;
 }
+
+export interface ReportArchiveItem {
+  id: string;
+  investigation_id: string;
+  title: string;
+  priority: string;
+  status: string;
+  created_at: string;
+  updated_at?: string;
+  creation_mode: string;
+  provenance_mode: string;
+  evidence_count: number;
+  has_attribution: boolean;
+}
+

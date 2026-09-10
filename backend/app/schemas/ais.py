@@ -119,3 +119,40 @@ class GFWCandidateEvidence(BaseModel):
     inside_origin_region: bool = False
 
     provenance: GFWAISProvenance = Field(default_factory=GFWAISProvenance)
+
+
+class FleetVessel(BaseModel):
+    id: str
+    mmsi: Optional[str] = None
+    imo: Optional[str] = None
+    name: Optional[str] = None
+    vessel_type: Optional[str] = None
+    flag: Optional[str] = None
+    last_position_lat: Optional[float] = None
+    last_position_lon: Optional[float] = None
+    last_timestamp: Optional[datetime] = None
+    status: Optional[str] = "UNKNOWN"
+    risk_level: Optional[str] = "NOT_ASSESSED"
+    provider: str = "Global Fishing Watch"
+    provenance: Optional[AISProvenance] = None
+
+
+class FleetResponse(BaseModel):
+    provider: str = "Global Fishing Watch"
+    status: str = "UNAVAILABLE"  # LIVE | UNAVAILABLE | EMPTY
+    reason: Optional[str] = None
+    retrieved_at: datetime = Field(default_factory=datetime.utcnow)
+    total: int = 0
+    vessels: List[FleetVessel] = Field(default_factory=list)
+    active_investigations_count: int = 0
+
+
+class VesselDetailResponse(BaseModel):
+    mmsi: str
+    provider: str = "Global Fishing Watch"
+    status: str = "UNAVAILABLE"  # LIVE | UNAVAILABLE | NOT_FOUND
+    reason: Optional[str] = None
+    vessel: Optional[FleetVessel] = None
+    historical_track_available: bool = False
+    historical_track_message: str = "Historical track unavailable from current provider."
+    retrieved_at: datetime = Field(default_factory=datetime.utcnow)

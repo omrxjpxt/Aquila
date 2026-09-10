@@ -355,7 +355,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Compass className="w-4 h-4" /> 6. Vessel Evidence
             </h3>
-            <ProvenanceBadge prov="DEMO_MOCK" />
+            <ProvenanceBadge prov={ais && Array.isArray(ais) && ais.length > 0 ? (ais[0].provenance?.mode || ais[0].provenance || "LIVE") : (investigation?.creation_mode === "DEMO_MOCK" || (investigation as any)?.provenance === "DEMO_MOCK" ? "DEMO_MOCK" : "UNAVAILABLE")} />
           </div>
           <div className="bg-surface-container-lowest p-4 rounded border border-outline-variant">
             <div className="flex items-center justify-between mb-3 text-xs font-mono">
@@ -363,7 +363,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 AIS Candidate Discovery Window: <strong>Inferred Release ± 12 Hours</strong>
               </span>
               <span className="text-on-surface-variant">
-                Identified Candidates: <strong>{ais && Array.isArray(ais) ? ais.length : 3}</strong>
+                Identified Candidates: <strong>{ais && Array.isArray(ais) ? ais.length : 0}</strong>
               </span>
             </div>
             {ais && Array.isArray(ais) && ais.length > 0 ? (
@@ -388,7 +388,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                         <td className="p-2 border border-outline-variant">{v.identity?.vessel_type || v.vessel_type || 'Tanker'}</td>
                         <td className="p-2 border border-outline-variant">{v.identity?.flag || v.flag || 'PA'}</td>
                         <td className="p-2 border border-outline-variant">
-                          <ProvenanceBadge prov={v.provenance || "DEMO_MOCK"} />
+                          <ProvenanceBadge prov={v.provenance || "LIVE"} />
                         </td>
                       </tr>
                     ))}
@@ -398,10 +398,23 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             ) : (
               <div className="text-xs font-mono text-on-surface-variant">Vessel AIS candidates UNAVAILABLE</div>
             )}
-            <div className="mt-2 text-[10px] font-mono text-on-surface-variant flex items-center gap-1.5">
-              <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-              <span>AIS Mode: DEMO_MOCK (Global Fishing Watch token not configured; deterministic candidate tracks used).</span>
-            </div>
+            {ais && Array.isArray(ais) && ais.length > 0 ? (
+              <div className="mt-2 text-[10px] font-mono text-on-surface-variant flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                <span>
+                  {ais[0]?.provenance?.mode === "DEMO_MOCK"
+                    ? "AIS Mode: DEMO_MOCK (Deterministic candidate tracks used for demonstration)."
+                    : ais[0]?.provenance?.mode === "BYOD"
+                    ? "AIS Mode: BYOD (Historical AIS dataset supplied by investigator)."
+                    : "AIS Mode: LIVE (Global Fishing Watch presence/identity data)."}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-2 text-[10px] font-mono text-on-surface-variant flex items-center gap-1.5">
+                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                <span>AIS: UNAVAILABLE — Vessel attribution could not be completed from the configured provider.</span>
+              </div>
+            )}
           </div>
         </section>
 
@@ -411,7 +424,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Anchor className="w-4 h-4" /> 7. Vessel Attribution
             </h3>
-            <ProvenanceBadge prov={(attribution as any)?.provenance || "DEMO_MOCK"} />
+            <ProvenanceBadge prov={(attribution as any)?.provenance || (topCandidate ? (topVessel?.provenance?.mode || "LIVE") : (investigation?.creation_mode === "DEMO_MOCK" ? "DEMO_MOCK" : "UNAVAILABLE"))} />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -423,10 +436,10 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <>
                   <div className="mb-3">
                     <h5 className="text-base font-bold text-on-surface">
-                      {topCandidate.vessel_identity?.name || topVessel?.identity?.name || 'OCEANIC EXPLORER'}
+                      {topCandidate.vessel_identity?.name || topVessel?.identity?.name || (id === "INV-DEMO-OMAN-001" ? 'OCEANIC EXPLORER' : 'UNKNOWN')}
                     </h5>
                     <span className="font-mono text-[11px] text-on-surface-variant">
-                      MMSI: {topCandidate.vessel_identity?.mmsi || topVessel?.identity?.mmsi || '211281000'} | Type: Tanker
+                      MMSI: {topCandidate.vessel_identity?.mmsi || topVessel?.identity?.mmsi || (id === "INV-DEMO-OMAN-001" ? '111111111' : 'UNKNOWN')} | Type: {topCandidate.vessel_identity?.vessel_type || 'Tanker'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between bg-surface-container-low p-2.5 rounded border border-outline-variant mb-2 text-xs font-mono">

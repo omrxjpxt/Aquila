@@ -177,7 +177,7 @@ async def main():
         """, (
             INV_ID,
             "Demonstration Investigation: Gulf of Oman Sentinel-1 SAR Anomaly",
-            "OPEN",
+            "REPORT_READY",
             "HIGH",
             "MANUAL",
             "SYSTEM",

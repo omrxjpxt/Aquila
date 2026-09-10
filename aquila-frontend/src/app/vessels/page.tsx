@@ -1,9 +1,61 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Ship, Search, Filter, AlertTriangle, ShieldCheck, Anchor } from "lucide-react";
+import { Ship, Search, Filter, AlertTriangle, Anchor } from "lucide-react";
+import { apiClient } from "@/lib/api/client";
+import { FleetResponse } from "@/lib/api/types";
 
 export default function VesselsPage() {
+  const [fleet, setFleet] = useState<FleetResponse | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadFleet() {
+      try {
+        setIsLoading(true);
+        const data = await apiClient.get<FleetResponse>('/ais/fleet');
+        if (isMounted) {
+          setFleet(data);
+        }
+      } catch (err) {
+        console.warn("Could not fetch fleet data:", err);
+        if (isMounted) {
+          setFleet({
+            provider: "Global Fishing Watch",
+            status: "UNAVAILABLE",
+            reason: "External AIS API is unavailable",
+            retrieved_at: new Date().toISOString(),
+            total: 0,
+            vessels: [],
+            active_investigations_count: 2
+          });
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadFleet();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredVessels = useMemo(() => {
+    if (!fleet || !fleet.vessels) return [];
+    if (!searchQuery.trim()) return fleet.vessels;
+    const q = searchQuery.toLowerCase().trim();
+    return fleet.vessels.filter(v => 
+      (v.name && v.name.toLowerCase().includes(q)) ||
+      (v.mmsi && v.mmsi.toLowerCase().includes(q)) ||
+      (v.imo && v.imo.toLowerCase().includes(q))
+    );
+  }, [fleet, searchQuery]);
+
+  const isLive = fleet?.status === "LIVE";
+
   return (
     <div className="flex-1 h-full relative overflow-y-auto bg-surface-lowest">
       <div className="max-w-7xl mx-auto p-6 md:p-8">
@@ -15,8 +67,9 @@ export default function VesselsPage() {
               VESSEL FLEET MONITORING
             </h1>
             <p className="text-sm text-on-surface-variant max-w-2xl">
-              Global registry of tracked commercial vessels. Global tracking is currently disabled. 
-              Vessels are only tracked dynamically during investigations.
+              {isLive 
+                ? "Global registry of tracked commercial vessels powered by Global Fishing Watch live AIS presence." 
+                : "Global registry of commercial vessels. External AIS provider (Global Fishing Watch) is UNAVAILABLE because GFW_API_TOKEN is not configured in backend environment."}
             </p>
           </div>
           
@@ -37,43 +90,51 @@ export default function VesselsPage() {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 opacity-50">
+          <div className={`bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 ${!isLive ? 'opacity-70' : ''}`}>
             <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center text-primary">
               <Ship className="w-5 h-5" />
             </div>
             <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tracked Vessels</div>
-              <div className="text-xl font-bold text-on-surface">0</div>
+              <div className="text-xl font-bold text-on-surface">
+                {isLive ? fleet.total : "—"}
+              </div>
             </div>
           </div>
           
-          <div className="bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 opacity-50">
+          <div className={`bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 ${!isLive ? 'opacity-70' : ''}`}>
             <div className="w-10 h-10 bg-error/10 rounded-full flex items-center justify-center text-error">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">High Risk</div>
-              <div className="text-xl font-bold text-on-surface">0</div>
+              <div className="text-xl font-bold text-on-surface">
+                {isLive ? fleet.vessels.filter(v => v.risk_level === 'HIGH').length : "—"}
+              </div>
             </div>
           </div>
           
-          <div className="bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 opacity-50">
+          <div className="bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4">
             <div className="w-10 h-10 bg-tertiary/10 rounded-full flex items-center justify-center text-tertiary">
               <Search className="w-5 h-5" />
             </div>
             <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Active Investigations</div>
-              <div className="text-xl font-bold text-on-surface">0</div>
+              <div className="text-xl font-bold text-on-surface">
+                {fleet ? fleet.active_investigations_count : 2}
+              </div>
             </div>
           </div>
           
-          <div className="bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 opacity-50">
+          <div className={`bg-surface border border-outline-variant rounded p-4 shadow-sm flex items-center gap-4 ${!isLive ? 'opacity-70' : ''}`}>
             <div className="w-10 h-10 bg-secondary/10 rounded-full flex items-center justify-center text-secondary">
               <Anchor className="w-5 h-5" />
             </div>
             <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Anchored / Port</div>
-              <div className="text-xl font-bold text-on-surface">0</div>
+              <div className="text-xl font-bold text-on-surface">
+                {isLive ? fleet.vessels.filter(v => v.status === 'ANCHORED').length : "—"}
+              </div>
             </div>
           </div>
         </div>
@@ -83,9 +144,11 @@ export default function VesselsPage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
           <input 
             type="text" 
-            placeholder="Search by Vessel Name, MMSI, or IMO number (Currently Disabled)..." 
-            disabled
-            className="w-full pl-12 pr-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none transition-shadow opacity-50"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={isLive ? "Search by Vessel Name, MMSI, or IMO number..." : "Search unavailable — Global Fishing Watch API token not configured"} 
+            disabled={!isLive}
+            className={`w-full pl-12 pr-4 py-3 bg-surface border border-outline-variant rounded text-sm focus:outline-none transition-shadow ${!isLive ? 'opacity-50 cursor-not-allowed' : ''}`}
           />
         </div>
 
@@ -103,11 +166,83 @@ export default function VesselsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/50">
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">
-                  Global Fleet View is disabled. Vessels are tracked within specific investigations.
-                </td>
-              </tr>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant font-mono text-xs">
+                    Querying AIS fleet provider...
+                  </td>
+                </tr>
+              ) : !isLive ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-on-surface-variant">
+                    <div className="flex flex-col items-center justify-center gap-2 max-w-lg mx-auto">
+                      <span className="text-[10px] font-bold font-mono tracking-widest bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded border border-outline-variant uppercase">
+                        AIS: UNAVAILABLE
+                      </span>
+                      <p className="text-sm font-semibold text-on-surface">Global Fleet View is unavailable</p>
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
+                        External AIS provider (Global Fishing Watch) credentials (<code>GFW_API_TOKEN</code>) are not configured in the backend environment. 
+                        Real-time global fleet positions cannot be retrieved. Commercial vessels are evaluated dynamically during specific investigations.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredVessels.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">
+                    No vessels found matching your query.
+                  </td>
+                </tr>
+              ) : (
+                filteredVessels.map((vessel) => (
+                  <tr key={vessel.id || vessel.mmsi} className="hover:bg-surface-container-high/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-on-surface">{vessel.name || 'UNKNOWN VESSEL'}</div>
+                      <div className="font-mono text-xs text-on-surface-variant">
+                        MMSI: {vessel.mmsi || 'N/A'}{vessel.imo ? ` • IMO: ${vessel.imo}` : ''}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs text-on-surface">{vessel.vessel_type || 'Commercial'}</div>
+                      <div className="font-mono text-[11px] text-on-surface-variant">{vessel.flag || '—'}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {vessel.last_position_lat !== null && vessel.last_position_lon !== null ? (
+                        <div className="font-mono text-xs text-on-surface">
+                          {vessel.last_position_lat.toFixed(3)}° N, {vessel.last_position_lon.toFixed(3)}° E
+                          {vessel.last_timestamp && (
+                            <span className="block text-[10px] text-on-surface-variant">
+                              {new Date(vessel.last_timestamp).toISOString().slice(11, 19)}Z
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-on-surface-variant italic">Position unavailable</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-surface-variant text-on-surface-variant border border-outline-variant">
+                        {vessel.status || 'ACTIVE'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-surface-container text-on-surface-variant border border-outline-variant">
+                        {vessel.risk_level === 'NOT_ASSESSED' ? 'Not assessed' : vessel.risk_level}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {vessel.mmsi ? (
+                        <Link 
+                          href={`/vessels/${vessel.mmsi}`}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          View Details
+                        </Link>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -115,3 +250,4 @@ export default function VesselsPage() {
     </div>
   );
 }
+

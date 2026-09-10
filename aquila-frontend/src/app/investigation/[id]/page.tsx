@@ -71,8 +71,8 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                     <span className="text-on-surface font-bold">
                       {candidate.area_km2 !== undefined && candidate.area_km2 !== null 
                         ? Number(candidate.area_km2).toFixed(2) 
-                        : (candidate as Record<string, unknown>).area_sq_km !== undefined 
-                        ? Number((candidate as Record<string, unknown>).area_sq_km).toFixed(2) 
+                        : (candidate as unknown as Record<string, unknown>).area_sq_km !== undefined 
+                        ? Number((candidate as unknown as Record<string, unknown>).area_sq_km).toFixed(2) 
                         : '1.25'} km²
                     </span>
                   </div>
