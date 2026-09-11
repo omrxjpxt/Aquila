@@ -187,3 +187,20 @@ def test_candidates_endpoint_mock_mode():
     assert len(candidates) > 0
     assert candidates[0]["provenance"]["mode"] == "DEMO_MOCK"
 
+
+def test_gfw_readiness_and_secret_redaction():
+    """Verify safe readiness check and ensure secret token is never exposed."""
+    secret = "secret-gfw-super-confidential-token-12345"
+    provider_configured = GFWAISProvider(token=secret)
+    assert provider_configured.is_configured is True
+    
+    # Safe string representation must NOT expose the secret
+    rep = repr(provider_configured)
+    assert secret not in rep
+    assert "configured=True" in rep
+
+    provider_unconfigured = GFWAISProvider(token="")
+    assert provider_unconfigured.is_configured is False
+    assert "configured=False" in repr(provider_unconfigured)
+    assert secret not in repr(provider_unconfigured)
+

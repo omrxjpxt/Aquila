@@ -49,7 +49,14 @@ class Settings(BaseSettings):
     # Phase 18: CORS
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True)
+    _backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    _env_path = os.path.join(_backend_dir, ".env")
+    model_config = SettingsConfigDict(
+        env_file=(".env", _env_path),
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore"
+    )
     
     @property
     def cors_origins_list(self) -> List[str]:
