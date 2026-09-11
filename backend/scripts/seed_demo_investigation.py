@@ -197,17 +197,17 @@ async def main():
                 INV_ID,
                 "SYSTEM",
                 "SATELLITE_DETECTION",
-                "Sentinel-1 SAR (CDSE / Local Processed)",
+                "Copernicus Sentinel-1 IW GRDH (Local Sample Granule)",
                 "ATTACHED",
                 json.dumps({
                     "scene_id": SCENE_ID,
                     "acquisition_time": scene.acquisition_time.isoformat() if hasattr(scene.acquisition_time, 'isoformat') else str(scene.acquisition_time),
                     "bbox": scene.bbox,
-                    "source": "Sentinel-1 SAR",
-                    "provenance": "LIVE"
+                    "source": "Sentinel-1 SAR (Local Sample Granule)",
+                    "provenance": "LOCAL_DERIVED_FROM_REAL_DATA"
                 }),
                 now,
-                "LIVE"
+                "LOCAL_DERIVED_FROM_REAL_DATA"
             ),
             (
                 f"EV-{INV_ID}-02",

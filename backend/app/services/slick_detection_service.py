@@ -1,6 +1,7 @@
 import uuid
 import hashlib
 import json
+import math
 from typing import List
 from datetime import datetime
 import numpy as np
@@ -77,13 +78,19 @@ class SlickDetectionService:
                         geom_hash = hashlib.sha256(coords_str.encode()).hexdigest()[:12]
                         detection_id = f"cand-{geom_hash}"
 
+                        # Compute approximate geographic area in sq km
+                        centroid_lat = s.centroid.y
+                        km_per_deg_lat = 111.32
+                        km_per_deg_lon = 111.32 * math.cos(math.radians(centroid_lat)) if abs(centroid_lat) <= 90 else 111.32
+                        calc_area_sq_km = max(round(s.area * km_per_deg_lat * km_per_deg_lon, 4), 0.0001) if s.area < 1000 else round(s.area / 1e6, 4)
+
                         slick = Slick(
                             id=detection_id,
                             investigation_id=None,
                             source_scene_id=scene.id,
                             detected_at=datetime.utcnow(),
                             geometry=geom,
-                            area_sq_km=0.0,  # Placeholder, requires reprojection to equal-area CRS
+                            area_sq_km=calc_area_sq_km,
                             classification="BASELINE_CANDIDATE",
                             baseline_score=offset,
                             threshold_info={"block_size": block_size, "offset": offset, "method": "gaussian_adaptive"},

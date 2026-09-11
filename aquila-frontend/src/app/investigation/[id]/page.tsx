@@ -199,7 +199,9 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
           <div className="absolute top-4 left-4 z-10 flex gap-2 pointer-events-auto">
             <div className="bg-surface/90 backdrop-blur border border-outline-variant rounded p-3 shadow-sm flex flex-col gap-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">LIVE / BACKEND</span>
+                <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">
+                  {scene?.provenance === 'LIVE' ? 'LIVE / CDSE' : 'LOCAL SAMPLE / REAL DATA'}
+                </span>
               </div>
             </div>
           </div>

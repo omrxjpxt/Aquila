@@ -45,9 +45,9 @@ def mock_patch(tmp_path):
         return str(img_path)
 
 @pytest.mark.asyncio
-async def test_real_model_default_loading(test_slick, mock_patch):
+async def test_real_model_default_loading(test_slick, mock_patch, monkeypatch):
     """Verify that by default, or with the real model path, the correct metadata is injected."""
-    os.environ["LOOKALIKE_MODEL_PATH"] = str(REAL_MODEL_PATH)
+    monkeypatch.setenv("LOOKALIKE_MODEL_PATH", str(REAL_MODEL_PATH))
     service = LookAlikeService()
     
     assert service._is_real_model is True
@@ -61,9 +61,9 @@ async def test_real_model_default_loading(test_slick, mock_patch):
     assert isinstance(assessment.raw_score, float)
 
 @pytest.mark.asyncio
-async def test_synthetic_model_fallback(test_slick, mock_patch):
+async def test_synthetic_model_fallback(test_slick, mock_patch, monkeypatch):
     """Verify that configuring the synthetic path falls back correctly."""
-    os.environ["LOOKALIKE_MODEL_PATH"] = str(SYNTHETIC_MODEL_PATH)
+    monkeypatch.setenv("LOOKALIKE_MODEL_PATH", str(SYNTHETIC_MODEL_PATH))
     service = LookAlikeService()
     
     assert service._is_real_model is False
@@ -76,9 +76,9 @@ async def test_synthetic_model_fallback(test_slick, mock_patch):
     assert assessment.artifact_identifier == str(SYNTHETIC_MODEL_PATH)
 
 @pytest.mark.asyncio
-async def test_missing_artifact_fails_clearly(test_slick, mock_patch):
+async def test_missing_artifact_fails_clearly(test_slick, mock_patch, monkeypatch):
     """Verify that a missing artifact path raises FileNotFoundError rather than silently falling back."""
-    os.environ["LOOKALIKE_MODEL_PATH"] = "data/models/does_not_exist.joblib"
+    monkeypatch.setenv("LOOKALIKE_MODEL_PATH", "data/models/does_not_exist.joblib")
     service = LookAlikeService()
     
     with pytest.raises(FileNotFoundError, match="Model artifact not found"):

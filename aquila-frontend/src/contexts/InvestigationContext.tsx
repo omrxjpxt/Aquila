@@ -120,9 +120,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
               perimeter_km: 4.8,
               mean_backscatter_db: -21.4,
               aspect_ratio: 3.2,
-              detection_confidence: 0.92,
-              classification_label: 'OIL_SPILL',
-              slick_type: 'MINERAL_OIL',
+              classification: 'CANDIDATE_SLICK',
               centroid: [58.025, 24.474],
               is_verified: false,
               created_at: inv.created_at

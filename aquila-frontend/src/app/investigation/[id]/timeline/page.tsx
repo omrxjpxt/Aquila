@@ -38,7 +38,7 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
     : null;
     
   const displayId = id;
-  const targetName = topVessel?.identity?.name || topCandidate?.vessel_identity?.name || (id === "INV-DEMO-OMAN-001" ? 'OCEANIC EXPLORER' : 'UNATTRIBUTED');
+  const targetName = topVessel?.identity?.name || topCandidate?.vessel_identity?.name || 'UNATTRIBUTED';
   const timeframe = scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().split('T')[0] : '2026-09-10';
 
   interface TimelineEvent {

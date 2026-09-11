@@ -17,6 +17,13 @@ const ProvenanceBadge = ({ prov }: { prov?: unknown }) => {
   );
   const val = (typeof prov === 'object' && prov !== null) ? ((prov as Record<string, unknown>).mode || (prov as Record<string, unknown>).status || (prov as Record<string, unknown>).source || '') : prov;
   const p = String(val).toUpperCase();
+  if (p.includes("LOCAL") || p.includes("DERIVED")) {
+    return (
+      <span className="text-[9px] bg-slate-500/15 text-slate-700 dark:text-slate-400 px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-widest border border-slate-500/30">
+        LOCAL_DERIVED_FROM_REAL_DATA
+      </span>
+    );
+  }
   if (p.includes("TRAINED") || p.includes("REAL_DATA")) {
     return (
       <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-widest border border-primary/30">
@@ -158,7 +165,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <FileText className="w-4 h-4" /> 1. Investigation Overview
             </h3>
-            <ProvenanceBadge prov={(investigation as any)?.provenance || "LIVE"} />
+            <ProvenanceBadge prov={(investigation as any)?.provenance || (investigation?.creation_mode === 'DEMO_MOCK' ? 'DEMO_MOCK' : (scene as any)?.provenance) || "LOCAL_DERIVED_FROM_REAL_DATA"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -194,7 +201,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Satellite className="w-4 h-4" /> 2. Satellite Detection
             </h3>
-            <ProvenanceBadge prov={(scene as any)?.provenance || "LIVE"} />
+            <ProvenanceBadge prov={(scene as any)?.provenance || "LOCAL_DERIVED_FROM_REAL_DATA"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono mb-3">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -237,13 +244,13 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Predicted Class</span>
               <span className="font-bold text-primary">
-                {(assessment as any)?.predicted_class || (assessment as any)?.classification || 'MINERAL_OIL'}
+                {(assessment as any)?.predicted_class || (assessment as any)?.classification || 'UNASSESSED'}
               </span>
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Raw Decision Score</span>
               <span className="font-bold text-on-surface">
-                {(assessment as any)?.raw_score !== undefined ? Number((assessment as any).raw_score).toFixed(3) : '1.420'}
+                {(assessment as any)?.raw_score !== undefined ? Number((assessment as any).raw_score).toFixed(3) : 'UNAVAILABLE'}
               </span>
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -278,19 +285,23 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Wind Vector (U, V)</span>
                   <span className="font-bold text-on-surface">
-                    {Number((envData as any).wind_u ?? -1.4).toFixed(2)}, {Number((envData as any).wind_v ?? -4.1).toFixed(2)} m/s
+                    {(envData as any)?.wind_u !== undefined && (envData as any)?.wind_v !== undefined
+                      ? `${Number((envData as any).wind_u).toFixed(2)}, ${Number((envData as any).wind_v).toFixed(2)} m/s`
+                      : 'UNAVAILABLE'}
                   </span>
                   <span className="block text-[10px] text-on-surface-variant mt-0.5">
-                    Speed: {Number((envData as any).speed_m_s ?? 4.3).toFixed(1)} m/s
+                    Speed: {(envData as any)?.speed_m_s !== undefined ? `${Number((envData as any).speed_m_s).toFixed(1)} m/s` : 'UNAVAILABLE'}
                   </span>
                 </div>
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Ocean Current (U, V)</span>
                   <span className="font-bold text-on-surface">
-                    {Number((envData as any).current_u ?? 0.05).toFixed(2)}, {Number((envData as any).current_v ?? -0.06).toFixed(2)} m/s
+                    {(envData as any)?.current_u !== undefined && (envData as any)?.current_v !== undefined
+                      ? `${Number((envData as any).current_u).toFixed(2)}, ${Number((envData as any).current_v).toFixed(2)} m/s`
+                      : 'UNAVAILABLE'}
                   </span>
                   <span className="block text-[10px] text-on-surface-variant mt-0.5">
-                    Direction: {Number((envData as any).direction_deg ?? 198.0).toFixed(0)}°
+                    Direction: {(envData as any)?.direction_deg !== undefined ? `${Number((envData as any).direction_deg).toFixed(0)}°` : 'UNAVAILABLE'}
                   </span>
                 </div>
                 <div>
@@ -302,7 +313,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <div className="flex flex-col justify-center">
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Provider Source</span>
                   <span className="font-bold text-primary">{(envData as any).provider || 'Open-Meteo Marine'}</span>
-                  <span className="text-[10px] text-on-surface-variant">ECMWF / In-situ Metocean</span>
+                  <span className="text-[10px] text-on-surface-variant">ECMWF Atmospheric / Marine Model Data</span>
                 </div>
               </div>
             ) : (
@@ -388,7 +399,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                         <td className="p-2 border border-outline-variant">{v.identity?.vessel_type || v.vessel_type || 'Tanker'}</td>
                         <td className="p-2 border border-outline-variant">{v.identity?.flag || v.flag || 'PA'}</td>
                         <td className="p-2 border border-outline-variant">
-                          <ProvenanceBadge prov={v.provenance || "LIVE"} />
+                          <ProvenanceBadge prov={v.provenance?.mode || v.provenance || "DEMO_MOCK"} />
                         </td>
                       </tr>
                     ))}
@@ -424,7 +435,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Anchor className="w-4 h-4" /> 7. Vessel Attribution
             </h3>
-            <ProvenanceBadge prov={(attribution as any)?.provenance || (topCandidate ? (topVessel?.provenance?.mode || "LIVE") : (investigation?.creation_mode === "DEMO_MOCK" ? "DEMO_MOCK" : "UNAVAILABLE"))} />
+            <ProvenanceBadge prov={(attribution as any)?.provenance || (topCandidate ? (topVessel?.provenance?.mode || "DEMO_MOCK") : (investigation?.creation_mode === "DEMO_MOCK" ? "DEMO_MOCK" : "UNAVAILABLE"))} />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -436,10 +447,10 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <>
                   <div className="mb-3">
                     <h5 className="text-base font-bold text-on-surface">
-                      {topCandidate.vessel_identity?.name || topVessel?.identity?.name || (id === "INV-DEMO-OMAN-001" ? 'OCEANIC EXPLORER' : 'UNKNOWN')}
+                      {topCandidate.vessel_identity?.name || topVessel?.identity?.name || 'UNKNOWN'}
                     </h5>
                     <span className="font-mono text-[11px] text-on-surface-variant">
-                      MMSI: {topCandidate.vessel_identity?.mmsi || topVessel?.identity?.mmsi || (id === "INV-DEMO-OMAN-001" ? '111111111' : 'UNKNOWN')} | Type: {topCandidate.vessel_identity?.vessel_type || 'Tanker'}
+                      MMSI: {topCandidate.vessel_identity?.mmsi || topVessel?.identity?.mmsi || 'UNKNOWN'} | Type: {topCandidate.vessel_identity?.vessel_type || 'Tanker'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between bg-surface-container-low p-2.5 rounded border border-outline-variant mb-2 text-xs font-mono">
@@ -463,6 +474,10 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                     <div className="flex-1 bg-error/10 border border-error/30 rounded py-1.5">
                       <span className="block font-bold text-error">{topCandidate.contradicting_count ?? 0}</span>
                       <span className="text-[8px] uppercase tracking-widest">Contradict</span>
+                    </div>
+                    <div className="flex-1 bg-surface-container-high border border-outline-variant rounded py-1.5">
+                      <span className="block font-bold text-on-surface-variant">{topCandidate.unavailable_count ?? 0}</span>
+                      <span className="text-[8px] uppercase tracking-widest">Unavailable</span>
                     </div>
                   </div>
                 </>
@@ -522,9 +537,9 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                     </span>
                     <span className="font-bold text-primary text-base">
                       {(sim as any)?.comparison?.spatial_agreement_iou !== undefined 
-                        ? Number((sim as any).comparison.spatial_agreement_iou).toFixed(3)
+                        ? `${(Number((sim as any).comparison.spatial_agreement_iou) * 100).toFixed(1)}%`
                         : (sim as any)?.overlap_iou !== undefined
-                        ? Number((sim as any).overlap_iou).toFixed(3)
+                        ? `${(Number((sim as any).overlap_iou) * 100).toFixed(1)}%`
                         : 'UNAVAILABLE'}
                     </span>
                     <span className="block text-[9px] text-on-surface-variant">Geometric Jaccard Index</span>
@@ -648,10 +663,10 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
               <tbody>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Satellite SAR Ingestion</td>
-                  <td className="p-2 border border-outline-variant">Copernicus Sentinel-1 IW GRDH</td>
+                  <td className="p-2 border border-outline-variant">Copernicus Sentinel-1 IW GRDH (Local Sample Granule)</td>
                   <td className="p-2 border border-outline-variant">Local Processed Granule</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="LIVE" /></td>
-                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Real calibrated radar backscatter data</td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(scene as any)?.provenance || "LOCAL_DERIVED_FROM_REAL_DATA"} /></td>
+                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Real calibrated radar backscatter data from cropped sample granule</td>
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Slick Classification</td>
@@ -663,16 +678,16 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Marine Metocean</td>
                   <td className="p-2 border border-outline-variant">Open-Meteo Marine API</td>
-                  <td className="p-2 border border-outline-variant">Live ECMWF Observation</td>
+                  <td className="p-2 border border-outline-variant">Open-Meteo ECMWF Model Data</td>
                   <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="LIVE" /></td>
-                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Real in-situ wind and surface ocean currents</td>
+                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Model-derived wind and surface ocean current forcing</td>
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Drift Reconstruction</td>
-                  <td className="p-2 border border-outline-variant">AQUILA Drift Engine</td>
-                  <td className="p-2 border border-outline-variant">Analytical Advection Hindcast</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="DEMO_MOCK" /></td>
-                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Demonstration advection model backward in time</td>
+                  <td className="p-2 border border-outline-variant">{(drift as any)?.forcing_provider ? `OpenDrift Engine (${(drift as any).forcing_provider})` : 'OpenDrift Engine'}</td>
+                  <td className="p-2 border border-outline-variant">{(drift as any)?.provenance?.mode === 'LIVE' ? 'Live OpenDrift Reverse Hindcast' : 'Analytical Advection Hindcast'}</td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(drift as any)?.provenance?.mode || (drift as any)?.provenance || 'LIVE'} /></td>
+                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Real OpenDrift trajectory advection using Open-Meteo forcing</td>
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Vessel Traffic (AIS)</td>
@@ -683,16 +698,16 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Attribution Evaluation</td>
-                  <td className="p-2 border border-outline-variant">6-Factor Bayesian Compatibility</td>
-                  <td className="p-2 border border-outline-variant">Multi-Criteria Scoring Engine</td>
+                  <td className="p-2 border border-outline-variant">Six-Factor Evidence-Weighted Heuristic</td>
+                  <td className="p-2 border border-outline-variant">Ordinal Multi-Criteria Evaluation</td>
                   <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="DEMO_MOCK" /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Evaluated on candidate trajectories and drift envelope</td>
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Counterfactual Validation</td>
-                  <td className="p-2 border border-outline-variant">Forward Particle Advection</td>
-                  <td className="p-2 border border-outline-variant">Geometric Jaccard Overlap</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="DEMO_MOCK" /></td>
+                  <td className="p-2 border border-outline-variant">{(sim as any)?.provenance?.engine || 'OpenDrift Forward Simulation'}</td>
+                  <td className="p-2 border border-outline-variant">{(sim as any)?.provenance?.mode === 'LIVE' ? 'Live OpenDrift Forward Advection' : 'Geometric Jaccard Overlap'}</td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(sim as any)?.provenance?.mode || (sim as any)?.provenance || 'LIVE'} /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Demonstrates spatial agreement without proving causation</td>
                 </tr>
               </tbody>

@@ -82,18 +82,25 @@ export interface EvidenceEvent {
   provenance?: string | null;
 }
 
+export interface SourceHealthItem {
+  id: string;
+  name: string;
+  provider: string;
+  status: "LIVE" | "READY" | "CONFIGURED" | "UNAVAILABLE" | "DEGRADED" | "ERROR" | "DEMO_MOCK" | string;
+  mode: "LIVE" | "LOCAL" | "UNAVAILABLE" | "DEMO_MOCK" | string;
+  configured: boolean;
+  available: boolean;
+  last_checked: string;
+  reason?: string | null;
+  provenance?: string | null;
+}
+
 export interface SystemStatus {
   status: string;
   service: string;
   persistence: string;
-  providers: {
-    cdse: string;
-    firebase: string;
-    gfw: string;
-    open_meteo: string;
-    opendrift: string;
-    ml_model: string;
-  };
+  providers: Record<string, string>;
+  sources?: Record<string, SourceHealthItem>;
 }
 
 export interface SatelliteScene {
@@ -110,6 +117,8 @@ export interface SatelliteScene {
   raw_storage_path: string;
   processed_storage_path?: string | null;
   is_processed: boolean;
+  provenance?: string | null;
+  source?: string | null;
 }
 
 export interface ProcessingResult {

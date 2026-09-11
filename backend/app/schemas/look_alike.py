@@ -45,7 +45,7 @@ class LookAlikeAssessment(BaseModel):
     evaluation_domain: str = Field(default="Unknown", description="Domain the model is evaluating on")
     evaluation_status: str = Field(default="Unknown", description="Evaluation status or origin of the model")
     artifact_identifier: str = Field(default="Unknown", description="The unique artifact or configuration path used")
-    patch_metadata: PatchMetadata
+    patch_metadata: Optional[PatchMetadata] = Field(default=None, description="Metadata about the patch")
     assessed_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Future extension points (not populated in Phase 4B)
