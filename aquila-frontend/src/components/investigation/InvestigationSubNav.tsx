@@ -18,7 +18,7 @@ export function InvestigationSubNav({ incidentId }: { incidentId: string }) {
   ];
 
   return (
-    <div className="h-12 bg-surface-lowest border-b border-outline-variant flex items-center px-4 shrink-0 shadow-sm z-20 overflow-x-auto overflow-y-hidden no-scrollbar">
+    <div className="h-12 bg-surface-container-lowest border-b border-outline-variant flex items-center px-4 shrink-0 shadow-sm z-20 overflow-x-auto overflow-y-hidden no-scrollbar">
       <div className="flex gap-2 min-w-max">
         {tabs.map(tab => {
           const isActive = tab.exact 

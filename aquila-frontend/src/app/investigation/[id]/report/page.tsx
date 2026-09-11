@@ -123,7 +123,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
     : null;
 
   return (
-    <div className="flex-1 p-6 flex justify-center overflow-y-auto h-full bg-[#f0f4f8] dark:bg-surface">
+    <div className="flex-1 min-h-0 p-6 flex justify-center items-start overflow-y-auto h-full bg-[#f0f4f8] dark:bg-surface">
       <div className="w-full max-w-5xl bg-surface border border-outline-variant shadow-sm p-8 rounded-lg relative overflow-hidden mb-16">
         
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-tertiary to-primary opacity-90"></div>
