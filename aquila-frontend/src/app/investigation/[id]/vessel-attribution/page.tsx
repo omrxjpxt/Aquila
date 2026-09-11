@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { MapLibreCanvas } from "@/components/map/MapLibreCanvas";
 import { VesselTracksLayer, OriginRegionLayer } from "@/components/map/layers";
-import { ListOrdered, ShieldCheck, Search, AlertTriangle, CheckCircle, XCircle, HelpCircle, AlertCircle } from "lucide-react";
+import { ListOrdered, ShieldCheck, Search, AlertTriangle, CheckCircle, XCircle, HelpCircle, AlertCircle, ChevronDown } from "lucide-react";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 import { EvidenceStatus } from "@/lib/api/types";
 
@@ -30,7 +30,6 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
 
   const toggleFactor = (factorName: string) => {
     setExpandedFactors(prev => ({
-      ...prev,
       [factorName]: !prev[factorName]
     }));
   };
@@ -121,6 +120,15 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
       case "CONTRADICTING": return "text-error bg-error/10 border-error/20";
       case "NEUTRAL": return "text-on-surface-variant bg-surface-variant/30 border-outline-variant";
       case "UNAVAILABLE": return "text-on-surface-variant/50 bg-surface-variant/10 border-outline-variant/50";
+    }
+  };
+
+  const getStatusAccent = (status: EvidenceStatus) => {
+    switch(status) {
+      case "SUPPORTING": return "border-l-[#00647C]";
+      case "CONTRADICTING": return "border-l-error";
+      case "NEUTRAL": return "border-l-outline-variant";
+      case "UNAVAILABLE": return "border-l-outline-variant/50";
     }
   };
 
@@ -244,7 +252,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
             )}
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface-container-lowest">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-surface-container-lowest">
             {displayCandidates.map((cand, idx) => {
               const isSelected = selectedMmsi === cand.vessel_identity.mmsi;
               return (
@@ -328,54 +336,55 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-surface-container-lowest p-4 flex flex-col gap-3">
-              <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">Six-Factor Breakdown</span>
+            <div key={selectedCandidate.vessel_identity.mmsi} className="flex-1 min-h-0 overflow-y-auto bg-surface-container-lowest px-4 py-3 flex flex-col gap-2">
+              <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant block mb-0.5">Six-Factor Breakdown</span>
               
-              {selectedCandidate.factors.map(factor => (
-                <div key={factor.factor_name} className="flex flex-col border border-outline-variant rounded bg-surface overflow-hidden">
-                  <button 
-                    onClick={() => toggleFactor(factor.factor_name)}
-                    className="flex justify-between items-center p-3 hover:bg-surface-container-lowest transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold uppercase text-on-surface tracking-wider">{factor.factor_name}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${getStatusColor(factor.status)}`}>
-                        {getStatusIcon(factor.status)}
-                        <span className="text-[9px] font-bold tracking-widest uppercase">{factor.status}</span>
-                      </div>
-                      <span className="text-on-surface-variant font-bold text-xs">{expandedFactors[factor.factor_name] ? '-' : '+'}</span>
-                    </div>
-                  </button>
-                  
-                  {expandedFactors[factor.factor_name] && (
-                    <div className="p-3 pt-0 border-t border-outline-variant/50">
-                      <div className="mt-2">
-                        <span className="text-sm text-on-surface block mb-1">{factor.observation}</span>
-                        <span className="text-xs text-on-surface-variant block">{factor.interpretation}</span>
-                      </div>
-                      
-                      <div className="mt-3 flex flex-col gap-1 bg-surface-container-lowest p-2 rounded border border-outline-variant/50">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-mono text-on-surface-variant uppercase">Source</span>
-                          <span className="text-[9px] font-mono text-on-surface font-bold">{factor.evidence_source}</span>
+              {selectedCandidate.factors.map(factor => {
+                const isExpanded = !!expandedFactors[factor.factor_name];
+                return (
+                  <div key={factor.factor_name} className={`flex flex-col border border-outline-variant rounded-lg bg-surface overflow-hidden border-l-[3px] ${getStatusAccent(factor.status)} transition-shadow ${isExpanded ? 'shadow-md' : 'shadow-sm'}`}>
+                    <button 
+                      onClick={() => toggleFactor(factor.factor_name)}
+                      className="flex justify-between items-center px-3 py-2.5 hover:bg-surface-container-low/50 transition-colors text-left gap-2"
+                    >
+                      <span className="text-[11px] font-bold uppercase text-on-surface tracking-wider leading-tight">{factor.factor_name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border ${getStatusColor(factor.status)}`}>
+                          {getStatusIcon(factor.status)}
+                          <span className="text-[8px] font-bold tracking-widest uppercase">{factor.status}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-mono text-on-surface-variant uppercase">Provenance</span>
-                          <span className="text-[9px] font-mono text-[#8c6b22] font-bold bg-[#ffeedd] px-1 rounded">{factor.provenance}</span>
-                        </div>
-                        {factor.limitations && (
-                          <div className="flex items-start gap-1 mt-1 pt-1 border-t border-outline-variant/50">
-                            <AlertTriangle className="w-3 h-3 text-[#e5ab35] shrink-0 mt-0.5" />
-                            <span className="text-[9px] font-medium text-on-surface-variant leading-tight">{factor.limitations}</span>
-                          </div>
+                        <ChevronDown className={`w-3.5 h-3.5 text-on-surface-variant transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                    
+                    {isExpanded && (
+                      <div className="px-3 pb-3 border-t border-outline-variant/30">
+                        <p className="text-[13px] text-on-surface mt-2 leading-relaxed">{factor.observation}</p>
+                        {factor.interpretation && (
+                          <p className="text-[11px] text-on-surface-variant mt-1 leading-relaxed">{factor.interpretation}</p>
                         )}
+                        
+                        <div className="mt-2.5 flex flex-col gap-1.5 bg-surface-container-low/60 p-2 rounded border border-outline-variant/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-mono text-on-surface-variant/70 uppercase">Source</span>
+                            <span className="text-[9px] font-mono text-on-surface font-medium">{factor.evidence_source}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-[9px] font-mono text-on-surface-variant/70 uppercase">Provenance</span>
+                            <span className="text-[9px] font-mono text-[#8c6b22] font-semibold bg-[#ffeedd] px-1.5 py-0.5 rounded">{factor.provenance}</span>
+                          </div>
+                          {factor.limitations && (
+                            <div className="flex items-start gap-1.5 mt-1 pt-1.5 border-t border-outline-variant/30">
+                              <AlertTriangle className="w-3 h-3 text-[#e5ab35] shrink-0 mt-0.5" />
+                              <span className="text-[9px] font-medium text-on-surface-variant leading-snug">{factor.limitations}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
             
             <div className="p-3 border-t border-outline-variant bg-surface text-center">
