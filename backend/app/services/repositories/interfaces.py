@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from app.schemas.orchestration import MonitoringJob, JobStatus
 from app.schemas.investigation import Investigation, InvestigationCreate
 from app.schemas.evidence import EvidenceEvent
@@ -40,6 +40,9 @@ class InvestigationRepository:
         raise NotImplementedError
 
     def get_evidence(self, investigation_id: str) -> List[EvidenceEvent]:
+        raise NotImplementedError
+
+    def update_investigation_status(self, inv_id: str, status: str, anomaly_geometry: Optional[Dict[str, Any]] = None) -> Optional[Investigation]:
         raise NotImplementedError
 
 

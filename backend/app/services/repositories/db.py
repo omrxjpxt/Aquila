@@ -3,9 +3,25 @@ import os
 import logging
 from contextlib import contextmanager
 
+from datetime import datetime
+
 logger = logging.getLogger(__name__)
 
 DB_PATH = os.getenv("AQUILA_DB_PATH", "data/aquila.db")
+
+def _convert_timestamp(val: bytes) -> datetime:
+    val_str = val.decode("utf-8")
+    if val_str.endswith("Z"):
+        val_str = val_str[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(val_str).replace(tzinfo=None)
+    except Exception:
+        # Fallback for formats with sub-second or timezones
+        clean_str = val_str.split("+")[0].split("Z")[0]
+        return datetime.fromisoformat(clean_str)
+
+sqlite3.register_converter("timestamp", _convert_timestamp)
+sqlite3.register_converter("TIMESTAMP", _convert_timestamp)
 
 SCHEMA = """
 -- Monitoring Zones

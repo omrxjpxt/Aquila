@@ -691,16 +691,26 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Vessel Traffic (AIS)</td>
-                  <td className="p-2 border border-outline-variant">Spatiotemporal Discovery Engine</td>
-                  <td className="p-2 border border-outline-variant">MockAISProvider (Anchored)</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="DEMO_MOCK" /></td>
-                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">GFW_API_TOKEN unconfigured; synthetic tracks used</td>
+                  <td className="p-2 border border-outline-variant">
+                    {evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'Global Fishing Watch API v3' : 'Spatiotemporal Discovery Engine'}
+                  </td>
+                  <td className="p-2 border border-outline-variant">
+                    {evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'Live GFW AIS Presence & Events' : 'AIS Presence Search'}
+                  </td>
+                  <td className="p-2 border border-outline-variant">
+                    <ProvenanceBadge prov={evidenceList?.find(e => e.event_type === 'AIS_PRESENCE')?.status === 'UNAVAILABLE' ? 'UNAVAILABLE' : evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'LIVE' : 'UNAVAILABLE'} />
+                  </td>
+                  <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
+                    {evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'Real Global Fishing Watch spatiotemporal query' : 'Spatiotemporal candidate search'}
+                  </td>
                 </tr>
                 <tr>
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Attribution Evaluation</td>
                   <td className="p-2 border border-outline-variant">Six-Factor Evidence-Weighted Heuristic</td>
                   <td className="p-2 border border-outline-variant">Ordinal Multi-Criteria Evaluation</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov="DEMO_MOCK" /></td>
+                  <td className="p-2 border border-outline-variant">
+                    <ProvenanceBadge prov={evidenceList?.some(e => e.event_type === 'ATTRIBUTION_EVALUATION') ? 'LIVE' : 'UNAVAILABLE'} />
+                  </td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">Evaluated on candidate trajectories and drift envelope</td>
                 </tr>
                 <tr>

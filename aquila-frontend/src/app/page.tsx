@@ -3,14 +3,15 @@
 import { MapLibreCanvas, useMap } from "@/components/map/MapLibreCanvas";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { AlertTriangle, MapPin, Radar, Layers, Ship, ChevronRight, Activity, Satellite } from "lucide-react";
+import { AlertTriangle, MapPin, Radar, Layers, Ship, ChevronRight, Activity, Satellite, Play, Radio } from "lucide-react";
 import { investigationsApi } from "@/lib/api/investigations";
 import { monitoringApi } from "@/lib/api/monitoring";
 import { systemApi } from "@/lib/api/system";
 import { satelliteApi } from "@/lib/api/satellite";
-import { Investigation, MonitoringJob, SystemStatus, SatelliteScene } from "@/lib/api/types";
+import { Investigation, MonitoringJob, SystemStatus, SatelliteScene, MonitoringStatus } from "@/lib/api/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { GeoJSONLayer } from "@/components/map/layers";
+import { SetObservationAreaModal } from "@/components/monitoring/SetObservationAreaModal";
 
 function ImageOverlayLayer({ 
   id, 
@@ -185,7 +186,9 @@ export default function CommandCenterPage() {
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [jobs, setJobs] = useState<MonitoringJob[]>([]);
   const [status, setStatus] = useState<SystemStatus | null>(null);
+  const [monitoringStatus, setMonitoringStatus] = useState<MonitoringStatus | null>(null);
   const [scenes, setScenes] = useState<SatelliteScene[]>([]);
+  const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -201,17 +204,19 @@ export default function CommandCenterPage() {
     let ignore = false;
     const loadData = async () => {
       try {
-        const [invs, fetchedJobs, fetchedStatus, fetchedScenes] = await Promise.all([
+        const [invs, fetchedJobs, fetchedStatus, fetchedScenes, fetchedMonitoringStatus] = await Promise.all([
           investigationsApi.listInvestigations(),
           monitoringApi.getJobs(undefined, 20),
           systemApi.getStatus().catch(() => null),
-          satelliteApi.listScenes().catch(() => [])
+          satelliteApi.listScenes().catch(() => []),
+          monitoringApi.getStatus().catch(() => null)
         ]);
         if (!ignore) {
           setInvestigations(invs);
           setJobs(fetchedJobs);
           setStatus(fetchedStatus);
           setScenes(fetchedScenes);
+          setMonitoringStatus(fetchedMonitoringStatus);
           setError(null);
           setDataLoaded(true);
         }
@@ -386,19 +391,72 @@ export default function CommandCenterPage() {
   return (
     <div className="flex-1 h-full bg-[#F6FAFD] flex flex-col p-6 overflow-hidden">
       {/* Header */}
-      <header className="flex justify-between items-end mb-6 shrink-0">
+      <header className="flex justify-between items-end mb-4 shrink-0">
         <div>
           <h1 className="text-[28px] font-bold text-[#001f28] tracking-tight">Welcome to AQUILA</h1>
           <p className="text-[15px] text-outline">Maritime environmental monitoring and forensic analysis</p>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsAreaModalOpen(true)}
+            className="px-3.5 py-2 text-xs font-bold border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-high text-on-surface rounded-lg shadow-sm transition-colors flex items-center gap-1.5"
+          >
+            <MapPin className="w-3.5 h-3.5 text-primary" />
+            <span>Set Observation Area</span>
+          </button>
+          <Link
+            href="/investigation/new"
+            className="px-4 py-2 text-xs font-bold bg-primary text-white hover:bg-primary/90 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 tracking-wider uppercase"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Investigate Now</span>
+          </Link>
+          <div className="h-6 w-px bg-outline-variant/60 mx-1" />
           <div className="flex items-center gap-2">
              <div className={`w-2.5 h-2.5 rounded-full ${status?.status === 'online' ? 'bg-success' : 'bg-error'}`} />
              <span className="text-[13px] font-bold text-on-surface">System {status?.status === 'online' ? 'Online' : 'Offline'}</span>
           </div>
-          <span className="text-[13px] text-outline">Last updated: {lastUpdated}</span>
         </div>
       </header>
+
+      {/* Observation Area & Provider Status Bar */}
+      <div className="mb-5 bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2.5 flex items-center justify-between shadow-sm text-xs shrink-0">
+        <div className="flex items-center gap-2.5">
+          <MapPin className="w-4 h-4 text-primary shrink-0" />
+          <span className="font-semibold text-on-surface-variant">Observation Area:</span>
+          <span className="font-bold text-on-surface">
+            {monitoringStatus?.monitored_zone_name || "Gulf of Oman (Standard AOI)"}
+          </span>
+          {monitoringStatus?.monitored_bbox && (
+            <span className="font-mono text-[11px] text-outline">
+              [{monitoringStatus.monitored_bbox.map(n => n.toFixed(2)).join(", ")}]
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 font-mono text-[11px]">
+            <span className="text-outline">MONITORING:</span>
+            <span className={`font-bold px-2 py-0.5 rounded border ${
+              monitoringStatus?.monitoring_active
+                ? "bg-success/15 text-success border-success/30"
+                : "bg-surface-variant text-on-surface-variant border-outline-variant"
+            }`}>
+              {monitoringStatus?.monitoring_active ? "ACTIVE" : "INACTIVE"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 font-mono text-[11px]">
+            <span className="text-outline">GFW AIS:</span>
+            <span className={`font-bold px-2 py-0.5 rounded border ${
+              monitoringStatus?.gfw_status === "LIVE"
+                ? "bg-success/15 text-success border-success/30"
+                : "bg-error/15 text-error border-error/30"
+            }`}>
+              {monitoringStatus?.gfw_status || "LIVE"}
+            </span>
+          </div>
+          <span className="text-[11px] text-outline">Updated: {lastUpdated}</span>
+        </div>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6 shrink-0">
@@ -619,6 +677,33 @@ export default function CommandCenterPage() {
                    </>
                  )}
 
+                 {/* Configured Observation Area AOI */}
+                 {monitoringStatus?.monitored_bbox && (
+                   <GeoJSONLayer
+                     id="monitored-observation-bbox"
+                     data={{
+                       type: "Feature",
+                       geometry: {
+                         type: "Polygon",
+                         coordinates: [[
+                           [monitoringStatus.monitored_bbox[0], monitoringStatus.monitored_bbox[1]],
+                           [monitoringStatus.monitored_bbox[2], monitoringStatus.monitored_bbox[1]],
+                           [monitoringStatus.monitored_bbox[2], monitoringStatus.monitored_bbox[3]],
+                           [monitoringStatus.monitored_bbox[0], monitoringStatus.monitored_bbox[3]],
+                           [monitoringStatus.monitored_bbox[0], monitoringStatus.monitored_bbox[1]],
+                         ]]
+                       },
+                       properties: {}
+                     }}
+                     type="line"
+                     paint={{
+                       "line-color": "#00647c",
+                       "line-width": 2,
+                       "line-dasharray": [3, 2]
+                     }}
+                   />
+                 )}
+
                  {/* Anomaly Polygons from Investigations */}
                  <GeoJSONLayer
                     id="investigation-polygons"
@@ -659,6 +744,10 @@ export default function CommandCenterPage() {
                     <span className="text-[11px] font-bold text-on-surface">Medium Priority</span>
                  </div>
                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="w-3 h-3 border-2 border-dashed border-[#00647c] bg-[#00647c]/10" />
+                    <span className="text-[11px] font-bold text-on-surface">Monitored AOI</span>
+                 </div>
+                 <div className="flex items-center gap-2 mb-1.5">
                     <div className="w-3 h-3 rounded-full bg-white border-2 border-outline" />
                     <span className="text-[11px] font-bold text-on-surface">Vessel (AIS)</span>
                  </div>
@@ -671,6 +760,19 @@ export default function CommandCenterPage() {
         </div>
 
       </div>
+
+      {/* Set Observation Area Modal */}
+      <SetObservationAreaModal
+        isOpen={isAreaModalOpen}
+        onClose={() => setIsAreaModalOpen(false)}
+        onAreaSaved={() => setRetryTrigger(c => c + 1)}
+        currentZone={monitoringStatus?.monitored_bbox ? {
+          id: monitoringStatus.monitored_zone_id || "configured-zone",
+          name: monitoringStatus.monitored_zone_name || "Configured Observation Area",
+          bbox: monitoringStatus.monitored_bbox,
+          owner_uid: "current-user"
+        } : null}
+      />
     </div>
   );
 }

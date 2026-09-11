@@ -6,10 +6,12 @@ import {
   Satellite, 
   RefreshCw, 
   CheckCircle2, 
-  AlertTriangle,
-  Radio,
-  Layers,
-  Database
+  AlertTriangle, 
+  Radio, 
+  Layers, 
+  Database,
+  MapPin,
+  Play
 } from "lucide-react";
 import Link from "next/link";
 import { GeoJSONLayer } from "@/components/map/layers";
@@ -18,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { monitoringApi } from "@/lib/api/monitoring";
 import { investigationsApi } from "@/lib/api/investigations";
 import { MonitoringJob, MonitoringZone, MonitoringStatus, Investigation, JobStatus } from "@/lib/api/types";
+import { SetObservationAreaModal } from "@/components/monitoring/SetObservationAreaModal";
 
 // Authoritative 12-stage continuous monitoring state machine
 const PIPELINE_STAGES: { key: JobStatus; label: string; short: string }[] = [
@@ -45,6 +48,7 @@ export default function MonitoringPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
+  const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -200,17 +204,23 @@ export default function MonitoringPage() {
           </div>
 
           {/* Backend Status Indicators */}
-          <div className="grid grid-cols-2 gap-2 text-[11px] font-mono mt-3">
-            <div className="bg-surface-container-low p-2 rounded border border-outline-variant/30 flex items-center justify-between">
-              <span className="text-on-surface-variant text-[10px] uppercase tracking-wider">Worker</span>
+          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono mt-3">
+            <div className="bg-surface-container-low p-2 rounded border border-outline-variant/30 flex flex-col justify-between">
+              <span className="text-on-surface-variant text-[10px] uppercase tracking-wider mb-0.5">Worker</span>
               <span className={`font-bold ${status?.worker_status === "RUNNING" ? "text-success" : "text-tertiary"}`}>
-                {status?.worker_status === "RUNNING" ? "RUNNING" : "Monitoring worker inactive"}
+                {status?.worker_status === "RUNNING" ? "RUNNING" : "INACTIVE"}
               </span>
             </div>
-            <div className="bg-surface-container-low p-2 rounded border border-outline-variant/30 flex items-center justify-between">
-              <span className="text-on-surface-variant text-[10px] uppercase tracking-wider">CDSE Catalog</span>
+            <div className="bg-surface-container-low p-2 rounded border border-outline-variant/30 flex flex-col justify-between">
+              <span className="text-on-surface-variant text-[10px] uppercase tracking-wider mb-0.5">CDSE Catalog</span>
               <span className={`font-bold ${status?.cdse_status === "CONFIGURED" ? "text-primary" : "text-error"}`}>
-                {status?.cdse_status === "CONFIGURED" ? "CONFIGURED" : "CDSE unavailable"}
+                {status?.cdse_status === "CONFIGURED" ? "CONFIGURED" : "UNAVAILABLE"}
+              </span>
+            </div>
+            <div className="bg-surface-container-low p-2 rounded border border-outline-variant/30 flex flex-col justify-between">
+              <span className="text-on-surface-variant text-[10px] uppercase tracking-wider mb-0.5">GFW AIS</span>
+              <span className={`font-bold ${status?.gfw_status === "LIVE" ? "text-success" : "text-error"}`}>
+                {status?.gfw_status || "LIVE"}
               </span>
             </div>
           </div>
@@ -288,6 +298,24 @@ export default function MonitoringPage() {
                 No monitoring zone configured.
               </div>
             )}
+
+            {/* Area Actions */}
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-outline-variant/40">
+              <button
+                onClick={() => setIsAreaModalOpen(true)}
+                className="flex-1 py-1.5 px-3 rounded-lg border border-outline-variant bg-surface hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              >
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                <span>Set Observation Area</span>
+              </button>
+              <Link
+                href="/investigation/new"
+                className="py-1.5 px-3 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm tracking-wider uppercase"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Investigate Now</span>
+              </Link>
+            </div>
           </div>
 
           {/* SECTION 3: PIPELINE JOB (State Machine Stepper) */}
@@ -600,6 +628,17 @@ export default function MonitoringPage() {
         </div>
       </main>
 
+      {/* Set Observation Area Modal */}
+      <SetObservationAreaModal
+        isOpen={isAreaModalOpen}
+        onClose={() => setIsAreaModalOpen(false)}
+        onAreaSaved={() => {
+          setLastFetchTime(new Date());
+          monitoringApi.getZones().then(setZones).catch(() => {});
+          monitoringApi.getStatus().then(setStatus).catch(() => {});
+        }}
+        currentZone={primaryZone}
+      />
     </div>
   );
 }

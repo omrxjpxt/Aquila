@@ -27,6 +27,13 @@ class MonitoringZone(BaseModel):
     )
 
 
+class SaveMonitoringZoneRequest(BaseModel):
+    name: str = Field(..., description="Human-readable name for the monitoring zone")
+    bbox: Tuple[float, float, float, float] = Field(..., description="Bounding box [min_lon, min_lat, max_lon, max_lat]")
+    collection_filter: Optional[str] = Field("sentinel-1-grd", description="Collection filter")
+    is_enabled: Optional[bool] = Field(True, description="Whether continuous monitoring is active")
+
+
 class NewSceneEvent(BaseModel):
     """Event emitted when a new Sentinel-1 product is discovered for a monitoring zone."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique event ID (UUID)")

@@ -133,67 +133,95 @@ class GFWAISProvider(AISProvider):
         end_time: datetime
     ) -> List[GFWEvent]:
         """
-        Queries GFW Events API for encounters, port visits, loitering, and AIS gaps.
+        Queries GFW Events API for encounters, loitering, and AIS gaps.
+        Preserves standard event types while attaching descriptive terminology in details.
         """
         if not self.token:
             raise RuntimeError("GFW_API_TOKEN is not configured. GFW services are unavailable.")
             
-        events = []
+        events: List[GFWEvent] = []
         headers = {"Authorization": f"Bearer {self.token}"}
         
         url = f"{self.base_url}/events"
-        params: Dict[str, str | int] = {
-            "vessels": gfw_vessel_id,
+        params: Dict[str, Any] = {
+            "datasets[0]": "public-global-gaps-events:latest",
+            "datasets[1]": "public-global-encounters-events:latest",
+            "datasets[2]": "public-global-loitering-events:latest",
+            "vessels[0]": gfw_vessel_id,
             "start-date": start_time.strftime("%Y-%m-%d"),
             "end-date": end_time.strftime("%Y-%m-%d"),
-            "limit": 50
+            "limit": 50,
+            "offset": 0
         }
         
         try:
             async with httpx.AsyncClient() as client:
-                resp = await client.get(url, headers=headers, params=params, timeout=10.0)
-                resp.raise_for_status()
-                data = resp.json()
-                
-                for item in data.get("entries", []):
-                    # GFW timestamps are ISO8601
-                    st = item.get("start")
-                    et = item.get("end")
-                    pos = item.get("position", {})
-                    
-                    event = GFWEvent(
-                        event_id=item.get("id"),
-                        event_type=item.get("type"),
-                        start_time=datetime.fromisoformat(st.replace("Z", "+00:00")).replace(tzinfo=None) if st else datetime.utcnow(),
-                        end_time=datetime.fromisoformat(et.replace("Z", "+00:00")).replace(tzinfo=None) if et else datetime.utcnow(),
-                        start_lon=pos.get("lon"),
-                        start_lat=pos.get("lat"),
-                        end_lon=pos.get("lon"),
-                        end_lat=pos.get("lat"),
-                        vessel_id=gfw_vessel_id,
-                        details={
-                            "regions": item.get("regions"),
-                            "event_info": item.get("event_info")
-                        }
-                    )
-                    events.append(event)
+                resp = await client.get(url, headers=headers, params=params, timeout=12.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for item in data.get("entries", []):
+                        st = item.get("start")
+                        et = item.get("end")
+                        pos = item.get("position", {})
+                        
+                        raw_type = item.get("type", "unknown")
+                        if raw_type == "gap":
+                            descriptive_type = "AIS transmission interruption"
+                        elif raw_type == "encounter":
+                            descriptive_type = "reported spatiotemporal encounter"
+                        elif raw_type == "loitering":
+                            descriptive_type = "reported loitering event"
+                        else:
+                            descriptive_type = raw_type
+
+                        event = GFWEvent(
+                            event_id=item.get("id") or f"gfw_ev_{len(events)}",
+                            event_type=raw_type,
+                            start_time=datetime.fromisoformat(st.replace("Z", "+00:00")).replace(tzinfo=None) if st else datetime.utcnow(),
+                            end_time=datetime.fromisoformat(et.replace("Z", "+00:00")).replace(tzinfo=None) if et else datetime.utcnow(),
+                            start_lon=pos.get("lon"),
+                            start_lat=pos.get("lat"),
+                            end_lon=pos.get("lon"),
+                            end_lat=pos.get("lat"),
+                            vessel_id=gfw_vessel_id,
+                            details={
+                                "raw_type": raw_type,
+                                "descriptive_type": descriptive_type,
+                                "regions": item.get("regions"),
+                                "distances": item.get("distances"),
+                                "vessel": item.get("vessel")
+                            }
+                        )
+                        events.append(event)
+                else:
+                    logger.warning("GFW events API returned HTTP %s for vessel %s", resp.status_code, gfw_vessel_id)
         except Exception as e:
-            logger.error("Failed to fetch GFW events for vessel %s: %s", gfw_vessel_id, type(e).__name__)
+            logger.warning("Failed to fetch GFW events for vessel %s: %s", gfw_vessel_id, type(e).__name__)
             
         return events
 
     def _map_entry_to_vessel(self, entry: Dict[str, Any], fallback_id: str = "") -> FleetVessel:
-        v_id = str(entry.get("id") or entry.get("mmsi") or fallback_id or "gfw-vessel")
-        mmsi = str(entry.get("mmsi")) if entry.get("mmsi") else None
-        imo = str(entry.get("imo")) if entry.get("imo") else None
-        name = entry.get("shipname") or entry.get("name")
-        vessel_type = entry.get("vesselType") or entry.get("geartype")
-        flag = entry.get("flag")
+        self_reported = entry.get("selfReportedInfo", [{}])[0] if isinstance(entry.get("selfReportedInfo"), list) and entry.get("selfReportedInfo") else {}
+        registry = entry.get("registryInfo", [{}])[0] if isinstance(entry.get("registryInfo"), list) and entry.get("registryInfo") else {}
+        combined = entry.get("combinedSourcesInfo", [{}])[0] if isinstance(entry.get("combinedSourcesInfo"), list) and entry.get("combinedSourcesInfo") else {}
+
+        v_id = str(self_reported.get("id") or combined.get("vesselId") or entry.get("id") or entry.get("mmsi") or fallback_id or "gfw-vessel")
+        mmsi = str(self_reported.get("ssvid") or registry.get("ssvid") or registry.get("mmsi") or entry.get("mmsi") or "") or None
+        imo = str(self_reported.get("imo") or registry.get("imo") or entry.get("imo") or "") or None
+        name = self_reported.get("shipname") or registry.get("shipname") or entry.get("shipname") or entry.get("name") or "UNKNOWN VESSEL"
+
+        vessel_type = None
+        if combined.get("shiptypes"):
+            vessel_type = combined["shiptypes"][0].get("name")
+        if not vessel_type or vessel_type in ["NA", "OTHER"]:
+            vessel_type = registry.get("vesselType") or entry.get("vesselType") or "Commercial Vessel"
+
+        flag = self_reported.get("flag") or registry.get("flag") or entry.get("flag") or "UNKNOWN"
 
         last_pos = entry.get("lastPosition") or entry.get("position") or {}
         lat = last_pos.get("lat")
         lon = last_pos.get("lon")
-        ts_str = last_pos.get("timestamp") or entry.get("lastTimestamp")
+        ts_str = self_reported.get("transmissionDateTo") or last_pos.get("timestamp") or entry.get("lastTimestamp")
         last_ts = None
         if ts_str:
             try:
@@ -211,7 +239,7 @@ class GFWAISProvider(AISProvider):
             last_position_lat=lat,
             last_position_lon=lon,
             last_timestamp=last_ts,
-            status="ACTIVE" if lat is not None else "UNKNOWN",
+            status="ACTIVE" if (lat is not None or last_ts is not None) else "UNKNOWN",
             risk_level="NOT_ASSESSED",
             provider="Global Fishing Watch",
             provenance=AISProvenance(
@@ -231,7 +259,7 @@ class GFWAISProvider(AISProvider):
 
         headers = {"Authorization": f"Bearer {self.token}"}
         url = f"{self.base_url}/vessels/{gfw_vessel_id}"
-        params = {"datasets[0]": "public-global-vessel-identity:latest"}
+        params = {"dataset": "public-global-vessel-identity:latest"}
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.get(url, headers=headers, params=params, timeout=12.0)
@@ -265,9 +293,10 @@ class GFWAISProvider(AISProvider):
         params: Dict[str, Any] = {
             "query": query.strip() if query and query.strip() else "tanker",
             "datasets[0]": "public-global-vessel-identity:latest",
-            "limit": min(limit, 100),
-            "offset": max(offset, 0)
+            "limit": min(max(limit, 1), 50)
         }
+        if offset > 0:
+            params["offset"] = offset
 
         try:
             async with httpx.AsyncClient() as client:

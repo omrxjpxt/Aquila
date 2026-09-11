@@ -98,3 +98,20 @@ class FirestoreInvestigationRepository(InvestigationRepository):
         query = self.evidence_collection.where('investigation_id', '==', investigation_id)
         docs = query.stream()
         return [EvidenceEvent(**doc.to_dict()) for doc in docs]
+
+    def update_investigation_status(
+        self, 
+        inv_id: str, 
+        status: str, 
+        anomaly_geometry: Optional[dict] = None
+    ) -> Optional[Investigation]:
+        doc_ref = self.collection.document(inv_id)
+        doc = doc_ref.get()
+        if not doc.exists:
+            return None
+        updates = {"status": status, "updated_at": datetime.utcnow()}
+        if anomaly_geometry:
+            updates["anomaly_geometry"] = anomaly_geometry
+        doc_ref.update(updates)
+        updated = doc_ref.get()
+        return Investigation(**updated.to_dict()) if updated.exists else None

@@ -16,11 +16,46 @@ export interface MonitoringStatus {
   monitoring_active: boolean;
   worker_status: "RUNNING" | "INACTIVE";
   cdse_status: "CONFIGURED" | "UNAVAILABLE";
+  gfw_status?: "LIVE" | "UNAVAILABLE" | "CONFIGURED" | string;
   monitored_zone: string | null;
+  monitored_zone_id?: string | null;
+  monitored_zone_name?: string | null;
+  monitored_bbox?: [number, number, number, number] | null;
   source: string;
   last_poll_time: string | null;
   active_jobs_count: number;
   total_jobs_count: number;
+  is_enabled?: boolean;
+}
+
+export interface SaveZonePayload {
+  name: string;
+  bbox: [number, number, number, number];
+  product_types?: string[];
+  collection_filter?: string;
+  is_enabled?: boolean;
+}
+
+export interface ManualInvestigationPayload {
+  title?: string;
+  aoi_bbox?: [number, number, number, number];
+  scene_id?: string;
+  monitoring_zone_id?: string;
+  max_days?: number;
+}
+
+export interface ManualInvestigationResponse {
+  id?: string;
+  investigation_id?: string;
+  status: string;
+  title: string;
+  scene_id?: string | null;
+  satellite_status?: string;
+  evidence_count?: number;
+  evidence_summary?: Record<string, string>;
+  coverage?: Record<string, string>;
+  detail_url?: string;
+  report_url?: string;
 }
 
 export type JobStatus = 

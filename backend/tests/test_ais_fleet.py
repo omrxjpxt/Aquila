@@ -21,8 +21,10 @@ def test_fleet_endpoint_unauthenticated():
             app.dependency_overrides[get_current_user] = override
 
 
-def test_fleet_endpoint_unconfigured():
+def test_fleet_endpoint_unconfigured(monkeypatch):
     """When GFW_API_TOKEN is unconfigured, returns UNAVAILABLE without fake vessels."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "GFW_API_TOKEN", None)
     resp = client.get("/api/v1/ais/fleet", headers={"Authorization": "Bearer demo-token"})
     assert resp.status_code == 200
     data = resp.json()
@@ -34,8 +36,10 @@ def test_fleet_endpoint_unconfigured():
     assert "active_investigations_count" in data
 
 
-def test_vessel_detail_unconfigured():
+def test_vessel_detail_unconfigured(monkeypatch):
     """When GFW_API_TOKEN is unconfigured, vessel detail returns UNAVAILABLE."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "GFW_API_TOKEN", None)
     resp = client.get("/api/v1/ais/vessels/123456789", headers={"Authorization": "Bearer demo-token"})
     assert resp.status_code == 200
     data = resp.json()
@@ -139,8 +143,10 @@ def test_vessel_detail_invalid_mmsi():
     assert resp_short.status_code == 400
 
 
-def test_candidates_endpoint_live_mode_unconfigured():
+def test_candidates_endpoint_live_mode_unconfigured(monkeypatch):
     """When GFW_API_TOKEN is unconfigured, candidate discovery in LIVE/GFW mode returns 503."""
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "GFW_API_TOKEN", None)
     payload = {
         "investigation_id": "test-inv",
         "origin": {

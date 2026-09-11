@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { MonitoringZone, MonitoringJob, JobStatus, MonitoringStatus } from './types';
+import { MonitoringZone, MonitoringJob, JobStatus, MonitoringStatus, SaveZonePayload } from './types';
 
 export const monitoringApi = {
   async getStatus(): Promise<MonitoringStatus> {
@@ -8,6 +8,10 @@ export const monitoringApi = {
 
   async getZones(): Promise<MonitoringZone[]> {
     return apiClient.get('/monitoring/zones');
+  },
+
+  async saveZone(payload: SaveZonePayload): Promise<MonitoringZone> {
+    return apiClient.post('/monitoring/zones', payload);
   },
 
   async getJobs(status?: JobStatus, limit: number = 50): Promise<MonitoringJob[]> {

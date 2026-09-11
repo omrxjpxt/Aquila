@@ -119,4 +119,25 @@ class SqliteInvestigationRepository(InvestigationRepository):
             cursor = conn.execute("SELECT * FROM evidence WHERE investigation_id = ?", (investigation_id,))
             return [self._row_to_evidence(row) for row in cursor.fetchall()]
 
+    def update_investigation_status(
+        self, 
+        inv_id: str, 
+        status: str,
+        anomaly_geometry: Optional[dict] = None
+    ) -> Optional[Investigation]:
+        with get_db_connection() as conn:
+            if anomaly_geometry:
+                conn.execute(
+                    "UPDATE investigations SET status = ?, anomaly_geometry_json = ?, updated_at = ? WHERE id = ?",
+                    (status, json.dumps(anomaly_geometry), datetime.utcnow(), inv_id)
+                )
+            else:
+                conn.execute(
+                    "UPDATE investigations SET status = ?, updated_at = ? WHERE id = ?",
+                    (status, datetime.utcnow(), inv_id)
+                )
+            cursor = conn.execute("SELECT * FROM investigations WHERE id = ?", (inv_id,))
+            row = cursor.fetchone()
+            return self._row_to_investigation(row) if row else None
+
 investigation_repository = SqliteInvestigationRepository()
