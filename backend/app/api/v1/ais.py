@@ -9,7 +9,8 @@ from app.schemas.drift import OriginEstimate
 from app.services.ais_service import AISService, MockAISProvider, AISProvider
 from app.services.byod_ais_provider import BYODAISProvider
 from app.services.gfw_ais_provider import GFWAISProvider
-from app.services.repositories.factory import get_investigation_repository
+from app.services.repositories.factory import get_investigation_repository, get_monitoring_zone_repository
+from app.api.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -163,19 +164,53 @@ async def upload_byod_ais(
 
 
 @router.get("/fleet", response_model=FleetResponse)
-async def get_global_fleet(query: Optional[str] = None, limit: int = 50):
+async def get_fleet(
+    zone_id: Optional[str] = None, 
+    limit: int = 50,
+    user: Dict[str, Any] = Depends(get_current_user)
+):
     """
-    Retrieves global fleet vessels from the configured AIS provider (Global Fishing Watch).
-    Returns an honest UNAVAILABLE status if GFW_API_TOKEN is not configured.
-    Also provides dynamic active_investigations_count from SQLite investigations repository.
+    Retrieves vessel presence for a specific observation area using GFW 4Wings Report API.
+    Resolves the provided zone_id (or falls back to the unambiguous enabled zone).
     """
+    zone_repo = get_monitoring_zone_repository()
+    active_zone = None
+    
+    if zone_id:
+        active_zone = zone_repo.get_zone(zone_id)
+        if not active_zone or (active_zone.owner_uid != "SYSTEM" and active_zone.owner_uid != user.get("uid")):
+            raise HTTPException(status_code=403, detail="Observation Area not found or access denied.")
+    else:
+        enabled_zones = zone_repo.get_enabled_zones()
+        if len(enabled_zones) == 1:
+            active_zone = enabled_zones[0]
+        elif len(enabled_zones) > 1:
+            return FleetResponse(
+                provider="Global Fishing Watch",
+                status="UNAVAILABLE",
+                reason="Observation Area selection required. Multiple zones exist.",
+            )
+        else:
+            return FleetResponse(
+                provider="Global Fishing Watch",
+                status="UNAVAILABLE",
+                reason="No active observation area is configured.",
+            )
+
+    if not active_zone or not active_zone.bbox or len(active_zone.bbox) != 4:
+        return FleetResponse(
+            provider="Global Fishing Watch",
+            status="UNAVAILABLE",
+            reason="Configured observation area lacks a valid bounding box.",
+        )
+
     provider = GFWAISProvider()
-    response = await provider.get_fleet(query=query, limit=limit)
+    response = await provider.get_fleet_for_area(bbox=active_zone.bbox, zone_name=active_zone.name)
 
     # Enrich with real active investigations count from repository
     try:
-        repo = get_investigation_repository()
-        invs = repo.list_investigations()
+        inv_repo = get_investigation_repository()
+        invs = inv_repo.list_investigations()
         response.active_investigations_count = len([i for i in invs if i.status in ["OPEN", "IN_PROGRESS"]])
     except Exception as e:
         logger.warning("Could not count active investigations: %s", e)

@@ -418,16 +418,30 @@ export interface FleetVessel {
   risk_level: string;
   provider: string;
   provenance?: AISProvenance | null;
+  presence_hours?: number;
+  last_observed_at?: string;
+  presence_verified?: boolean;
+  presence_source?: string;
 }
 
 export interface FleetResponse {
   provider: string;
-  status: 'LIVE' | 'UNAVAILABLE' | 'EMPTY';
+  status: 'LIVE' | 'UNAVAILABLE' | 'EMPTY' | 'UNAVAILABLE / REPORT_PENDING';
   reason: string | null;
   retrieved_at: string;
   total: number;
   vessels: FleetVessel[];
   active_investigations_count: number;
+  scope?: string;
+  observation_area?: {
+    name: string;
+    bbox: number[];
+  };
+  presence_window?: {
+    start: string;
+    end: string;
+  };
+  dataset?: string;
 }
 
 export interface VesselDetailResponse {

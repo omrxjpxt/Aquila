@@ -135,16 +135,28 @@ class FleetVessel(BaseModel):
     risk_level: Optional[str] = "NOT_ASSESSED"
     provider: str = "Global Fishing Watch"
     provenance: Optional[AISProvenance] = None
+    
+    # Area-specific presence fields
+    presence_hours: Optional[float] = None
+    last_observed_at: Optional[datetime] = None
+    presence_verified: Optional[bool] = None
+    presence_source: Optional[str] = None
 
 
 class FleetResponse(BaseModel):
     provider: str = "Global Fishing Watch"
-    status: str = "UNAVAILABLE"  # LIVE | UNAVAILABLE | EMPTY
+    status: str = "UNAVAILABLE"  # LIVE | UNAVAILABLE | EMPTY | REPORT_PENDING
     reason: Optional[str] = None
     retrieved_at: datetime = Field(default_factory=datetime.utcnow)
     total: int = 0
     vessels: List[FleetVessel] = Field(default_factory=list)
     active_investigations_count: int = 0
+    
+    # Area-specific context
+    scope: Optional[str] = None
+    observation_area: Optional[Dict[str, Any]] = None
+    presence_window: Optional[Dict[str, str]] = None
+    dataset: Optional[str] = None
 
 
 class VesselDetailResponse(BaseModel):

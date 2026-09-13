@@ -64,13 +64,21 @@ export default function VesselsPage() {
           <div>
             <h1 className="text-2xl font-bold text-primary tracking-tight mb-2 flex items-center gap-3">
               <Ship className="w-6 h-6" />
-              VESSEL FLEET MONITORING
+              VESSELS IN OBSERVATION AREA
             </h1>
             <p className="text-sm text-on-surface-variant max-w-2xl">
-              {isLive 
-                ? "Global registry of tracked commercial vessels powered by Global Fishing Watch live AIS presence." 
-                : "Global registry of commercial vessels. External AIS provider (Global Fishing Watch) is UNAVAILABLE because GFW_API_TOKEN is not configured in backend environment."}
+              {fleet?.status === "LIVE" || fleet?.status === "EMPTY"
+                ? `GFW-derived vessel presence for the selected observation area.`
+                : "External AIS provider (Global Fishing Watch) is UNAVAILABLE."}
             </p>
+            {(fleet?.status === "LIVE" || fleet?.status === "EMPTY") && fleet.observation_area && (
+               <div className="mt-2 text-xs font-mono text-on-surface-variant flex flex-col gap-1">
+                 <span>Observation Area: {fleet.observation_area.name}</span>
+                 {fleet.presence_window && (
+                    <span>Presence Window: {fleet.presence_window.start} to {fleet.presence_window.end}</span>
+                 )}
+               </div>
+            )}
           </div>
           
           <div className="flex gap-3">
@@ -95,7 +103,7 @@ export default function VesselsPage() {
               <Ship className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tracked Vessels</div>
+              <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Vessels In Area</div>
               <div className="text-xl font-bold text-on-surface">
                 {isLive ? fleet.total : "—"}
               </div>
@@ -109,7 +117,7 @@ export default function VesselsPage() {
             <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">High Risk</div>
               <div className="text-xl font-bold text-on-surface">
-                {isLive ? fleet.vessels.filter(v => v.risk_level === 'HIGH').length : "—"}
+                —
               </div>
             </div>
           </div>
@@ -133,7 +141,7 @@ export default function VesselsPage() {
             <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Anchored / Port</div>
               <div className="text-xl font-bold text-on-surface">
-                {isLive ? fleet.vessels.filter(v => v.status === 'ANCHORED').length : "—"}
+                Unavailable
               </div>
             </div>
           </div>
@@ -159,7 +167,7 @@ export default function VesselsPage() {
               <tr>
                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-on-surface-variant">Vessel Identity</th>
                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-on-surface-variant">Type & Flag</th>
-                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-on-surface-variant">Last Position</th>
+                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-on-surface-variant">Last Observed</th>
                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-on-surface-variant">Status</th>
                 <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-on-surface-variant">Risk</th>
                 <th className="px-6 py-4"></th>
@@ -172,6 +180,26 @@ export default function VesselsPage() {
                     Querying AIS fleet provider...
                   </td>
                 </tr>
+              ) : fleet?.status === "UNAVAILABLE / REPORT_PENDING" ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-on-surface-variant">
+                    <div className="flex flex-col items-center justify-center gap-2 max-w-lg mx-auto">
+                      <span className="text-[10px] font-bold font-mono tracking-widest bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded border border-outline-variant uppercase">
+                        AIS: UNAVAILABLE / REPORT PENDING
+                      </span>
+                      <p className="text-sm font-semibold text-on-surface">GFW 4Wings report is still running</p>
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
+                        Please try again later.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : fleet?.status === "EMPTY" || (isLive && filteredVessels.length === 0) ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">
+                    {fleet?.status === "EMPTY" ? fleet.reason || "No verified GFW vessel presence detected in this observation area for the selected availability window." : "No vessels found matching your query."}
+                  </td>
+                </tr>
               ) : !isLive ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-10 text-center text-on-surface-variant">
@@ -179,18 +207,11 @@ export default function VesselsPage() {
                       <span className="text-[10px] font-bold font-mono tracking-widest bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded border border-outline-variant uppercase">
                         AIS: UNAVAILABLE
                       </span>
-                      <p className="text-sm font-semibold text-on-surface">Global Fleet View is unavailable</p>
+                      <p className="text-sm font-semibold text-on-surface">Observation Area Fleet View is unavailable</p>
                       <p className="text-xs text-on-surface-variant leading-relaxed">
-                        External AIS provider (Global Fishing Watch) credentials (<code>GFW_API_TOKEN</code>) are not configured in the backend environment. 
-                        Real-time global fleet positions cannot be retrieved. Commercial vessels are evaluated dynamically during specific investigations.
+                        {fleet?.reason || "External AIS provider (Global Fishing Watch) is unavailable."}
                       </p>
                     </div>
-                  </td>
-                </tr>
-              ) : filteredVessels.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-on-surface-variant">
-                    No vessels found matching your query.
                   </td>
                 </tr>
               ) : (
@@ -207,17 +228,15 @@ export default function VesselsPage() {
                       <div className="font-mono text-[11px] text-on-surface-variant">{vessel.flag || '—'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      {vessel.last_position_lat !== null && vessel.last_position_lon !== null ? (
+                      {vessel.last_observed_at ? (
                         <div className="font-mono text-xs text-on-surface">
-                          {vessel.last_position_lat.toFixed(3)}° N, {vessel.last_position_lon.toFixed(3)}° E
-                          {vessel.last_timestamp && (
-                            <span className="block text-[10px] text-on-surface-variant">
-                              {new Date(vessel.last_timestamp).toISOString().slice(11, 19)}Z
-                            </span>
-                          )}
+                           <span className="block text-[10px] text-on-surface-variant mb-0.5">
+                              {new Date(vessel.last_observed_at).toISOString().slice(0, 19).replace('T', ' ')}Z
+                           </span>
+                           <span className="text-[10px] text-on-surface-variant italic">Aggregated Grid Cell Center</span>
                         </div>
                       ) : (
-                        <span className="text-xs text-on-surface-variant italic">Position unavailable</span>
+                        <span className="text-xs text-on-surface-variant italic">Time unavailable</span>
                       )}
                     </td>
                     <td className="px-6 py-4">

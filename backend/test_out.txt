@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.10.0, pytest-9.1.1, pluggy-1.6.0 -- /Users/omgangwar/Documents/Projects/Aquilia/backend/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/omgangwar/Documents/Projects/Aquilia/backend
+plugins: asyncio-1.4.0, anyio-4.14.2
+asyncio: mode=strict, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 5 items
+
+tests/test_fleet_aoi.py::test_fleet_no_token FAILED                      [ 20%]
+tests/test_fleet_aoi.py::test_fleet_report_running_timeout PASSED        [ 40%]
+tests/test_fleet_aoi.py::test_fleet_zero_vessels PASSED                  [ 60%]
+tests/test_fleet_aoi.py::test_get_fleet_endpoint_authorized PASSED       [ 80%]
+tests/test_fleet_aoi.py::test_get_fleet_endpoint_unauthorized PASSED     [100%]
+
+=================================== FAILURES ===================================
+_____________________________ test_fleet_no_token ______________________________
+
+    @pytest.mark.asyncio
+    async def test_fleet_no_token():
+        provider = GFWAISProvider(token=None)
+        response = await provider.get_fleet_for_area((50.0, 20.0, 60.0, 30.0), "Test Zone")
+>       assert response.status == "UNAVAILABLE"
+E       AssertionError: assert 'EMPTY' == 'UNAVAILABLE'
+E         
+E         - UNAVAILABLE
+E         + EMPTY
+
+tests/test_fleet_aoi.py:45: AssertionError
+------------------------------ Captured log call -------------------------------
+ERROR    app.services.gfw_ais_provider:gfw_ais_provider.py:152 Failed to create GFW 4Wings report: Client error '422 Unprocessable Entity' for url 'https://gateway.api.globalfishingwatch.org/v3/4wings/report'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/422
+=============================== warnings summary ===============================
+app/schemas/investigation.py:26
+  /Users/omgangwar/Documents/Projects/Aquilia/backend/app/schemas/investigation.py:26: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class Investigation(InvestigationBase):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_fleet_aoi.py::test_fleet_no_token - AssertionError: assert ...
+=================== 1 failed, 4 passed, 1 warning in 20.62s ====================

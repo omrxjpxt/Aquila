@@ -111,13 +111,21 @@ export default function VesselDetailsPage({ params }: { params: Promise<{ mmsi: 
             </div>
 
             <div className="bg-surface border border-outline-variant rounded p-6 shadow-sm">
-              <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4">Latest AIS Presence</h2>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+                Global Registry & Identity Data
+              </h2>
+              <div className="mb-4 p-3 bg-surface-container-high/50 border border-outline-variant/60 rounded text-xs text-on-surface-variant flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                <span>
+                  This identity record is fetched from the global registry. <strong>It is not proof of presence</strong> in the currently selected Observation Area. Area-specific presence is verified separately during investigations.
+                </span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs mb-4">
                 <div>
-                  <span className="block text-[10px] text-on-surface-variant uppercase">Position</span>
+                  <span className="block text-[10px] text-on-surface-variant uppercase">Global Last Known Position</span>
                   <span className="font-bold text-on-surface">
                     {vessel.last_position_lat !== null && vessel.last_position_lon !== null 
-                      ? `${vessel.last_position_lat.toFixed(4)}° N, ${vessel.last_position_lon.toFixed(4)}° E` 
+                      ? `${vessel.last_position_lat.toFixed(4)}° N, ${vessel.last_position_lon.toFixed(4)}° E (Global)` 
                       : "Position unavailable"}
                   </span>
                 </div>
