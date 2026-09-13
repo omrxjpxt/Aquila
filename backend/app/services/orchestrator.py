@@ -363,7 +363,7 @@ class OrchestrationService:
             
             if default_trigger_policy.should_investigate(result_summary):
                 found_interesting = True
-                anomaly_fingerprint = f"{job.product_id}_{job.monitoring_zone_id}_{candidate.id}"
+                anomaly_fingerprint = f"{job.product_id}_{candidate.id}"
                 
                 # Idempotent Investigation Creation
                 inv_create = InvestigationCreate(

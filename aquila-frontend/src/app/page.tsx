@@ -461,14 +461,20 @@ export default function CommandCenterPage() {
           <div className="flex items-center gap-1.5 font-mono text-[11px]">
             <span className="text-outline">GFW AIS:</span>
             <span className={`font-bold px-2 py-0.5 rounded border ${
-              monitoringStatus?.gfw_status === "LIVE"
+              (status?.providers?.gfw === "LIVE")
                 ? "bg-success/15 text-success border-success/30"
-                : "bg-error/15 text-error border-error/30"
+                : (monitoringStatus?.gfw_status === "CONFIGURED")
+                  ? "bg-primary/15 text-primary border-primary/30"
+                  : "bg-error/15 text-error border-error/30"
             }`}>
-              {monitoringStatus?.gfw_status || "LIVE"}
+              {(status?.providers?.gfw === "LIVE") ? "LIVE" : (monitoringStatus?.gfw_status || "UNAVAILABLE")}
             </span>
           </div>
-          <span className="text-[11px] text-outline">Updated: {lastUpdated}</span>
+          <span className="text-[11px] text-outline">
+            {monitoringStatus?.last_poll_time ? 
+              `Monitoring Updated: ${new Date(monitoringStatus.last_poll_time).toISOString().slice(0, 19).replace('T', ' ')} UTC` 
+              : `Last Refreshed: ${lastUpdated}`}
+          </span>
         </div>
       </div>
 
@@ -502,8 +508,8 @@ export default function CommandCenterPage() {
            </div>
            <div>
               <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Tracked Vessels</div>
-              <div className="text-2xl font-bold text-on-surface leading-none mb-1">—</div>
-              <div className="text-[11px] text-outline">No data</div>
+              <div className="text-[12px] font-bold text-on-surface mb-1">Unavailable</div>
+              <div className="text-[11px] text-outline">Contextual tracking only</div>
            </div>
         </div>
 

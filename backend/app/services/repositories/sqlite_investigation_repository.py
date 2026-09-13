@@ -44,13 +44,14 @@ class SqliteInvestigationRepository(InvestigationRepository):
         )
 
     def create_investigation(self, inv_create: InvestigationCreate) -> Investigation:
-        # Implementation of Amendment 3: Investigation Deduplication using source_product_id, zone_id, anomaly_id
+        # Implementation of Amendment 3: Investigation Deduplication using source_product_id and anomaly_id
         with get_db_connection() as conn:
-            if inv_create.source_product_id and inv_create.monitoring_zone_id and inv_create.anomaly_id:
+            conn.execute("BEGIN IMMEDIATE")
+            if inv_create.source_product_id and inv_create.anomaly_id:
                 cursor = conn.execute('''
                     SELECT * FROM investigations 
-                    WHERE source_product_id = ? AND monitoring_zone_id = ? AND anomaly_id = ?
-                ''', (inv_create.source_product_id, inv_create.monitoring_zone_id, inv_create.anomaly_id))
+                    WHERE source_product_id = ? AND anomaly_id = ?
+                ''', (inv_create.source_product_id, inv_create.anomaly_id))
                 row = cursor.fetchone()
                 if row:
                     logger.info(f"Investigation for anomaly {inv_create.anomaly_id} already exists.")

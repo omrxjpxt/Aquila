@@ -84,7 +84,7 @@ async def get_monitoring_status(user: Dict[str, Any] = Depends(get_current_user)
 
     from app.services.gfw_ais_provider import GFWAISProvider
     gfw_provider = GFWAISProvider()
-    gfw_status = "LIVE" if gfw_provider.is_configured else "UNAVAILABLE"
+    gfw_status = "CONFIGURED" if gfw_provider.is_configured else "UNAVAILABLE"
     
     return {
         "monitoring_active": is_active,

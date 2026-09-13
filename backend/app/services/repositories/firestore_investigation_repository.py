@@ -18,9 +18,8 @@ class FirestoreInvestigationRepository(InvestigationRepository):
 
     def _create_investigation_txn(self, transaction: Transaction, inv_create: InvestigationCreate) -> Investigation:
         # Idempotency check
-        if getattr(inv_create, 'source_product_id', None) and getattr(inv_create, 'monitoring_zone_id', None) and getattr(inv_create, 'anomaly_id', None):
+        if getattr(inv_create, 'source_product_id', None) and getattr(inv_create, 'anomaly_id', None):
             query = self.collection.where('source_product_id', '==', inv_create.source_product_id)\
-                                   .where('monitoring_zone_id', '==', inv_create.monitoring_zone_id)\
                                    .where('anomaly_id', '==', inv_create.anomaly_id)
             docs = query.stream(transaction=transaction)
             
