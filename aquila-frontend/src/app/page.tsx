@@ -2,7 +2,7 @@
 
 import { MapLibreCanvas, useMap } from "@/components/map/MapLibreCanvas";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertTriangle, MapPin, Radar, Layers, Ship, ChevronRight, Activity, Satellite, Play, Radio } from "lucide-react";
 import { investigationsApi } from "@/lib/api/investigations";
 import { monitoringApi } from "@/lib/api/monitoring";
@@ -99,22 +99,10 @@ function ImageOverlayLayer({
         }
       });
 
-      // Automatically fit map to scene bbox with surrounding geographic context
       try {
         map.resize();
-        map.fitBounds(
-          [
-            [west, south],
-            [east, north]
-          ],
-          {
-            padding: 100,
-            duration: 800,
-            maxZoom: 7.8
-          }
-        );
       } catch (e) {
-        console.error("Failed to fit bounds to scene:", e);
+        console.error("Failed to resize map:", e);
       }
     };
 
@@ -177,6 +165,30 @@ function ImageOverlayLayer({
       </div>
     );
   }
+
+  return null;
+}
+
+function AOIMapSynchronizer({ bbox }: { bbox?: [number, number, number, number] | null }) {
+  const map = useMap();
+  const lastAppliedBboxRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!map || !bbox || bbox.length !== 4) return;
+
+    const bboxKey = bbox.join(",");
+    if (lastAppliedBboxRef.current === bboxKey) return;
+
+    try {
+      map.fitBounds(
+        [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
+        { padding: 50, maxZoom: 10, duration: 0 }
+      );
+      lastAppliedBboxRef.current = bboxKey;
+    } catch (err) {
+      console.error("[MapLibre] Failed to fit bounds to AOI:", err);
+    }
+  }, [map, bbox]);
 
   return null;
 }
@@ -381,9 +393,11 @@ export default function CommandCenterPage() {
   );
   const activeScene = sortedProcessedScenes[0] || null;
 
-  const defaultCenter: [number, number] = activeScene
-    ? [(activeScene.bbox[0] + activeScene.bbox[2]) / 2, (activeScene.bbox[1] + activeScene.bbox[3]) / 2]
-    : [58.025, 24.474];
+  const defaultCenter: [number, number] = monitoringStatus?.monitored_bbox
+    ? [(monitoringStatus.monitored_bbox[0] + monitoringStatus.monitored_bbox[2]) / 2, (monitoringStatus.monitored_bbox[1] + monitoringStatus.monitored_bbox[3]) / 2]
+    : (activeScene
+      ? [(activeScene.bbox[0] + activeScene.bbox[2]) / 2, (activeScene.bbox[1] + activeScene.bbox[3]) / 2]
+      : [58.025, 24.474]);
   const defaultZoom = activeScene ? 7.8 : 6;
 
   const lastUpdated = new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
@@ -629,6 +643,7 @@ export default function CommandCenterPage() {
 
            <div className="flex-1 relative bg-[#eef4f8] min-h-[400px] h-full">
               <MapLibreCanvas center={defaultCenter} zoom={defaultZoom} className="h-full min-h-[400px]">
+                 <AOIMapSynchronizer bbox={monitoringStatus?.monitored_bbox} />
                  
                  {/* Empty State Overlay */}
                  {!activeScene && (
@@ -765,7 +780,16 @@ export default function CommandCenterPage() {
       <SetObservationAreaModal
         isOpen={isAreaModalOpen}
         onClose={() => setIsAreaModalOpen(false)}
-        onAreaSaved={() => setRetryTrigger(c => c + 1)}
+        onAreaSaved={(savedZone) => {
+          setMonitoringStatus(prev => prev ? {
+            ...prev,
+            monitored_zone: savedZone.name,
+            monitored_zone_name: savedZone.name,
+            monitored_zone_id: savedZone.id,
+            monitored_bbox: savedZone.bbox as [number, number, number, number]
+          } : null);
+          setRetryTrigger(c => c + 1);
+        }}
         currentZone={monitoringStatus?.monitored_bbox ? {
           id: monitoringStatus.monitored_zone_id || "configured-zone",
           name: monitoringStatus.monitored_zone_name || "Configured Observation Area",
