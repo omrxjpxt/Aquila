@@ -578,14 +578,14 @@ export default function CommandCenterPage() {
           </div>
 
           {/* Recent Monitoring Activity */}
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm flex flex-col overflow-hidden flex-1">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm flex flex-col overflow-hidden">
              <div className="p-4 border-b border-outline-variant flex justify-between items-center bg-surface">
                 <h2 className="text-[15px] font-bold text-on-surface">Recent Monitoring Activity</h2>
                 <Link href="/monitoring" className="text-[13px] font-medium text-primary hover:underline flex items-center">
                   View All <ChevronRight className="w-4 h-4 ml-0.5" />
                 </Link>
              </div>
-             <div className="flex-1 p-0 overflow-y-auto">
+             <div className="flex-1 p-0 overflow-y-auto max-h-[350px]">
                 {jobs.length === 0 ? (
                   <div className="p-8 text-center flex flex-col items-center justify-center">
                     <Activity className="w-8 h-8 text-outline-variant mb-3" />
