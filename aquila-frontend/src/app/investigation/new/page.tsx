@@ -119,6 +119,7 @@ export default function NewInvestigationPage() {
       setResult(res);
       setProgressStage("Complete");
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const invId = res.id || (res as any).investigation_id;
 
       // Redirect directly to investigation detail page after 1s
@@ -184,6 +185,7 @@ export default function NewInvestigationPage() {
             <div className="mb-5 p-4 bg-success/10 border border-success/30 rounded-lg text-xs flex flex-col gap-2">
               <div className="flex items-center gap-2 font-bold text-success text-sm">
                 <CheckCircle2 className="w-5 h-5 text-success" />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <span>Investigation Created: {result.id || (result as any).investigation_id} ({result.status})</span>
               </div>
               <p className="text-on-surface font-medium">

@@ -140,7 +140,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h2 className="text-xl font-bold text-on-surface uppercase tracking-wide mt-1">
               MARITIME FORENSIC ATTRIBUTION REPORT
             </h2>
-            <p className="font-mono text-xs font-bold text-on-surface-variant mt-2 tracking-wider">
+            <p className="font-mono text-xs font-bold text-on-surface-variant mt-2 tracking-wider" suppressHydrationWarning>
               REF: {id} | GENERATED: {new Date().toISOString().slice(0, 19)}Z
             </p>
           </div>
@@ -201,7 +201,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Satellite className="w-4 h-4" /> 2. Satellite Detection
             </h3>
-            <ProvenanceBadge prov={(scene as any)?.provenance || "LOCAL_DERIVED_FROM_REAL_DATA"} />
+            <ProvenanceBadge prov={(scene as any)?.provenance || "UNAVAILABLE"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono mb-3">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -211,13 +211,13 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant col-span-2">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Scene / Product Reference</span>
               <span className="font-bold text-on-surface truncate block" title={(scene as any)?.scene_id || investigation?.source_product_id}>
-                {(scene as any)?.scene_id || (scene as any)?.id || investigation?.source_product_id || 'local-scene-1789041909'}
+                {(scene as any)?.scene_id || (scene as any)?.id || investigation?.source_product_id || 'UNAVAILABLE'}
               </span>
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Acquisition Time</span>
               <span className="font-bold text-on-surface">
-                {scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().slice(0,19)+'Z' : '2026-09-10T17:35:09Z'}
+                {scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().slice(0,19)+'Z' : 'UNAVAILABLE'}
               </span>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <div>
               <span className="font-bold text-on-surface-variant mr-2 text-[10px] uppercase tracking-wider">AOI Bounding Box:</span>
               <span className="text-on-surface">
-                {scene?.bbox ? `[${scene.bbox.map(x => Number(x).toFixed(4)).join(', ')}]` : '[58.0000, 24.4488, 58.0512, 24.5000]'}
+                {scene?.bbox ? `[${scene.bbox.map(x => Number(x).toFixed(4)).join(', ')}]` : 'UNAVAILABLE'}
               </span>
             </div>
             <span className="text-[10px] text-on-surface-variant font-mono">IW GRDH VV+VH</span>
@@ -238,7 +238,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Activity className="w-4 h-4" /> 3. Slick Assessment
             </h3>
-            <ProvenanceBadge prov={(assessment as any)?.provenance || "REAL_DATA_TRAINED"} />
+            <ProvenanceBadge prov={(assessment as any)?.provenance || "UNAVAILABLE"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono mb-3">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -256,13 +256,13 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Evaluation Status</span>
               <span className="font-bold text-success">
-                {(assessment as any)?.evaluation_status || 'COMPLETED'}
+                {(assessment as any)?.evaluation_status || 'UNAVAILABLE'}
               </span>
             </div>
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
               <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Model Version</span>
               <span className="font-bold text-on-surface truncate block">
-                {(assessment as any)?.model_version || (assessment as any)?.model_name || 'lookalike_svm_real_v1'}
+                {(assessment as any)?.model_version || (assessment as any)?.model_name || 'UNAVAILABLE'}
               </span>
             </div>
           </div>
@@ -277,7 +277,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Wind className="w-4 h-4" /> 4. Environmental Evidence
             </h3>
-            <ProvenanceBadge prov={(envData as any)?.provenance || "LIVE"} />
+            <ProvenanceBadge prov={(envData as any)?.provenance || "UNAVAILABLE"} />
           </div>
           <div className="bg-surface-container-lowest p-4 rounded border border-outline-variant">
             {envData ? (
@@ -307,7 +307,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Observation Time</span>
                   <span className="font-bold text-on-surface">
-                    {(envData as any).timestamp ? new Date((envData as any).timestamp).toISOString().slice(0, 16) + 'Z' : '2026-09-10T18:10Z'}
+                    {(envData as any).timestamp ? new Date((envData as any).timestamp).toISOString().slice(0, 16) + 'Z' : 'UNAVAILABLE'}
                   </span>
                 </div>
                 <div className="flex flex-col justify-center">
@@ -328,7 +328,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <MapPin className="w-4 h-4" /> 5. Drift Reconstruction
             </h3>
-            <ProvenanceBadge prov={drift?.provenance || "DEMO_MOCK"} />
+            <ProvenanceBadge prov={drift?.provenance || "UNAVAILABLE"} />
           </div>
           <div className="bg-surface-container-lowest p-4 rounded border border-outline-variant">
             {drift ? (
@@ -350,7 +350,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                 <div>
                   <span className="block text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Origin Estimate</span>
                   <span className="font-bold text-primary truncate block">
-                    {(drift as any).origin_estimate?.id || 'ORIGIN-HINDCAST-24H'}
+                    {(drift as any).origin_estimate?.id || 'UNAVAILABLE'}
                   </span>
                 </div>
               </div>
@@ -450,7 +450,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                       {topCandidate.vessel_identity?.name || topVessel?.identity?.name || 'UNKNOWN'}
                     </h5>
                     <span className="font-mono text-[11px] text-on-surface-variant">
-                      MMSI: {topCandidate.vessel_identity?.mmsi || topVessel?.identity?.mmsi || 'UNKNOWN'} | Type: {topCandidate.vessel_identity?.vessel_type || 'Tanker'}
+                      MMSI: {topCandidate.vessel_identity?.mmsi || topVessel?.identity?.mmsi || 'UNKNOWN'} | Type: {topCandidate.vessel_identity?.vessel_type || 'UNKNOWN'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between bg-surface-container-low p-2.5 rounded border border-outline-variant mb-2 text-xs font-mono">
@@ -573,14 +573,14 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                     <span className="font-bold text-on-surface text-[10px] truncate block">
                       {(sim as any).hypothesized_release_location?.coordinates 
                         ? `[${(sim as any).hypothesized_release_location.coordinates.map((c: any) => Number(c).toFixed(3)).join(', ')}]`
-                        : '[58.015, 24.475]'}
+                        : 'UNAVAILABLE'}
                     </span>
                   </div>
                 </div>
                 <div className="bg-surface-container-low p-2.5 rounded border border-outline-variant text-xs font-mono">
                   <span className="text-on-surface-variant font-bold mr-2 text-[10px] uppercase tracking-wider">Interpretation:</span>
                   <span className="text-on-surface">
-                    {(sim as any).interpretation || 'Simulated particle movement demonstrates significant spatial consistency with the observed satellite slick boundary.'}
+                    {(sim as any).interpretation || 'UNAVAILABLE'}
                   </span>
                 </div>
                 <div className="p-2 rounded bg-tertiary/10 border border-tertiary/30 text-[10px] font-mono text-tertiary">
@@ -737,9 +737,11 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <li>
               <strong>Geometric Similarity vs Causation:</strong> The counterfactual simulation IoU metric measures purely spatial overlap between simulated particle dispersion and observed radar anomalies. It must <strong>never</strong> be interpreted as a statistical probability of guilt or causation.
             </li>
-            <li>
-              <strong>Demonstration Provenance Notice:</strong> Because external AIS API credentials (GFW_API_TOKEN) are not configured in this environment, vessel trajectories are generated via the deterministic demonstration service (<ProvenanceBadge prov="DEMO_MOCK" />). Real-world vessel positions were not accessed.
-            </li>
+            {ais && Array.isArray(ais) && ais.length > 0 && ais[0]?.provenance?.mode === "DEMO_MOCK" && (
+              <li>
+                <strong>Demonstration Provenance Notice:</strong> Because external AIS API credentials (GFW_API_TOKEN) are not configured in this environment, vessel trajectories are generated via the deterministic demonstration service (<ProvenanceBadge prov="DEMO_MOCK" />). Real-world vessel positions were not accessed.
+              </li>
+            )}
           </ul>
         </section>
 

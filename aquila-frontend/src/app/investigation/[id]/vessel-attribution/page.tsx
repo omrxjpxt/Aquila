@@ -29,9 +29,10 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
   const [declaredSource, setDeclaredSource] = useState("");
 
   const toggleFactor = (factorName: string) => {
-    setExpandedFactors(prev => ({
-      [factorName]: !prev[factorName]
-    }));
+    setExpandedFactors(prev => {
+      if (prev[factorName]) return {};
+      return { [factorName]: true };
+    });
   };
 
   useEffect(() => {
