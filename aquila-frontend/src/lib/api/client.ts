@@ -49,15 +49,7 @@ export const setAuthToken = (token: string | null) => {
   memoryToken = token;
 };
 
-export async function getAuthHeaders(): Promise<Record<string, string>> {
-  if (memoryToken) return { 'Authorization': `Bearer ${memoryToken}` };
-  if (typeof window !== 'undefined') {
-    const localToken = localStorage.getItem('aquila_auth_token') || localStorage.getItem('token');
-    if (localToken) {
-      memoryToken = localToken;
-      return { 'Authorization': `Bearer ${localToken}` };
-    }
-  }
+export async function getAuthHeaders(forceRefresh: boolean = false): Promise<Record<string, string>> {
   if (auth) {
     if (typeof (auth as any).authStateReady === 'function') {
       try {
@@ -68,7 +60,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
     }
     if (auth.currentUser) {
       try {
-        const token = await auth.currentUser.getIdToken();
+        const token = await auth.currentUser.getIdToken(forceRefresh);
         if (token) {
           memoryToken = token;
           return { 'Authorization': `Bearer ${token}` };
@@ -78,37 +70,67 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
       }
     }
   }
+
+  if (memoryToken) return { 'Authorization': `Bearer ${memoryToken}` };
+  if (typeof window !== 'undefined') {
+    const localToken = localStorage.getItem('aquila_auth_token') || localStorage.getItem('token');
+    if (localToken) {
+      memoryToken = localToken;
+      return { 'Authorization': `Bearer ${localToken}` };
+    }
+  }
   return {};
+}
+
+async function fetchWithAuth(url: string, init?: RequestInit): Promise<Response> {
+  const authHeaders = await getAuthHeaders();
+  let response = await fetch(url, {
+    ...init,
+    headers: {
+      'Accept': 'application/json',
+      ...authHeaders,
+      ...init?.headers,
+    },
+  });
+
+  if (response.status === 401 && auth?.currentUser) {
+    try {
+      const freshAuthHeaders = await getAuthHeaders(true);
+      if (freshAuthHeaders['Authorization']) {
+        response = await fetch(url, {
+          ...init,
+          headers: {
+            'Accept': 'application/json',
+            ...freshAuthHeaders,
+            ...init?.headers,
+          },
+        });
+      }
+    } catch {
+      // ignore and let original/latest response be handled
+    }
+  }
+
+  return response;
 }
 
 export const apiClient = {
   baseUrl: API_V1,
   getAuthHeaders,
   get: async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
-    const authHeaders = await getAuthHeaders();
     let response: Response;
     try {
-      response = await fetch(`${API_V1}${endpoint}`, {
-        ...options,
-        headers: {
-          'Accept': 'application/json',
-          ...authHeaders,
-          ...options?.headers,
-        },
-      });
+      response = await fetchWithAuth(`${API_V1}${endpoint}`, options);
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       throw new ApiError(0, "Failed to connect to the backend API.", "NETWORK_ERROR", error);
     }
     return handleResponse<T>(response);
   },
 
   post: async <T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> => {
-    const authHeaders = await getAuthHeaders();
     const isFormData = data instanceof FormData;
-    
     const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      ...authHeaders,
       ...options?.headers as Record<string, string>,
     };
 
@@ -118,13 +140,14 @@ export const apiClient = {
 
     let response: Response;
     try {
-      response = await fetch(`${API_V1}${endpoint}`, {
+      response = await fetchWithAuth(`${API_V1}${endpoint}`, {
         method: 'POST',
-        body: isFormData ? data : JSON.stringify(data),
+        body: isFormData ? (data as any) : JSON.stringify(data),
         ...options,
         headers,
       });
     } catch (error) {
+      if (error instanceof ApiError) throw error;
       throw new ApiError(0, "Failed to connect to the backend API.", "NETWORK_ERROR", error);
     }
     

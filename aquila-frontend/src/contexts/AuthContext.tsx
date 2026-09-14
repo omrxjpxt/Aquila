@@ -70,6 +70,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!auth) return;
     await signOut(auth);
     setAuthToken(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("aquila_auth_token");
+      localStorage.removeItem("token");
+    }
     setUser(null);
   };
 
