@@ -2,21 +2,46 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Ship, Search, Filter, AlertTriangle, Anchor } from "lucide-react";
+import { Ship, Search, Filter, AlertTriangle, Anchor, MapPin } from "lucide-react";
 import { apiClient } from "@/lib/api/client";
-import { FleetResponse } from "@/lib/api/types";
+import { monitoringApi } from "@/lib/api/monitoring";
+import { FleetResponse, MonitoringZone } from "@/lib/api/types";
 
 export default function VesselsPage() {
   const [fleet, setFleet] = useState<FleetResponse | null>(null);
+  const [zones, setZones] = useState<MonitoringZone[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Load available observation areas
+  useEffect(() => {
+    async function loadZones() {
+      try {
+        const fetchedZones = await monitoringApi.getZones();
+        setZones(fetchedZones);
+        if (fetchedZones.length > 0 && !selectedZoneId) {
+          const defaultZone = fetchedZones.find(z => z.is_enabled && z.id.includes("oman")) || 
+                              fetchedZones.find(z => z.is_enabled) || 
+                              fetchedZones[0];
+          setSelectedZoneId(defaultZone.id);
+        }
+      } catch (e) {
+        console.warn("Could not fetch monitoring zones:", e);
+      }
+    }
+    loadZones();
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
     async function loadFleet() {
       try {
         setIsLoading(true);
-        const data = await apiClient.get<FleetResponse>('/ais/fleet');
+        const endpoint = selectedZoneId 
+          ? `/ais/fleet?zone_id=${encodeURIComponent(selectedZoneId)}` 
+          : '/ais/fleet';
+        const data = await apiClient.get<FleetResponse>(endpoint);
         if (isMounted) {
           setFleet(data);
         }
@@ -41,7 +66,7 @@ export default function VesselsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [selectedZoneId]);
 
   const filteredVessels = useMemo(() => {
     if (!fleet || !fleet.vessels) return [];
@@ -81,7 +106,24 @@ export default function VesselsPage() {
             )}
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            {zones.length > 0 && (
+              <div className="flex items-center gap-2 bg-surface border border-outline-variant rounded px-3 py-2 text-xs">
+                <MapPin className="w-3.5 h-3.5 text-primary" />
+                <span className="text-on-surface-variant font-medium">Area:</span>
+                <select
+                  value={selectedZoneId}
+                  onChange={(e) => setSelectedZoneId(e.target.value)}
+                  className="bg-transparent text-on-surface font-semibold focus:outline-none cursor-pointer"
+                >
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.id} className="bg-surface text-on-surface">
+                      {z.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <button 
               className="flex items-center gap-2 px-4 py-2 bg-surface border border-outline-variant rounded text-sm font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
             >
@@ -233,7 +275,9 @@ export default function VesselsPage() {
                            <span className="block text-[10px] text-on-surface-variant mb-0.5">
                               {new Date(vessel.last_observed_at).toISOString().slice(0, 19).replace('T', ' ')}Z
                            </span>
-                           <span className="text-[10px] text-on-surface-variant italic">Aggregated Grid Cell Center</span>
+                           <span className="text-[10px] text-on-surface-variant italic">
+                             Aggregated Grid Cell Center ({vessel.presence_hours ?? 1}h presence)
+                           </span>
                         </div>
                       ) : (
                         <span className="text-xs text-on-surface-variant italic">Time unavailable</span>

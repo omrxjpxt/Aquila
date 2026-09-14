@@ -51,6 +51,13 @@ export const setAuthToken = (token: string | null) => {
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   if (memoryToken) return { 'Authorization': `Bearer ${memoryToken}` };
+  if (typeof window !== 'undefined') {
+    const localToken = localStorage.getItem('aquila_auth_token') || localStorage.getItem('token');
+    if (localToken) {
+      memoryToken = localToken;
+      return { 'Authorization': `Bearer ${localToken}` };
+    }
+  }
   if (auth) {
     if (typeof (auth as any).authStateReady === 'function') {
       try {

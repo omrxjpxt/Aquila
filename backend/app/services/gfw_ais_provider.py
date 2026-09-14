@@ -95,43 +95,78 @@ class GFWAISProvider(AISProvider):
                     
         return identities
 
+    async def get_dataset_availability_boundary(self) -> datetime:
+        """
+        Queries GFW dataset metadata for the actual availability boundary (endDate).
+        Falls back to conservative datetime.utcnow() - timedelta(hours=96) if unavailable.
+        """
+        if not self.token:
+            return datetime.utcnow() - timedelta(hours=96)
+
+        headers = {"Authorization": f"Bearer {self.token}"}
+        url = f"{self.base_url}/datasets/{self.dataset}"
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(url, headers=headers, timeout=10.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    end_date_str = data.get("endDate")
+                    if end_date_str:
+                        clean_ts = end_date_str.replace("Z", "+00:00")
+                        end_dt = datetime.fromisoformat(clean_ts)
+                        return end_dt.replace(tzinfo=None)
+        except Exception as e:
+            logger.warning("Could not fetch GFW dataset boundary from API: %s", str(e))
+
+        return datetime.utcnow() - timedelta(hours=96)
+
     async def search_vessel_presence(
         self, 
         min_lon: float, 
         min_lat: float, 
         max_lon: float, 
         max_lat: float,
-        start_time: datetime, 
-        end_time: datetime
+        start_time: Any, 
+        end_time: Any
     ) -> Tuple[List[GFWPresenceRecord], GFWAISProvenance]:
         """
         Queries GFW 4Wings API for vessel presence in a bounding box.
         Resolution is approximately 1 position per hour per vessel.
-        Uses POST /v3/4wings/report to run a job, polls until completion.
+        Uses POST /v3/4wings/report with parameters in HTTP query string and geojson in body.
         """
+        s_date = start_time.date() if isinstance(start_time, datetime) else start_time
+        e_date = end_time.date() if isinstance(end_time, datetime) else end_time
+        date_range_str = f"{s_date.strftime('%Y-%m-%d')},{e_date.strftime('%Y-%m-%d')}"
+
         provenance = GFWAISProvenance(
             api_endpoint=f"{self.base_url}/4wings/report",
             requested_bbox=f"{min_lon},{min_lat},{max_lon},{max_lat}",
-            requested_time_range=f"{start_time.isoformat()}/{end_time.isoformat()}",
+            requested_time_range=date_range_str,
             retrieval_time=datetime.utcnow()
         )
         
         if not self.token:
             raise RuntimeError("GFW_API_TOKEN is not configured. GFW services are unavailable.")
             
-        headers = {"Authorization": f"Bearer {self.token}"}
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json"
+        }
         
-        # 1. Start the report job
         create_url = f"{self.base_url}/4wings/report"
         
-        payload = {
+        params = {
+            "datasets[0]": self.dataset,
+            "date-range": date_range_str,
             "spatial-resolution": "LOW",
-            "format": "JSON",
+            "temporal-resolution": "ENTIRE",
             "group-by": "VESSEL_ID",
-            "date-range": f"{start_time.isoformat()[:19]}Z,{end_time.isoformat()[:19]}Z",
-            "spatial-aggregation": True,
-            "datasets": [self.dataset],
-            "geometry": {
+            "format": "JSON",
+            "spatial-aggregation": "true"
+        }
+        
+        body = {
+            "geojson": {
                 "type": "Polygon",
                 "coordinates": [[
                     [min_lon, min_lat],
@@ -145,7 +180,7 @@ class GFWAISProvider(AISProvider):
         
         async with httpx.AsyncClient() as client:
             try:
-                resp = await client.post(create_url, headers=headers, json=payload, timeout=15.0)
+                resp = await client.post(create_url, headers=headers, params=params, json=body, timeout=20.0)
                 resp.raise_for_status()
                 job_data = resp.json()
             except Exception as e:
@@ -155,20 +190,17 @@ class GFWAISProvider(AISProvider):
                 
             report_url = job_data.get("url")
             if not report_url:
-                # Sometimes it returns immediately if data is small/cached
                 entries = job_data.get("entries", [])
-                if entries or job_data.get("status") == "COMPLETED":
+                if entries or job_data.get("status") in ["COMPLETED", "DONE"]:
                     report_url = None
                 else:
                     return [], provenance
                     
-            # 2. Poll for completion
             max_polls = 10
             poll_interval = 2.0
             completed_data = None
             
             if report_url:
-                # 4wings/report responds with a URL containing the report ID to check status
                 status_url = f"{self.base_url}{report_url}" if report_url.startswith("/") else report_url
                 for _ in range(max_polls):
                     await asyncio.sleep(poll_interval)
@@ -177,9 +209,8 @@ class GFWAISProvider(AISProvider):
                         status_resp.raise_for_status()
                         status_data = status_resp.json()
                         
-                        # API uses `status` = "running", "done", "error" etc. (Assumed from typical async REST)
-                        status = status_data.get("status", "").upper()
-                        if status == "COMPLETED" or status == "DONE" or "entries" in status_data:
+                        status = str(status_data.get("status", "")).upper()
+                        if status in ["COMPLETED", "DONE"] or "entries" in status_data:
                             completed_data = status_data
                             break
                         elif status in ["ERROR", "FAILED", "NOT_AVAILABLE"]:
@@ -197,26 +228,65 @@ class GFWAISProvider(AISProvider):
             else:
                 completed_data = job_data
                 
-            # 3. Parse entries
             entries = completed_data.get("entries", [])
-            records: List[GFWPresenceRecord] = []
+            raw_items: List[Dict[str, Any]] = []
             
-            for item in entries:
-                vessel_id = item.get("vessel_id") or item.get("id") or item.get("ssvid")
+            if entries and isinstance(entries, list):
+                first_entry = entries[0]
+                if isinstance(first_entry, dict):
+                    for k, v in first_entry.items():
+                        if isinstance(v, list):
+                            raw_items = v
+                            break
+            elif isinstance(entries, dict):
+                for k, v in entries.items():
+                    if isinstance(v, list):
+                        raw_items = v
+                        break
+                        
+            records: List[GFWPresenceRecord] = []
+            spatial_center_lon = (min_lon + max_lon) / 2
+            spatial_center_lat = (min_lat + max_lat) / 2
+            
+            for item in raw_items:
+                vessel_id = item.get("vesselId") or item.get("vessel_id") or item.get("id") or item.get("ssvid")
                 if not vessel_id:
                     continue
-                # Aggregate hours - 4wings often returns "hours" or similar metric per group
-                presence_hours = item.get("hours") or item.get("fishingHours") or item.get("presence_hours") or 1.0
+                    
+                hours = float(item.get("hours") or item.get("fishingHours") or item.get("presence_hours") or 1.0)
                 
+                exit_ts = None
+                entry_ts = None
+                if item.get("exitTimestamp"):
+                    try:
+                        clean_ts = str(item["exitTimestamp"]).replace("Z", "+00:00")
+                        exit_ts = datetime.fromisoformat(clean_ts).replace(tzinfo=None)
+                    except Exception:
+                        pass
+                if item.get("entryTimestamp"):
+                    try:
+                        clean_ts = str(item["entryTimestamp"]).replace("Z", "+00:00")
+                        entry_ts = datetime.fromisoformat(clean_ts).replace(tzinfo=None)
+                    except Exception:
+                        pass
+                        
+                default_ts = exit_ts or entry_ts or (datetime.combine(e_date, datetime.min.time()) if hasattr(e_date, "strftime") else datetime.utcnow())
+
                 records.append(GFWPresenceRecord(
                     vessel_id=str(vessel_id),
-                    timestamp=end_time, # Using window end as last observed since it's aggregated
-                    lon=(min_lon + max_lon) / 2, # Aggregated spatial center
-                    lat=(min_lat + max_lat) / 2,
-                    resolution="~1 position per hour"
+                    timestamp=default_ts,
+                    lon=spatial_center_lon,
+                    lat=spatial_center_lat,
+                    resolution="~1 position per hour",
+                    mmsi=str(item.get("mmsi") or "") or None,
+                    name=item.get("shipName") or item.get("shipname"),
+                    flag=item.get("flag"),
+                    imo=str(item.get("imo") or "") or None,
+                    vessel_type=item.get("vesselType") or item.get("geartype"),
+                    presence_hours=hours,
+                    entry_timestamp=entry_ts,
+                    exit_timestamp=exit_ts
                 ))
-                # Stash actual presence hours as a dynamic attribute for the fleet response later
-                records[-1].__dict__["presence_hours"] = presence_hours
                 
             return records, provenance
             
@@ -236,12 +306,13 @@ class GFWAISProvider(AISProvider):
                 reason="GFW_API_TOKEN is not configured in backend environment.",
             )
             
-        # Determine 72-hour window ending at the 96-hour availability latency boundary
-        boundary_end = datetime.utcnow() - timedelta(hours=96)
-        boundary_start = boundary_end - timedelta(hours=72)
+        boundary_end_dt = await self.get_dataset_availability_boundary()
+        boundary_date = boundary_end_dt.date()
         
-        # Check cache
-        cache_key = f"{bbox}_{boundary_start.isoformat()}_{boundary_end.isoformat()}_{self.dataset}"
+        window_end_date = boundary_date - timedelta(days=1)
+        window_start_date = window_end_date - timedelta(days=3)
+        
+        cache_key = f"{tuple(bbox)}_{window_start_date.isoformat()}_{window_end_date.isoformat()}_{self.dataset}"
         cached = self._presence_cache.get(cache_key)
         if cached and (datetime.utcnow() - cached[0]).total_seconds() < 600:
             return cached[1]
@@ -249,7 +320,7 @@ class GFWAISProvider(AISProvider):
         try:
             records, prov = await self.search_vessel_presence(
                 min_lon=bbox[0], min_lat=bbox[1], max_lon=bbox[2], max_lat=bbox[3],
-                start_time=boundary_start, end_time=boundary_end
+                start_time=window_start_date, end_time=window_end_date
             )
             
             if not records:
@@ -259,43 +330,73 @@ class GFWAISProvider(AISProvider):
                     reason="No verified GFW vessel presence detected in this observation area for the selected availability window.",
                     scope="OBSERVATION_AREA",
                     observation_area={"name": zone_name, "bbox": list(bbox)},
-                    presence_window={"start": boundary_start.isoformat() + "Z", "end": boundary_end.isoformat() + "Z"},
+                    presence_window={
+                        "start": window_start_date.strftime("%Y-%m-%d"),
+                        "end": window_end_date.strftime("%Y-%m-%d")
+                    },
                     dataset=self.dataset
                 )
                 self._presence_cache[cache_key] = (datetime.utcnow(), resp)
                 return resp
                 
-            # Identity enrichment
-            vessel_ids = list({r.vessel_id for r in records})
-            identities = await self.get_vessel_identities(vessel_ids)
-            id_map = {idx.mmsi: idx for idx in identities} # get_vessel_identities actually queries by MMSI. Let's assume vessel_id from 4wings is MMSI.
-            
-            vessels: List[FleetVessel] = []
+            grouped_records: Dict[str, List[GFWPresenceRecord]] = {}
             for r in records:
-                ident = id_map.get(r.vessel_id)
-                ph = getattr(r, "presence_hours", 1.0)
+                grouped_records.setdefault(r.vessel_id, []).append(r)
+                
+            vessels: List[FleetVessel] = []
+            for vid, recs in grouped_records.items():
+                total_hours = sum(r.presence_hours for r in recs if r.presence_hours is not None)
+                
+                valid_timestamps = [r.exit_timestamp or r.timestamp for r in recs if (r.exit_timestamp or r.timestamp)]
+                latest_ts = max(valid_timestamps) if valid_timestamps else None
+                
+                name = next((r.name for r in recs if r.name and r.name.strip()), None)
+                mmsi = next((r.mmsi for r in recs if r.mmsi and r.mmsi.strip()), None) or (vid if vid.isdigit() else None)
+                flag = next((r.flag for r in recs if r.flag and r.flag.strip()), None)
+                imo = next((r.imo for r in recs if r.imo and r.imo.strip()), None)
+                v_type = next((r.vessel_type for r in recs if r.vessel_type and r.vessel_type.strip()), None)
                 
                 vessels.append(FleetVessel(
-                    id=r.vessel_id,
-                    mmsi=ident.mmsi if ident else r.vessel_id,
-                    imo=ident.imo if ident else None,
-                    name=ident.name if ident else "UNKNOWN VESSEL",
-                    vessel_type=ident.vessel_type if ident else None,
-                    flag=ident.flag if ident else None,
+                    id=vid,
+                    mmsi=mmsi,
+                    imo=imo,
+                    name=name if name else "UNKNOWN VESSEL",
+                    vessel_type=v_type or "Commercial Vessel",
+                    flag=flag or "—",
                     status="ACTIVE",
                     provider="Global Fishing Watch",
-                    presence_hours=ph,
-                    last_observed_at=r.timestamp,
+                    presence_hours=round(total_hours, 1),
+                    last_observed_at=latest_ts,
                     presence_verified=True,
                     presence_source="GFW 4Wings",
                     provenance=AISProvenance(
                         source="Global Fishing Watch",
                         mode="LIVE",
                         retrieval_time=datetime.utcnow(),
-                        limitations="Aggregated vessel presence."
+                        limitations="Aggregated vessel presence (~1 position per hour) from GFW 4Wings."
                     )
                 ))
                 
+            unnamed_vessels = [v for v in vessels if v.name == "UNKNOWN VESSEL" and v.mmsi]
+            if unnamed_vessels:
+                try:
+                    mmsis_to_enrich = [v.mmsi for v in unnamed_vessels if v.mmsi]
+                    enriched = await self.get_vessel_identities(mmsis_to_enrich)
+                    enrich_map = {idx.mmsi: idx for idx in enriched}
+                    for v in unnamed_vessels:
+                        if v.mmsi in enrich_map:
+                            ident = enrich_map[v.mmsi]
+                            if ident.name:
+                                v.name = ident.name
+                            if ident.imo and not v.imo:
+                                v.imo = ident.imo
+                            if ident.flag and (not v.flag or v.flag == "—"):
+                                v.flag = ident.flag
+                            if ident.vessel_type and v.vessel_type == "Commercial Vessel":
+                                v.vessel_type = ident.vessel_type
+                except Exception as enrich_err:
+                    logger.warning("Identity enrichment skipped/failed: %s", enrich_err)
+                    
             resp = FleetResponse(
                 provider="Global Fishing Watch",
                 status="LIVE",
@@ -303,7 +404,10 @@ class GFWAISProvider(AISProvider):
                 vessels=vessels,
                 scope="OBSERVATION_AREA",
                 observation_area={"name": zone_name, "bbox": list(bbox)},
-                presence_window={"start": boundary_start.isoformat() + "Z", "end": boundary_end.isoformat() + "Z"},
+                presence_window={
+                    "start": window_start_date.strftime("%Y-%m-%d"),
+                    "end": window_end_date.strftime("%Y-%m-%d")
+                },
                 dataset=self.dataset
             )
             self._presence_cache[cache_key] = (datetime.utcnow(), resp)

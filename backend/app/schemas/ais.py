@@ -76,6 +76,14 @@ class GFWPresenceRecord(BaseModel):
     lon: float
     lat: float
     resolution: str = Field(default="~1 position per hour", description="Temporal resolution of the presence data")
+    mmsi: Optional[str] = None
+    name: Optional[str] = None
+    flag: Optional[str] = None
+    imo: Optional[str] = None
+    vessel_type: Optional[str] = None
+    presence_hours: Optional[float] = 1.0
+    entry_timestamp: Optional[datetime] = None
+    exit_timestamp: Optional[datetime] = None
 
 
 class GFWEvent(BaseModel):
