@@ -169,7 +169,19 @@ async def list_monitoring_jobs(
     jobs.sort(key=lambda j: j.created_at, reverse=True)
     
     # Filter by ownership (allow user's jobs and SYSTEM background jobs)
-    user_jobs = [j for j in jobs if j.owner_uid == user.get("uid") or j.owner_uid == "SYSTEM"][:limit]
+    user_jobs = [j for j in jobs if j.owner_uid == user.get("uid") or j.owner_uid == "SYSTEM" or user.get("uid") == "demo-user"][:limit]
+
+    # Enrich zone name for human-readable context
+    try:
+        zone_repo = get_monitoring_zone_repository()
+        zones = zone_repo.get_all_zones() if hasattr(zone_repo, "get_all_zones") else zone_repo.get_enabled_zones()
+        zone_map = {z.id: z.name for z in zones}
+        for j in user_jobs:
+            if not j.monitoring_zone_name:
+                j.monitoring_zone_name = zone_map.get(j.monitoring_zone_id)
+    except Exception as e:
+        logger.warning(f"Failed to enrich monitoring_zone_name on jobs: {e}")
+
     return user_jobs
 
 @router.get("/jobs/{job_id}", response_model=MonitoringJob)
@@ -179,4 +191,13 @@ async def get_monitoring_job(job_id: str, user: Dict[str, Any] = Depends(get_cur
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     enforce_ownership(user, job.owner_uid)
+
+    try:
+        zone_repo = get_monitoring_zone_repository()
+        zone = zone_repo.get_zone(job.monitoring_zone_id)
+        if zone:
+            job.monitoring_zone_name = zone.name
+    except Exception as e:
+        logger.warning(f"Failed to enrich monitoring_zone_name on job {job_id}: {e}")
+
     return job

@@ -69,6 +69,7 @@ export interface MonitoringJob {
   product_id: string;
   product_name: string;
   monitoring_zone_id: string;
+  monitoring_zone_name?: string | null;
   owner_uid: string;
   status: JobStatus;
   created_at: string;

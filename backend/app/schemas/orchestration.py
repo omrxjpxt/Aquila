@@ -31,6 +31,7 @@ class MonitoringJob(BaseModel):
     product_id: str
     product_name: str
     monitoring_zone_id: str
+    monitoring_zone_name: Optional[str] = Field(default=None, description="Human-readable name of the monitoring zone")
     owner_uid: str = Field(default="SYSTEM", description="Inherited from NewSceneEvent/MonitoringZone")
     
     status: JobStatus = Field(default=JobStatus.DISCOVERED)

@@ -2,16 +2,71 @@
 
 import { MapLibreCanvas, useMap } from "@/components/map/MapLibreCanvas";
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { AlertTriangle, MapPin, Radar, Layers, Ship, ChevronRight, Activity, Satellite, Play, Radio } from "lucide-react";
 import { investigationsApi } from "@/lib/api/investigations";
 import { monitoringApi } from "@/lib/api/monitoring";
 import { systemApi } from "@/lib/api/system";
 import { satelliteApi } from "@/lib/api/satellite";
-import { Investigation, MonitoringJob, SystemStatus, SatelliteScene, MonitoringStatus } from "@/lib/api/types";
+import { Investigation, MonitoringJob, SystemStatus, SatelliteScene, MonitoringStatus, MonitoringZone } from "@/lib/api/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { GeoJSONLayer } from "@/components/map/layers";
 import { SetObservationAreaModal } from "@/components/monitoring/SetObservationAreaModal";
+
+// Authoritative monitoring milestone mappings
+const STATUS_EVENT_TITLES: Record<string, string> = {
+  REPORT_READY: "Investigation Report Ready",
+  CANDIDATES_FOUND: "Slick Candidate Detected",
+  INVESTIGATION_CREATED: "Investigation Created",
+  PROCESSING: "SAR Scene Processed",
+  RETRIEVING: "Satellite Data Retrieved",
+  QUEUED: "Scene Queued for Analysis",
+  DISCOVERED: "Satellite Scene Discovered",
+  ENVIRONMENT: "Environmental Analysis Complete",
+  DRIFT: "Drift Reconstruction Complete",
+  VESSEL_EVIDENCE: "Vessel Evidence Evaluated",
+  ATTRIBUTION: "Attribution Analysis Complete",
+  RESOLVED: "Monitoring Run Resolved",
+  FAILED: "Monitoring Run Failed",
+  RETRY_WAIT: "Monitoring Run Waiting for Retry"
+};
+
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  REPORT_READY: "Investigation report ready",
+  CANDIDATES_FOUND: "Potential slick candidate detected",
+  INVESTIGATION_CREATED: "Investigation opened with radar anomaly evidence",
+  PROCESSING: "SAR scene calibrated and backscatter thresholded",
+  RETRIEVING: "Satellite data retrieved",
+  QUEUED: "Scene queued for automated analysis",
+  DISCOVERED: "New satellite scene discovered",
+  ENVIRONMENT: "Environmental context retrieved",
+  DRIFT: "Drift reconstruction completed",
+  VESSEL_EVIDENCE: "Vessel evidence evaluated",
+  ATTRIBUTION: "Attribution analysis completed",
+  RESOLVED: "Analysis completed • No slick candidates found",
+  FAILED: "Monitoring run encountered an error",
+  RETRY_WAIT: "Monitoring run waiting for scheduled retry"
+};
+
+function formatUtcTimestamp(dateStr?: string | null): { formatted: string; fullIso: string } {
+  if (!dateStr) return { formatted: "Time unavailable", fullIso: "" };
+  try {
+    let normalized = String(dateStr).trim();
+    if (!normalized.endsWith("Z") && !normalized.includes("+")) {
+      normalized = normalized.replace(" ", "T") + "Z";
+    }
+    const d = new Date(normalized);
+    if (isNaN(d.getTime())) return { formatted: "Time unavailable", fullIso: "" };
+    const hours = String(d.getUTCHours()).padStart(2, "0");
+    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    return {
+      formatted: `${hours}:${minutes} UTC`,
+      fullIso: d.toISOString().slice(0, 19).replace('T', ' ') + ' UTC'
+    };
+  } catch {
+    return { formatted: "Time unavailable", fullIso: "" };
+  }
+}
 
 function ImageOverlayLayer({ 
   id, 
@@ -197,6 +252,8 @@ export default function CommandCenterPage() {
   const { user, loading: authLoading, login, loginWithGoogle } = useAuth();
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [jobs, setJobs] = useState<MonitoringJob[]>([]);
+  const [zones, setZones] = useState<MonitoringZone[]>([]);
+  const [jobsError, setJobsError] = useState<boolean>(false);
   const [status, setStatus] = useState<SystemStatus | null>(null);
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringStatus | null>(null);
   const [scenes, setScenes] = useState<SatelliteScene[]>([]);
@@ -216,19 +273,30 @@ export default function CommandCenterPage() {
     let ignore = false;
     const loadData = async () => {
       try {
-        const [invs, fetchedJobs, fetchedStatus, fetchedScenes, fetchedMonitoringStatus] = await Promise.all([
-          investigationsApi.listInvestigations(),
-          monitoringApi.getJobs(undefined, 20),
+        let fetchedJobs: MonitoringJob[] = [];
+        let jobsFailed = false;
+        try {
+          fetchedJobs = await monitoringApi.getJobs(undefined, 30);
+        } catch (jErr) {
+          console.error("Failed to fetch monitoring jobs:", jErr);
+          jobsFailed = true;
+        }
+
+        const [invs, fetchedStatus, fetchedScenes, fetchedMonitoringStatus, fetchedZones] = await Promise.all([
+          investigationsApi.listInvestigations().catch(() => []),
           systemApi.getStatus().catch(() => null),
           satelliteApi.listScenes().catch(() => []),
-          monitoringApi.getStatus().catch(() => null)
+          monitoringApi.getStatus().catch(() => null),
+          monitoringApi.getZones().catch(() => [])
         ]);
         if (!ignore) {
           setInvestigations(invs);
           setJobs(fetchedJobs);
+          setJobsError(jobsFailed);
           setStatus(fetchedStatus);
           setScenes(fetchedScenes);
           setMonitoringStatus(fetchedMonitoringStatus);
+          setZones(fetchedZones);
           setError(null);
           setDataLoaded(true);
         }
@@ -247,6 +315,54 @@ export default function CommandCenterPage() {
       clearInterval(interval);
     };
   }, [authLoading, user, retryTrigger]);
+
+  // Build lookup map for observation area zone names
+  const zoneMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    zones.forEach(z => {
+      if (z.id && z.name) map[z.id] = z.name;
+    });
+    return map;
+  }, [zones]);
+
+  // Meaningful recent monitoring activities derived from real persisted jobs
+  const recentActivities = useMemo(() => {
+    if (!jobs || jobs.length === 0) return [];
+
+    // Sort descending by authoritative job timestamp
+    const sortedJobs = [...jobs].sort((a, b) => {
+      const timeA = new Date(a.updated_at || a.created_at).getTime();
+      const timeB = new Date(b.updated_at || b.created_at).getTime();
+      return timeB - timeA;
+    });
+
+    const seenKeys = new Set<string>();
+    const statusCounts = new Map<string, number>();
+    const activities: MonitoringJob[] = [];
+
+    for (const job of sortedJobs) {
+      // 1. Deduplicate identical job + status
+      const key = `${job.job_id}:${job.status}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+
+      // 2. Deduplicate identical product + zone + status to prevent repetitive noise
+      const productKey = `${job.product_id || job.job_id}:${job.monitoring_zone_id}:${job.status}`;
+      if (seenKeys.has(productKey)) continue;
+      seenKeys.add(productKey);
+
+      // 3. Cap repeated background maintenance states so they don't dominate milestones
+      const count = statusCounts.get(job.status) || 0;
+      if (job.status === "RETRY_WAIT" && count >= 2) continue;
+      if (job.status === "RESOLVED" && count >= 3) continue;
+      statusCounts.set(job.status, count + 1);
+
+      activities.push(job);
+      if (activities.length >= 8) break;
+    }
+
+    return activities;
+  }, [jobs]);
 
   if (authLoading || (!dataLoaded && user)) {
     return (
@@ -592,40 +708,100 @@ export default function CommandCenterPage() {
                 </Link>
              </div>
              <div className="flex-1 p-0 overflow-y-auto max-h-[350px]">
-                {jobs.length === 0 ? (
+                {jobsError ? (
+                  <div className="p-8 text-center flex flex-col items-center justify-center">
+                    <AlertTriangle className="w-8 h-8 text-error/60 mb-3" />
+                    <div className="text-[14px] font-bold text-on-surface mb-1">Monitoring activity unavailable</div>
+                    <div className="text-[13px] text-outline max-w-[240px]">
+                       Unable to retrieve monitoring events from backend engine.
+                    </div>
+                  </div>
+                ) : recentActivities.length === 0 ? (
                   <div className="p-8 text-center flex flex-col items-center justify-center">
                     <Activity className="w-8 h-8 text-outline-variant mb-3" />
-                    <div className="text-[14px] font-bold text-on-surface mb-1">No monitoring jobs</div>
-                    <div className="text-[13px] text-outline max-w-[200px]">
-                       Waiting for satellite acquisitions...
+                    <div className="text-[14px] font-bold text-on-surface mb-1">No recent monitoring activity</div>
+                    <div className="text-[13px] text-outline max-w-[240px]">
+                       Waiting for satellite acquisitions and automated analysis...
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 relative">
                     <div className="absolute left-[23px] top-6 bottom-6 w-px bg-outline-variant/40" />
                     <div className="space-y-6">
-                      {jobs.slice(0, 8).map(job => (
-                        <div key={job.job_id} className="flex gap-4 relative z-10">
-                          <div className={`w-4 h-4 mt-0.5 rounded-full border-2 shrink-0 ${job.status === 'FAILED' ? 'bg-error/10 border-error' : 'bg-surface-container-lowest border-primary'}`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-start mb-0.5">
-                               <div className="text-[13px] font-bold text-on-surface">
-                                 {job.status === 'CANDIDATES_FOUND' ? 'Candidates Detected' : 
-                                  job.status === 'PROCESSING' ? 'Scene Processing' : 
-                                  job.status === 'FAILED' ? 'Job Failed' :
-                                  'Job Status Updated'}
-                               </div>
-                               <div className="text-[11px] text-outline">{new Date(job.updated_at).toISOString().slice(11, 16)} UTC</div>
-                            </div>
-                            <div className="text-[12px] font-mono text-outline truncate">
-                              {job.product_id || job.job_id}
-                            </div>
-                            <div className={`text-[12px] font-medium mt-0.5 ${job.status === 'FAILED' ? 'text-error' : 'text-primary'}`}>
-                              {job.status}
+                      {recentActivities.map(job => {
+                        const title = STATUS_EVENT_TITLES[job.status] || "Monitoring Activity";
+                        const description = job.status === 'FAILED' && job.last_error 
+                          ? job.last_error 
+                          : (STATUS_DESCRIPTIONS[job.status] || "Automated pipeline activity");
+                        
+                        const timeInfo = formatUtcTimestamp(job.updated_at || job.created_at);
+
+                        // Human-readable identifier: prioritize investigation ID, then scene name
+                        const hasInvs = job.investigation_ids && job.investigation_ids.length > 0;
+                        const invId = hasInvs ? job.investigation_ids[0] : null;
+                        const extraInvs = hasInvs ? job.investigation_ids.length - 1 : 0;
+                        
+                        const sceneName = job.product_name 
+                          ? job.product_name.replace('.SAFE', '').replace('_COG', '')
+                          : (job.product_id ? `Scene ${job.product_id.slice(0, 8)}` : `Job ${job.job_id.slice(0, 8)}`);
+
+                        const rawZone = job.monitoring_zone_name || zoneMap[job.monitoring_zone_id] || (monitoringStatus?.monitored_zone_id === job.monitoring_zone_id ? monitoringStatus.monitored_zone_name : "Gulf of Oman");
+                        const cleanZone = (rawZone || "Gulf of Oman").replace(/ \((Sentinel-1|Standard Monitoring|Configured Monitoring Area)\)/g, '').trim();
+                        const contextLine = `Sentinel-1 • ${cleanZone}`;
+
+                        const dotStyle = 
+                          job.status === 'FAILED' ? 'bg-error/10 border-error' :
+                          job.status === 'REPORT_READY' ? 'bg-success/15 border-success' :
+                          job.status === 'CANDIDATES_FOUND' || job.status === 'INVESTIGATION_CREATED' || job.status === 'RETRY_WAIT' ? 'bg-warning/15 border-warning' :
+                          'bg-surface-container-lowest border-primary';
+
+                        return (
+                          <div key={`${job.job_id}-${job.status}`} className="flex gap-4 relative z-10">
+                            <div className={`w-4 h-4 mt-0.5 rounded-full border-2 shrink-0 ${dotStyle}`} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-start mb-0.5">
+                                 <div className="text-[13px] font-bold text-on-surface">
+                                   {title}
+                                 </div>
+                                 <div 
+                                   className="text-[11px] text-outline font-mono shrink-0 ml-2"
+                                   title={timeInfo.fullIso ? `Authoritative timestamp: ${timeInfo.fullIso}` : undefined}
+                                 >
+                                   {timeInfo.formatted}
+                                 </div>
+                              </div>
+
+                              {/* Secondary Identifier */}
+                              <div className="text-[12px] truncate mb-0.5">
+                                {hasInvs && invId ? (
+                                  <Link 
+                                    href={`/investigation/${invId}`}
+                                    className="font-mono font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                                  >
+                                    <span>{invId}</span>
+                                    {extraInvs > 0 && (
+                                      <span className="text-[10px] text-outline font-normal">
+                                        (+{extraInvs} more)
+                                      </span>
+                                    )}
+                                  </Link>
+                                ) : (
+                                  <span className="font-mono text-on-surface-variant text-[11px]">
+                                    {sceneName}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Context & Description */}
+                              <div className="text-[11px] text-outline truncate flex items-center gap-1.5">
+                                <span className="font-medium text-on-surface-variant/80">{contextLine}</span>
+                                <span>•</span>
+                                <span className="truncate">{description}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
