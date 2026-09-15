@@ -22,13 +22,13 @@ class CandidateQuery(BaseModel):
     origin: OriginEstimate
     start_time: datetime
     end_time: datetime
-    mode: str = "MOCK"  # MOCK | BYOD | LIVE
+    mode: str = "LIVE"  # LIVE | GFW | BYOD | DEMO_MOCK | MOCK
 
 @router.post("/candidates", response_model=List[VesselCandidate])
 async def discover_candidates(query: CandidateQuery):
     """
     Given an origin region and a time window, discovers AIS candidates.
-    Supports MOCK and BYOD provider modes.
+    Supports LIVE (GFW), BYOD, and DEMO_MOCK provider modes.
     """
     if query.mode == "BYOD":
         provider: AISProvider = BYODAISProvider(investigation_id=query.investigation_id)
@@ -43,7 +43,7 @@ async def discover_candidates(query: CandidateQuery):
             raise
         except Exception:
             pass
-    elif query.mode == "MOCK":
+    elif query.mode in ["MOCK", "DEMO_MOCK"]:
         provider = MockAISProvider(query.origin)
     elif query.mode in ["LIVE", "GFW"]:
         from app.core.config import settings

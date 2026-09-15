@@ -64,6 +64,18 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     
     setIsLoading(true);
     setError(null);
+    setScene(null);
+    setCandidates([]);
+    setSelectedCandidateId(null);
+    setAssessments({});
+    setFusionResults({});
+    setDriftResults({});
+    setForecastResults({});
+    setVesselCandidates({});
+    setAttributionResults({});
+    setCounterfactualResults({});
+    setEnvironmentalData({});
+    setEvidenceList([]);
     try {
       const inv = await investigationsApi.getInvestigation(invId);
       setInvestigation(inv);
@@ -242,7 +254,7 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     }
   };
 
-  const findVesselCandidates = async (investigationId: string, scenarioId: string, origin: OriginEstimate, start: string, end: string, mode: string = "GFW") => {
+  const findVesselCandidates = async (investigationId: string, scenarioId: string, origin: OriginEstimate, start: string, end: string, mode: string = "LIVE") => {
     setIsLoading(true);
     setError(null);
     try {
@@ -251,6 +263,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
       setVesselCandidates(prev => ({ ...prev, [scenarioId]: candidates }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to find vessel candidates");
+      setVesselCandidates(prev => ({ ...prev, [scenarioId]: [] }));
+      throw err;
     } finally {
       setIsLoading(false);
     }

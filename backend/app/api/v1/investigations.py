@@ -418,23 +418,60 @@ async def create_manual_investigation(
 
     # 9. Six-Factor Attribution Heuristic
     if drift_result and drift_result.origin_estimate:
-        att_svc = AttributionService()
-        att_res = att_svc.evaluate(
-            investigation_id=inv.id,
-            origin=drift_result.origin_estimate,
-            drift=drift_result,
-            candidates=candidates
-        )
-        ev_attr = EvidenceEvent(
-            id=f"EV-{uuid.uuid4().hex[:8]}",
-            investigation_id=inv.id,
-            event_type="ATTRIBUTION_EVALUATION",
-            source="AttributionService",
-            description=f"Evaluated {len(candidates)} candidates under Six-Factor Evidence-Weighted Heuristic.",
-            event_time=datetime.utcnow(),
-            metadata=att_res.model_dump()
-        )
-        inv_repo.add_evidence(ev_attr)
+        if ev_ais and ev_ais.status == "UNAVAILABLE":
+            ev_attr = EvidenceEvent(
+                id=f"EV-{uuid.uuid4().hex[:8]}",
+                investigation_id=inv.id,
+                event_type="ATTRIBUTION_EVALUATION",
+                source="AttributionService",
+                status="UNAVAILABLE",
+                description="Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider.",
+                event_time=datetime.utcnow(),
+                metadata={
+                    "status": "UNAVAILABLE",
+                    "investigation_id": inv.id,
+                    "candidates": [],
+                    "highest_ranked_candidate": None,
+                    "reason": "No usable AIS vessel evidence was available from the configured provider."
+                }
+            )
+            inv_repo.add_evidence(ev_attr)
+        elif len(candidates) == 0:
+            ev_attr = EvidenceEvent(
+                id=f"EV-{uuid.uuid4().hex[:8]}",
+                investigation_id=inv.id,
+                event_type="ATTRIBUTION_EVALUATION",
+                source="AttributionService",
+                status="ATTACHED",
+                description="Evaluated 0 candidates. No vessel candidates found in search window.",
+                event_time=datetime.utcnow(),
+                metadata={
+                    "status": "NO_CANDIDATES",
+                    "investigation_id": inv.id,
+                    "candidates": [],
+                    "highest_ranked_candidate": None
+                }
+            )
+            inv_repo.add_evidence(ev_attr)
+        else:
+            att_svc = AttributionService()
+            att_res = att_svc.evaluate(
+                investigation_id=inv.id,
+                origin=drift_result.origin_estimate,
+                drift=drift_result,
+                candidates=candidates
+            )
+            ev_attr = EvidenceEvent(
+                id=f"EV-{uuid.uuid4().hex[:8]}",
+                investigation_id=inv.id,
+                event_type="ATTRIBUTION_EVALUATION",
+                source="AttributionService",
+                status="ATTACHED",
+                description=f"Evaluated {len(candidates)} candidates under Six-Factor Evidence-Weighted Heuristic.",
+                event_time=datetime.utcnow(),
+                metadata=att_res.model_dump()
+            )
+            inv_repo.add_evidence(ev_attr)
     else:
         ev_attr = EvidenceEvent(
             id=f"EV-{uuid.uuid4().hex[:8]}",

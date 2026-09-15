@@ -506,6 +506,20 @@ class OrchestrationService:
             logger.warning("GFW_API_TOKEN is not configured. GFW services are unavailable.")
             if "GFW:UNAVAILABLE" not in job.provenance_references:
                 job.provenance_references.append("GFW:UNAVAILABLE")
+            for target in targets:
+                inv_id = target.get('investigation_id')
+                if inv_id:
+                    ev = EvidenceEvent(
+                        id=f"EV-{uuid.uuid4().hex[:8]}",
+                        investigation_id=inv_id,
+                        event_type="AIS_PRESENCE",
+                        source="Global Fishing Watch",
+                        status="UNAVAILABLE",
+                        description="Global Fishing Watch provider is UNAVAILABLE (GFW_API_TOKEN not configured).",
+                        event_time=datetime.utcnow(),
+                        metadata={"status": "UNAVAILABLE", "reason": "GFW_API_TOKEN not configured", "vessel_count": 0}
+                    )
+                    self.investigation_repository.add_evidence(ev)
             job.status = JobStatus.ATTRIBUTION
             return
             
@@ -545,9 +559,10 @@ class OrchestrationService:
                     investigation_id=target['investigation_id'],
                     event_type="AIS_PRESENCE",
                     source="GFW",
+                    status="ATTACHED",
                     description=f"Found {len(mmsis)} vessels in origin region.",
                     event_time=drift_result.origin_estimate.estimated_time,
-                    metadata={"vessel_count": len(mmsis), "mmsis": mmsis}
+                    metadata={"vessel_count": len(mmsis), "mmsis": mmsis, "status": "LIVE"}
                 )
                 self.investigation_repository.add_evidence(ev)
                 
@@ -555,12 +570,24 @@ class OrchestrationService:
                 logger.error(f"GFW Vessel search failed: {e}", exc_info=True)
                 if "GFW:UNAVAILABLE" not in job.provenance_references:
                     job.provenance_references.append("GFW:UNAVAILABLE")
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="AIS_PRESENCE",
+                    source="Global Fishing Watch",
+                    status="UNAVAILABLE",
+                    description=f"Global Fishing Watch query error: {type(e).__name__}",
+                    event_time=drift_result.origin_estimate.estimated_time,
+                    metadata={"status": "UNAVAILABLE", "error": str(e), "vessel_count": 0}
+                )
+                self.investigation_repository.add_evidence(ev)
 
         job.status = JobStatus.ATTRIBUTION
 
     async def _handle_attribution(self, job: MonitoringJob):
         ctx = self._get_context(job.job_id)
         targets = ctx.get('investigation_targets', [])
+        is_gfw_unavailable = "GFW:UNAVAILABLE" in job.provenance_references
         
         for target in targets:
             drift_result: Optional[DriftResult] = target.get('drift_result')
@@ -584,24 +611,48 @@ class OrchestrationService:
                 candidates.append(cand)
                 
             if drift_result and drift_result.origin_estimate:
-                att_result = self.attribution_service.evaluate(
-                    investigation_id=target['investigation_id'],
-                    origin=drift_result.origin_estimate,
-                    drift=drift_result,
-                    candidates=candidates
-                )
-                target['attribution_result'] = att_result
-                if "ATTRIBUTION:LIVE" not in job.provenance_references:
-                    job.provenance_references.append("ATTRIBUTION:LIVE")
+                if is_gfw_unavailable:
+                    att_status = "UNAVAILABLE"
+                    att_desc = "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider."
+                    att_meta = {
+                        "status": "UNAVAILABLE",
+                        "investigation_id": target['investigation_id'],
+                        "candidates": [],
+                        "highest_ranked_candidate": None,
+                        "reason": "No usable AIS vessel evidence was available from the configured provider."
+                    }
+                elif len(candidates) == 0:
+                    att_status = "ATTACHED"
+                    att_desc = "Evaluated 0 candidates. No vessel candidates found in search window."
+                    att_meta = {
+                        "status": "NO_CANDIDATES",
+                        "investigation_id": target['investigation_id'],
+                        "candidates": [],
+                        "highest_ranked_candidate": None
+                    }
+                else:
+                    att_result = self.attribution_service.evaluate(
+                        investigation_id=target['investigation_id'],
+                        origin=drift_result.origin_estimate,
+                        drift=drift_result,
+                        candidates=candidates
+                    )
+                    target['attribution_result'] = att_result
+                    att_status = "ATTACHED"
+                    att_desc = f"Evaluated {len(candidates)} candidates. Top matches: {len(att_result.candidates)}"
+                    att_meta = att_result.model_dump()
+                    if "ATTRIBUTION:LIVE" not in job.provenance_references:
+                        job.provenance_references.append("ATTRIBUTION:LIVE")
                     
                 ev = EvidenceEvent(
                     id=f"EV-{uuid.uuid4().hex[:8]}",
                     investigation_id=target['investigation_id'],
                     event_type="ATTRIBUTION_EVALUATION",
                     source="AttributionService",
-                    description=f"Evaluated {len(candidates)} candidates. Top matches: {len(att_result.candidates)}",
+                    status=att_status,
+                    description=att_desc,
                     event_time=datetime.utcnow(),
-                    metadata=att_result.model_dump()
+                    metadata=att_meta
                 )
                 self.investigation_repository.add_evidence(ev)
 

@@ -10,6 +10,7 @@ import { EvidenceStatus } from "@/lib/api/types";
 export default function VesselAttributionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { 
+    investigation,
     loadInvestigation, 
     driftResults, 
     vesselCandidates, 
@@ -21,7 +22,8 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
   
   const [selectedMmsi, setSelectedMmsi] = useState<string | null>(null);
   const [expandedFactors, setExpandedFactors] = useState<Record<string, boolean>>({});
-  const [aisMode, setAisMode] = useState<"MOCK" | "BYOD">("MOCK");
+  const [aisMode, setAisMode] = useState<"LIVE" | "BYOD" | "DEMO_MOCK">("LIVE");
+  const [aisError, setAisError] = useState<string | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,24 +41,52 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
     loadInvestigation(id);
   }, [id, loadInvestigation]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isDemoInvestigation = id === 'INV-DEMO-OMAN-001' || investigation?.creation_mode === 'DEMO_MOCK' || (investigation as any)?.provenance === 'DEMO_MOCK';
+
+  useEffect(() => {
+    if (isDemoInvestigation) {
+      setAisMode("DEMO_MOCK");
+    }
+  }, [isDemoInvestigation]);
+
   const scenarioId = `hindcast-${id}-24h`;
   const driftResult = driftResults[scenarioId] || Object.values(driftResults)[0];
-  const candidates = vesselCandidates[scenarioId] || Object.values(vesselCandidates)[0] || [];
-  const attributionResult = attributionResults[scenarioId] || Object.values(attributionResults)[0];
+  const rawCandidates = vesselCandidates[scenarioId] || [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawAttribution = attributionResults[scenarioId] || (Object.values(attributionResults).find(a => (a as any).investigation_id === id)) || null;
 
-  const handleDiscover = () => {
+  const isMockVessel = (mmsi?: string | null, name?: string | null) => mmsi === "111111111" || name === "OCEANIC EXPLORER";
+
+  const candidates = isDemoInvestigation || aisMode === "DEMO_MOCK" 
+    ? rawCandidates 
+    : rawCandidates.filter(c => !isMockVessel(c.identity?.mmsi, c.identity?.name));
+
+  const attributionResult = isDemoInvestigation || aisMode === "DEMO_MOCK"
+    ? rawAttribution
+    : (rawAttribution && rawAttribution.candidates?.some(c => isMockVessel(c.vessel_identity?.mmsi, c.vessel_identity?.name)))
+      ? null
+      : rawAttribution;
+
+  const handleDiscover = async () => {
+    setAisError(null);
     if (driftResult && driftResult.origin_estimate) {
       const releaseTime = new Date(driftResult.origin_estimate.estimated_time).getTime();
       const startTime = new Date(releaseTime - 12 * 3600 * 1000).toISOString();
       const endTime = new Date(releaseTime + 12 * 3600 * 1000).toISOString();
-      findVesselCandidates(
-        id as string,
-        scenarioId, 
-        driftResult.origin_estimate, 
-        startTime,
-        endTime,
-        aisMode
-      );
+      try {
+        await findVesselCandidates(
+          id as string,
+          scenarioId, 
+          driftResult.origin_estimate, 
+          startTime,
+          endTime,
+          aisMode === "DEMO_MOCK" ? "MOCK" : aisMode
+        );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (err: any) {
+        setAisError(err?.message || "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider.");
+      }
     }
   };
 
@@ -169,26 +199,45 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                 <h2 className="text-sm font-bold uppercase tracking-wider">Vessel Candidates</h2>
               </div>
               <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded border uppercase tracking-wider bg-tertiary/10 text-tertiary border-tertiary/30">
-                AIS: {aisMode === "BYOD" ? "BYOD" : "DEMO_MOCK"}
+                AIS: {aisMode === "BYOD" ? "BYOD" : (aisMode === "DEMO_MOCK" ? "DEMO_MOCK" : "LIVE")}
               </span>
             </div>
             
             {(!candidates || candidates.length === 0) ? (
               <div className="flex flex-col gap-3">
-                <div className="flex bg-surface-container rounded p-1 text-[10px] font-bold tracking-widest uppercase">
+                <div className="flex bg-surface-container rounded p-1 text-[10px] font-bold tracking-widest uppercase gap-1">
                   <button 
-                    onClick={() => setAisMode("MOCK")}
-                    className={`flex-1 py-1 rounded transition-colors ${aisMode === "MOCK" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
+                    onClick={() => { setAisMode("LIVE"); setAisError(null); }}
+                    className={`flex-1 py-1 rounded transition-colors ${aisMode === "LIVE" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-container-high"}`}
                   >
-                    Mock AIS
+                    Live GFW
                   </button>
                   <button 
-                    onClick={() => setAisMode("BYOD")}
+                    onClick={() => { setAisMode("BYOD"); setAisError(null); }}
                     className={`flex-1 py-1 rounded transition-colors ${aisMode === "BYOD" ? "bg-[#00647C] text-white" : "text-on-surface-variant hover:bg-surface-container-high"}`}
                   >
                     BYOD AIS
                   </button>
+                  <button 
+                    onClick={() => { setAisMode("DEMO_MOCK"); setAisError(null); }}
+                    className={`flex-1 py-1 rounded transition-colors ${aisMode === "DEMO_MOCK" ? "bg-amber-600 text-white" : "text-on-surface-variant hover:bg-surface-container-high"}`}
+                  >
+                    Demo Mock
+                  </button>
                 </div>
+
+                {aisMode === "DEMO_MOCK" && (
+                  <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded text-[9px] font-mono text-amber-700 dark:text-amber-400 leading-tight">
+                    DEMO_MOCK: Generates deterministic test tracks for demonstration purposes only.
+                  </div>
+                )}
+
+                {aisError && (
+                  <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 rounded text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>{aisError}</span>
+                  </div>
+                )}
                 
                 {aisMode === "BYOD" && (
                   <div className="border border-dashed border-outline-variant rounded p-3 bg-surface text-xs space-y-2">
@@ -254,7 +303,18 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
           </div>
           
           <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-surface-container-lowest">
-            {displayCandidates.map((cand, idx) => {
+            {displayCandidates.length === 0 ? (
+              <div className="p-4 text-xs font-mono text-on-surface-variant bg-surface rounded border border-outline-variant space-y-2">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Vessel Attribution Unavailable</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  {aisError || "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider."}
+                </p>
+              </div>
+            ) : (
+              displayCandidates.map((cand, idx) => {
               const isSelected = selectedMmsi === cand.vessel_identity.mmsi;
               return (
                 <div 
@@ -285,7 +345,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 

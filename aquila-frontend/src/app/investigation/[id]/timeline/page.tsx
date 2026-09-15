@@ -24,14 +24,25 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   const candidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
   const assessment = candidate ? assessments[candidate.id] : null;
   const fusion = candidate ? fusionResults[candidate.id] : null;
-  const scenarioId = Object.keys(driftResults)[0];
-  const drift = scenarioId ? driftResults[scenarioId] : null;
-  const ais = scenarioId ? vesselCandidates[scenarioId] : null;
-  const attribution = scenarioId ? attributionResults[scenarioId] : null;
+  const scenarioId = `hindcast-${id}-24h`;
+  const drift = driftResults[scenarioId] || Object.values(driftResults)[0] || null;
+  const ais = vesselCandidates[scenarioId] || Object.values(vesselCandidates)[0] || null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attribution = attributionResults[scenarioId] || Object.values(attributionResults).find(a => (a as any).investigation_id === id) || null;
   
-  const topCandidate = attribution && attribution.candidates
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isDemoInvestigation = id === 'INV-DEMO-OMAN-001' || investigation?.creation_mode === 'DEMO_MOCK' || (investigation as any)?.provenance === 'DEMO_MOCK';
+  const isMockVessel = (mmsi?: string | null, name?: string | null) => mmsi === "111111111" || name === "OCEANIC EXPLORER";
+
+  const rawTopCandidate = attribution && attribution.candidates && attribution.candidates.length > 0
     ? [...attribution.candidates].sort((a, b) => (b.evidence_ranking_score ?? 0) - (a.evidence_ranking_score ?? 0))[0]
     : null;
+
+  const topCandidate = isDemoInvestigation
+    ? rawTopCandidate
+    : (rawTopCandidate && !isMockVessel(rawTopCandidate.vessel_identity?.mmsi, rawTopCandidate.vessel_identity?.name))
+      ? rawTopCandidate
+      : null;
     
   const topVessel = topCandidate && ais && Array.isArray(ais)
     ? ais.find((v) => v.identity?.mmsi === topCandidate.vessel_identity?.mmsi)
@@ -147,7 +158,7 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   }
 
   // 6. Attribution Evaluated
-  if (attribution) {
+  if (attribution && topCandidate) {
     events.push({
       id: "attribution",
       title: "AIS anomaly/gap detected",
