@@ -604,6 +604,18 @@ class OrchestrationService:
                     metadata=att_result.model_dump()
                 )
                 self.investigation_repository.add_evidence(ev)
+
+            # Update associated investigation status to REPORT_READY upon successful pipeline completion
+            inv_id = target.get('investigation_id')
+            slick = target.get('slick')
+            if inv_id and slick:
+                anomaly_geom = slick.geometry if (hasattr(slick, 'geometry') and slick.geometry) else None
+                self.investigation_repository.update_investigation_status(
+                    inv_id=inv_id,
+                    status="REPORT_READY",
+                    anomaly_geometry=anomaly_geom
+                )
+                logger.info(f"Updated automated investigation {inv_id} status to REPORT_READY")
                 
         job.status = JobStatus.REPORT_READY
 

@@ -3,11 +3,16 @@ import os
 import logging
 from contextlib import contextmanager
 
+from pathlib import Path
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.getenv("AQUILA_DB_PATH", "data/aquila.db")
+# Authoritative operational SQLite database path anchored to backend/data/aquila.db
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent.parent
+_DEFAULT_DB_PATH = str(_BACKEND_DIR / "data" / "aquila.db")
+
+DB_PATH = os.getenv("AQUILA_DB_PATH", _DEFAULT_DB_PATH)
 
 def _convert_timestamp(val: bytes) -> datetime:
     val_str = val.decode("utf-8")
@@ -126,10 +131,13 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 """
 
-def initialize_db(db_path: str = DB_PATH):
+def initialize_db(db_path: str = None):
     """Initializes the SQLite database with WAL, schemas, and default deployment monitoring zone."""
     import json
     from datetime import datetime
+
+    if not db_path:
+        db_path = os.getenv("AQUILA_DB_PATH", DB_PATH)
 
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     

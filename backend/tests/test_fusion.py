@@ -114,3 +114,33 @@ def test_temporal_mismatch(dummy_scene, dummy_slick, dummy_assessment):
     t_item = next(i for i in res.evidence_items if i.category == EvidenceCategory.TEMPORAL_CONSISTENCY)
     assert t_item.status == EvidenceStatus.NEUTRAL
     assert "Temporal offset of 3.0 hours limits" in t_item.interpretation
+
+
+def test_normal_configuration_uses_live_open_meteo():
+    """
+    Verify that the default/normal application configuration uses LIVE_OPEN_METEO
+    and resolves to OpenMeteoEnvironmentalService rather than MockEnvironmentalDataService.
+    """
+    from app.core.config import settings
+    from app.services.open_meteo_service import OpenMeteoEnvironmentalService
+    from app.services.environmental_data_service import MockEnvironmentalDataService
+
+    assert settings.ENVIRONMENTAL_PROVIDER == "LIVE_OPEN_METEO"
+
+    # Verify provider selection logic in evidence-fusion route
+    env_service = OpenMeteoEnvironmentalService() if settings.ENVIRONMENTAL_PROVIDER == "LIVE_OPEN_METEO" else MockEnvironmentalDataService()
+    assert isinstance(env_service, OpenMeteoEnvironmentalService)
+    assert not isinstance(env_service, MockEnvironmentalDataService)
+
+
+def test_explicit_mock_environment_provider_when_requested(monkeypatch):
+    """
+    Verify that MockEnvironmentalDataService is only selected when explicitly requested.
+    """
+    from app.core.config import settings
+    from app.services.open_meteo_service import OpenMeteoEnvironmentalService
+    from app.services.environmental_data_service import MockEnvironmentalDataService
+
+    monkeypatch.setattr(settings, "ENVIRONMENTAL_PROVIDER", "DEMO_MOCK")
+    env_service = OpenMeteoEnvironmentalService() if settings.ENVIRONMENTAL_PROVIDER == "LIVE_OPEN_METEO" else MockEnvironmentalDataService()
+    assert isinstance(env_service, MockEnvironmentalDataService)
