@@ -39,7 +39,7 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
     
   const displayId = id;
   const targetName = topVessel?.identity?.name || topCandidate?.vessel_identity?.name || 'UNATTRIBUTED';
-  const timeframe = scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().split('T')[0] : '2026-09-10';
+  const timeframe = scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().split('T')[0] : 'UNAVAILABLE';
 
   interface TimelineEvent {
     id: string;
@@ -55,16 +55,37 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   const events: TimelineEvent[] = [];
 
   // 1. Scene Ingestion / Detection
-  if (scene) {
+  if (scene && candidate) {
     events.push({
       id: "detection",
       title: "Initial SAR Detection",
       source: "Candidate Slick Detected",
-      description: `Sentinel-1 observation detects presence of surface anomaly spanning ${candidate?.area_km2 !== undefined && candidate?.area_km2 !== null ? Number(candidate.area_km2).toFixed(2) : '1.25'} km².`,
+      description: `Sentinel-1 observation detects presence of surface anomaly spanning ${candidate.area_km2 !== undefined && candidate.area_km2 !== null ? Number(candidate.area_km2).toFixed(2) : '1.25'} km².`,
       timeLabel: "T-0h",
-
       icon: Satellite,
       colorClass: "primary",
+      criticality: null
+    });
+  } else if (scene && !candidate) {
+    events.push({
+      id: "detection",
+      title: "SAR Observation Acquired",
+      source: "No Slick Candidate",
+      description: "Sentinel-1 observation acquired for AOI; no anomalous surface slick candidates identified.",
+      timeLabel: "T-0h",
+      icon: Satellite,
+      colorClass: "on-surface-variant",
+      criticality: null
+    });
+  } else if (!scene) {
+    events.push({
+      id: "detection",
+      title: "SAR Acquisition Unavailable",
+      source: "Sentinel-1 Ingestion",
+      description: "No usable Sentinel-1 SAR observation was available for the AOI.",
+      timeLabel: "T-0h",
+      icon: AlertTriangle,
+      colorClass: "on-surface-variant",
       criticality: null
     });
   }
@@ -190,7 +211,11 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
             <div className="absolute top-4 bottom-4 left-[96px] md:left-[120px] w-px bg-outline-variant hidden sm:block"></div>
 
             {events.length === 0 && (
-              <div className="text-center text-sm text-on-surface-variant py-8 border border-dashed border-outline-variant rounded">No events recorded yet.</div>
+              <div className="text-center text-sm text-on-surface-variant py-8 border border-dashed border-outline-variant rounded">
+                {investigation?.status === 'INCOMPLETE' || investigation?.status === 'ACQUISITION_UNAVAILABLE'
+                  ? 'Investigation incomplete — no usable SAR candidate was available for downstream forensic analysis.'
+                  : 'No events recorded yet.'}
+              </div>
             )}
 
             {events.map((evt) => (

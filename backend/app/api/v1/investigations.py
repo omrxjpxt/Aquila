@@ -173,8 +173,34 @@ async def create_manual_investigation(
                     metadata=target_slick.model_dump()
                 )
                 inv_repo.add_evidence(ev_slick)
+            else:
+                ev_slick = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=inv.id,
+                    event_type="SLICK_CANDIDATE",
+                    source="SlickDetectionService",
+                    status="NO_CANDIDATE",
+                    description="No anomalous surface slick candidates identified in processed SAR scene.",
+                    event_time=selected_scene.acquisition_time or datetime.utcnow(),
+                    provenance=selected_scene.provenance or "LIVE",
+                    metadata={"status": "NO_CANDIDATE"}
+                )
+                inv_repo.add_evidence(ev_slick)
         except Exception as e:
             logger.warning("Slick detection failed: %s", e)
+    else:
+        ev_slick = EvidenceEvent(
+            id=f"EV-{uuid.uuid4().hex[:8]}",
+            investigation_id=inv.id,
+            event_type="SLICK_CANDIDATE",
+            source="SlickDetectionService",
+            status="UNAVAILABLE",
+            description="Slick candidate detection unavailable: no usable Sentinel-1 SAR acquisition.",
+            event_time=datetime.utcnow(),
+            provenance="UNAVAILABLE",
+            metadata={"status": "UNAVAILABLE"}
+        )
+        inv_repo.add_evidence(ev_slick)
 
     # 5. Look-Alike ML Classification
     if target_slick and selected_scene and selected_scene.processed_storage_path:
@@ -409,9 +435,22 @@ async def create_manual_investigation(
             metadata=att_res.model_dump()
         )
         inv_repo.add_evidence(ev_attr)
+    else:
+        ev_attr = EvidenceEvent(
+            id=f"EV-{uuid.uuid4().hex[:8]}",
+            investigation_id=inv.id,
+            event_type="ATTRIBUTION_EVALUATION",
+            source="AttributionService",
+            status="UNAVAILABLE",
+            description="Attribution evaluation unavailable: requires drift trajectory and vessel candidates.",
+            event_time=datetime.utcnow(),
+            metadata={"status": "UNAVAILABLE"}
+        )
+        inv_repo.add_evidence(ev_attr)
 
-    # 10. Persist Final Report Ready Status
-    updated_inv = inv_repo.update_investigation_status(inv.id, "REPORT_READY", anomaly_geom)
+    # 10. Persist Final Status
+    final_status = "REPORT_READY" if target_slick else "INCOMPLETE"
+    updated_inv = inv_repo.update_investigation_status(inv.id, final_status, anomaly_geom)
     return updated_inv or inv
 
 @router.get("/{id}", response_model=Investigation)

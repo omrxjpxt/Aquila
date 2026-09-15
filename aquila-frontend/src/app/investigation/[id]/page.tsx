@@ -39,7 +39,11 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                 <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">ACTIVE INVESTIGATION</span>
               </div>
               <span className={`px-2 py-1 font-mono text-[10px] font-bold rounded uppercase tracking-wider border ${
-                investigation?.status === 'OPEN' ? 'bg-error/10 text-error border-error/20' : 'bg-success/10 text-success border-success/20'
+                investigation?.status === 'OPEN' 
+                  ? 'bg-error/10 text-error border-error/20' 
+                  : investigation?.status === 'INCOMPLETE' || investigation?.status === 'ACQUISITION_UNAVAILABLE'
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                  : 'bg-success/10 text-success border-success/20'
               }`}>
                 {investigation?.status || 'OPEN'}
               </span>
@@ -85,7 +89,9 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
               
               {candidates.length === 0 && (
                 <div className="text-xs text-on-surface-variant italic p-4 text-center border border-dashed border-outline-variant rounded">
-                  No candidate slicks detected or processed yet.
+                  {investigation?.status === 'INCOMPLETE' || investigation?.status === 'ACQUISITION_UNAVAILABLE'
+                    ? 'Investigation incomplete — no usable SAR candidate was available.'
+                    : 'No candidate slicks detected or processed yet.'}
                 </div>
               )}
             </div>
@@ -96,13 +102,13 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
                 <span className="text-on-surface">
                   {scene?.bbox && Array.isArray(scene.bbox) && scene.bbox.length >= 4 
                     ? `${((scene.bbox[1] + scene.bbox[3]) / 2).toFixed(4)}° N, ${((scene.bbox[0] + scene.bbox[2]) / 2).toFixed(4)}° E` 
-                    : '24.4744° N, 58.0257° E'}
+                    : 'UNAVAILABLE'}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Acquisition Time</span>
                 <span className="text-on-surface">
-                  {scene?.acquisition_time ? `${new Date(scene.acquisition_time).toISOString().slice(11, 16)}Z` : '17:35Z'}
+                  {scene?.acquisition_time ? `${new Date(scene.acquisition_time).toISOString().slice(11, 16)}Z` : 'UNAVAILABLE'}
                 </span>
               </div>
             </div>
