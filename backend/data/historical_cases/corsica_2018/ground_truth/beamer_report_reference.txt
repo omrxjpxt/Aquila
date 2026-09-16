@@ -1,0 +1,41 @@
+================================================================================
+OFFICIAL MARITIME CASUALTY INVESTIGATION REPORT REFERENCE
+================================================================================
+
+Investigation Authority:
+  Bureau d'enquêtes sur les événements de mer (BEA mer)
+  Ministère de la Transition écologique et solidaire
+  République Française
+  Tour Voltaire - 92055 La Défense Cedex, France
+  Website: https://www.bea-mer.developpement-durable.gouv.fr/
+
+Participating Administrations:
+  - Department of Merchant Shipping (Cyprus)
+  - Direzione Generale per le Investigazioni Ferroviarie e Marittime (DIGIFEMA, Italy)
+  - Ministère du Transport / Direction Générale des Transports Maritimes (Tunisia)
+
+Official Report Title:
+  Rapport d'enquête technique: Abordage survenu le 7 octobre 2018 entre le roulier Ulysse et le porte-conteneurs CSL Virginia
+
+Publication Date:
+  Juillet 2019
+
+Incident Classification:
+  Very Serious Marine Casualty (IMO Code for the Investigation of Marine Casualties and Incidents / Code des transports)
+
+Citation:
+  BEA mer (2019). Rapport d'enquête technique: Abordage survenu le 7 octobre 2018 entre le roulier Ulysse et le porte-conteneurs CSL Virginia au nord du cap Corse (Haute-Corse). Ministère de la Transition écologique et solidaire, Paris, France, 72 pp.
+
+Legal Framework & Re-use:
+  Licence Ouverte / Open Licence v2.0 (Etalab, République Française).
+  Technical safety investigation conducted under Article 19 of European Directive 2009/18/EC and French law (Code des transports).
+  In accordance with international standards (IMO Resolution MSC.255(84)), this report does not apportion blame or determine liability.
+
+Key Incident Constants Frozen in AQUILA:
+  - Collision Timestamp: 2018-10-07T05:02:46Z (07:02:46 local CEST)
+  - Collision Position: 43° 14.9' N, 009° 28.7' E (43.248333° N, 9.478333° E)
+  - Striking Vessel: ULYSSE (MMSI 672248000, IMO 9142459, Flag Tunisia)
+  - Struck Vessel: CSL VIRGINIA (MMSI 212416000, IMO 9289568, Flag Cyprus)
+  - Ruptured Compartment: Starboard bunker tank #3 (CSL VIRGINIA)
+  - Substance Released: IFO 380 heavy bunker fuel oil (~520–600 m³, ~530 metric tons)
+================================================================================

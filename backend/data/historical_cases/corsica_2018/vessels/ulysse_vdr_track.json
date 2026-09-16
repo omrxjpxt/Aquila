@@ -1,0 +1,96 @@
+{
+  "vessel_name": "ULYSSE",
+  "mmsi": "672248000",
+  "imo": "9142459",
+  "call_sign": "TSUL",
+  "flag": "Tunisia",
+  "vessel_type": "Ro-Ro Cargo / Passenger Ferry",
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "BEA_MER",
+    "source_document": "BEA Mer Rapport d'enquête technique: Abordage survenu le 7 octobre 2018 entre le roulier Ulysse et le porte-conteneurs CSL Virginia (2019)",
+    "source_devices": ["Voyage Data Recorder (VDR)", "CROSS La Garde coastal radar logs", "MacGregor VDR telemetry extract"],
+    "disclaimer": "All waypoints represent verified historical investigative evidence from official BEA Mer casualty records. No artificial or synthetic intermediate points have been added."
+  },
+  "track_summary": {
+    "departure_port": "Genoa, Italy",
+    "destination_port": "Radès, Tunisia",
+    "departure_time_utc": "2018-10-06T20:00:00Z",
+    "collision_time_utc": "2018-10-07T05:02:46Z",
+    "speed_prior_to_impact_knots": 19.0,
+    "steady_course_degrees": 172.0,
+    "total_documented_waypoints": 5
+  },
+  "waypoints": [
+    {
+      "waypoint_index": 1,
+      "timestamp_utc": "2018-10-07T04:00:00Z",
+      "timestamp_local": "2018-10-07T06:00:00+02:00",
+      "latitude": 43.5650,
+      "longitude": 9.4200,
+      "speed_knots": 19.0,
+      "heading_degrees": 172.0,
+      "course_over_ground_degrees": 172.0,
+      "navigational_status": "UNDERWAY_USING_ENGINE",
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.5, CROSS coastal radar track",
+      "notes": "Underway on steady transit course 172° at full sea speed (19 kts)"
+    },
+    {
+      "waypoint_index": 2,
+      "timestamp_utc": "2018-10-07T04:30:00Z",
+      "timestamp_local": "2018-10-07T06:30:00+02:00",
+      "latitude": 43.4067,
+      "longitude": 9.4490,
+      "speed_knots": 19.0,
+      "heading_degrees": 172.0,
+      "course_over_ground_degrees": 172.0,
+      "navigational_status": "UNDERWAY_USING_ENGINE",
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.5, CROSS radar and VDR track log",
+      "notes": "Maintaining course 172° and 19 kts towards northern Corsica passage"
+    },
+    {
+      "waypoint_index": 3,
+      "timestamp_utc": "2018-10-07T04:54:00Z",
+      "timestamp_local": "2018-10-07T06:54:00+02:00",
+      "latitude": 43.2920,
+      "longitude": 9.4710,
+      "speed_knots": 19.0,
+      "heading_degrees": 172.0,
+      "course_over_ground_degrees": 172.0,
+      "navigational_status": "UNDERWAY_USING_ENGINE",
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.5.3, VDR radar capture analysis",
+      "notes": "CSL Virginia radar echo detected on S-band radar at ~2.7 NM (CPA=0 NM). Officer of watch distracted on personal telephone behind chart curtain."
+    },
+    {
+      "waypoint_index": 4,
+      "timestamp_utc": "2018-10-07T05:02:46Z",
+      "timestamp_local": "2018-10-07T07:02:46+02:00",
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "speed_knots": 19.0,
+      "heading_degrees": 172.0,
+      "course_over_ground_degrees": 172.0,
+      "navigational_status": "COLLISION_IMPACT",
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.5.4, VDR optical and audio collision recording",
+      "notes": "Collision impact into starboard side of CSL Virginia. Speed drops abruptly from 19.0 kts to 0 kts. Bow penetrates 8 meters into hull."
+    },
+    {
+      "waypoint_index": 5,
+      "timestamp_utc": "2018-10-07T05:15:00Z",
+      "timestamp_local": "2018-10-07T07:15:00+02:00",
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "speed_knots": 0.0,
+      "heading_degrees": 172.0,
+      "course_over_ground_degrees": 172.0,
+      "navigational_status": "LOCKED_IN_COLLISION",
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.6",
+      "notes": "Both vessels locked together at anchor position; engines stopped; pollution begins escaping from breached tank #3."
+    }
+  ]
+}

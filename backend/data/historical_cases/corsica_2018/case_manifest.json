@@ -1,0 +1,98 @@
+{
+  "case_id": "CASE-HISTORICAL-CORSICA-2018",
+  "case_name": "Corsica Collision: Ro-Ro ULYSSE and Container Ship CSL VIRGINIA",
+  "case_type": "HISTORICAL_REPLAY",
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "BEA_MER",
+    "license": "Licence Ouverte v2.0 (Etalab / French Government)",
+    "description": "Authentic historical case fixture constructed from verified official French maritime casualty investigation records, European Space Agency Copernicus Sentinel-1A SAR imagery, and ECMWF ERA5 atmospheric reanalysis.",
+    "disclaimer": "This fixture contains verified historical evidence from the official BEA Mer casualty investigation report (July 2019). Vessel telemetry represents documented investigative evidence, not real-time or live AIS streaming."
+  },
+  "event": {
+    "collision_timestamp_utc": "2018-10-07T05:02:46Z",
+    "collision_timestamp_local": "2018-10-07T07:02:46+02:00",
+    "coordinates": {
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "dms": "43° 14.9' N, 009° 28.7' E"
+    },
+    "location_description": "Ligurian Sea, approximately 15 nautical miles north of Cap Corse, Corsica, in international waters",
+    "collision_type": "Underway vessel (19 kts) striking anchored vessel on starboard beam at approximately 90 degrees"
+  },
+  "vessels": {
+    "striking_vessel": {
+      "name": "ULYSSE",
+      "mmsi": "672248000",
+      "imo": "9142459",
+      "call_sign": "TSUL",
+      "flag": "Tunisia",
+      "vessel_type": "Ro-Ro Cargo / Passenger Ferry",
+      "length_meters": 162.0,
+      "breadth_meters": 26.0,
+      "gross_tonnage": 17907,
+      "role": "STRIKING_VESSEL",
+      "navigational_state_at_impact": "UNDERWAY_USING_ENGINE",
+      "speed_knots_at_impact": 19.0,
+      "heading_degrees_at_impact": 172.0
+    },
+    "struck_vessel": {
+      "name": "CSL VIRGINIA",
+      "mmsi": "212416000",
+      "imo": "9289568",
+      "call_sign": "5BLT2",
+      "flag": "Cyprus",
+      "vessel_type": "Container Ship",
+      "length_meters": 294.0,
+      "breadth_meters": 32.0,
+      "gross_tonnage": 54592,
+      "role": "STRUCK_VESSEL",
+      "navigational_state_at_impact": "AT_ANCHOR",
+      "speed_knots_at_impact": 0.0,
+      "heading_degrees_at_impact": 262.0
+    }
+  },
+  "pollution": {
+    "substance": "IFO 380 (Intermediate Fuel Oil 380 cSt / Heavy Marine Bunker Fuel)",
+    "source_compartment": "Starboard Fuel Bunker Tank #3 (CSL VIRGINIA)",
+    "tank_capacity_m3": 1376.0,
+    "estimated_spill_volume_m3": 520.0,
+    "spill_volume_range_m3": "520 to 600 m³",
+    "spill_mass_approx_metric_tons": 530.0,
+    "slick_evolution_documented": "Continuous 25 km west-southwest plume on 2018-10-08; drifted toward the French Var coast and beached near Saint-Tropez on 2018-10-16/18."
+  },
+  "datasets": {
+    "satellite_sar": {
+      "provider": "Copernicus Data Space Ecosystem (CDSE)",
+      "satellite": "Sentinel-1A",
+      "product_id": "S1A_IW_GRDH_1SDV_20181008T052807_20181008T052832_024040_02A081_BDCA_COG.SAFE",
+      "acquisition_timestamp_utc": "2018-10-08T05:28:07.481Z",
+      "polarization": "VV+VH",
+      "status": "ACQUIRED_AND_VERIFIED"
+    },
+    "atmospheric_wind": {
+      "provider": "Open-Meteo Historical Weather API",
+      "model": "ECMWF ERA5 Reanalysis",
+      "temporal_resolution": "Hourly",
+      "spatial_resolution": "0.25 degrees (~31 km)",
+      "variables": ["wind_speed_10m", "wind_direction_10m", "wind_u_component_10m", "wind_v_component_10m", "surface_pressure"],
+      "status": "ACQUIRED_AND_VERIFIED"
+    },
+    "ocean_currents": {
+      "provider": "Copernicus Marine Service (CMEMS)",
+      "dataset_id": "cmems_mod_med_phy-cur_my_4.2km_PT1H-m",
+      "parent_product_id": "MEDSEA_MULTIYEAR_PHY_006_004",
+      "variables": ["uo", "vo"],
+      "temporal_resolution": "Hourly",
+      "spatial_resolution": "4.2 km (1/24 degree)",
+      "depth": "0.5m (surface)",
+      "status": "PENDING_CREDENTIALS"
+    },
+    "vessel_telemetry": {
+      "authority": "BEA_MER",
+      "document": "Rapport d'enquête technique: Abordage survenu le 7 octobre 2018 entre le roulier Ulysse et le porte-conteneurs CSL Virginia (BEAmer, juillet 2019)",
+      "source_mode": "HISTORICAL_CASE_FIXTURE",
+      "status": "ACQUIRED_AND_VERIFIED"
+    }
+  }
+}

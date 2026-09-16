@@ -1,0 +1,174 @@
+[
+  {
+    "id": "cand-corsica-2018-ulysse",
+    "investigation_id": "CASE-HISTORICAL-CORSICA-2018",
+    "identity": {
+      "mmsi": "672248000",
+      "imo": "9142459",
+      "name": "ULYSSE",
+      "vessel_type": "Ro-Ro Cargo / Passenger Ferry",
+      "flag": "Tunisia"
+    },
+    "track": {
+      "mmsi": "672248000",
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [9.4200, 43.5650],
+            [9.4490, 43.4067],
+            [9.4710, 43.2920],
+            [9.478333, 43.248333]
+          ]
+        ]
+      },
+      "gap_geometry": null,
+      "positions": [
+        {
+          "timestamp": "2018-10-07T04:00:00Z",
+          "lon": 9.4200,
+          "lat": 43.5650,
+          "speed_knots": 19.0,
+          "heading": 172.0,
+          "navigation_status": "UNDERWAY_USING_ENGINE",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T04:30:00Z",
+          "lon": 9.4490,
+          "lat": 43.4067,
+          "speed_knots": 19.0,
+          "heading": 172.0,
+          "navigation_status": "UNDERWAY_USING_ENGINE",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T04:54:00Z",
+          "lon": 9.4710,
+          "lat": 43.2920,
+          "speed_knots": 19.0,
+          "heading": 172.0,
+          "navigation_status": "UNDERWAY_USING_ENGINE",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T05:02:46Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 19.0,
+          "heading": 172.0,
+          "navigation_status": "COLLISION_IMPACT",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T05:15:00Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 0.0,
+          "heading": 172.0,
+          "navigation_status": "LOCKED_IN_COLLISION",
+          "quality": "OBSERVED"
+        }
+      ],
+      "gaps": [],
+      "total_observations": 5,
+      "longest_gap_hours": 0.5,
+      "coverage_quality": "GOOD"
+    },
+    "spatially_relevant": true,
+    "temporally_relevant": true,
+    "closest_approach_meters": 0.0,
+    "inside_origin_region": true,
+    "provenance": {
+      "source": "BEA_MER",
+      "mode": "HISTORICAL_CASE_FIXTURE",
+      "retrieval_time": "2026-09-16T22:30:00Z",
+      "limitations": "Documented navigational track extracted from official French BEA Mer technical investigation (July 2019) VDR and coastal radar logs. Not from live AIS."
+    }
+  },
+  {
+    "id": "cand-corsica-2018-csl-virginia",
+    "investigation_id": "CASE-HISTORICAL-CORSICA-2018",
+    "identity": {
+      "mmsi": "212416000",
+      "imo": "9289568",
+      "name": "CSL VIRGINIA",
+      "vessel_type": "Container Ship",
+      "flag": "Cyprus"
+    },
+    "track": {
+      "mmsi": "212416000",
+      "geometry": {
+        "type": "MultiLineString",
+        "coordinates": [
+          [
+            [9.478333, 43.248333],
+            [9.478333, 43.248333]
+          ]
+        ]
+      },
+      "gap_geometry": null,
+      "positions": [
+        {
+          "timestamp": "2018-10-07T04:00:00Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 0.0,
+          "heading": 262.0,
+          "navigation_status": "AT_ANCHOR",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T04:30:00Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 0.0,
+          "heading": 262.0,
+          "navigation_status": "AT_ANCHOR",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T05:00:00Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 0.0,
+          "heading": 262.0,
+          "navigation_status": "AT_ANCHOR",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T05:02:46Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 0.0,
+          "heading": 262.0,
+          "navigation_status": "COLLISION_IMPACT",
+          "quality": "OBSERVED"
+        },
+        {
+          "timestamp": "2018-10-07T05:15:00Z",
+          "lon": 9.478333,
+          "lat": 43.248333,
+          "speed_knots": 0.0,
+          "heading": 262.0,
+          "navigation_status": "LOCKED_IN_COLLISION",
+          "quality": "OBSERVED"
+        }
+      ],
+      "gaps": [],
+      "total_observations": 5,
+      "longest_gap_hours": 0.5,
+      "coverage_quality": "GOOD"
+    },
+    "spatially_relevant": true,
+    "temporally_relevant": true,
+    "closest_approach_meters": 0.0,
+    "inside_origin_region": true,
+    "provenance": {
+      "source": "BEA_MER",
+      "mode": "HISTORICAL_CASE_FIXTURE",
+      "retrieval_time": "2026-09-16T22:30:00Z",
+      "limitations": "Stationary anchor state extracted from official French BEA Mer technical investigation (July 2019) logbook and radar records. Not from live AIS."
+    }
+  }
+]

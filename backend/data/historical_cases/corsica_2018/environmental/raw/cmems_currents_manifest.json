@@ -1,0 +1,53 @@
+{
+  "status": "PENDING_CREDENTIALS",
+  "dataset_id": "cmems_mod_med_phy-cur_my_4.2km_PT1H-m",
+  "parent_product_id": "MEDSEA_MULTIYEAR_PHY_006_004",
+  "product_title": "Mediterranean Sea Physics Reanalysis (MEDSEA_MULTIYEAR_PHY_006_004) - Hourly Currents",
+  "producer": "Copernicus Marine Service (CMEMS) / Mediterranean Monitoring and Forecasting Centre (Med-MFC)",
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "COPERNICUS_MARINE_SERVICE",
+    "license": "Copernicus Marine Service Open License",
+    "disclaimer": "Credentials not available in current environment. No assumed, constant, or synthetic current vector (e.g. 0.18 m/s or 0.2 m/s) has been substituted. Current data will only be marked as acquired after authentic NetCDF subsetting."
+  },
+  "required_subset_specifications": {
+    "variables": [
+      {
+        "name": "uo",
+        "standard_name": "eastward_sea_water_velocity",
+        "units": "m s-1",
+        "description": "Eastward velocity component of ocean current"
+      },
+      {
+        "name": "vo",
+        "standard_name": "northward_sea_water_velocity",
+        "units": "m s-1",
+        "description": "Northward velocity component of ocean current"
+      }
+    ],
+    "depth_level_meters": 0.5,
+    "spatial_resolution": "4.2 km (1/24 degree)",
+    "bounding_box": {
+      "min_longitude": 9.0,
+      "min_latitude": 42.8,
+      "max_longitude": 9.8,
+      "max_latitude": 43.6
+    },
+    "temporal_range": {
+      "start_timestamp_utc": "2018-10-07T00:00:00Z",
+      "end_timestamp_utc": "2018-10-08T23:00:00Z",
+      "temporal_resolution": "PT1H (Hourly)"
+    },
+    "file_format": "NetCDF-4 / CF-1.8"
+  },
+  "retrieval_command": {
+    "tool": "copernicusmarine CLI / Python API (v2.4.1 installed)",
+    "command_template": "copernicusmarine subset -i cmems_mod_med_phy-cur_my_4.2km_PT1H-m --variable uo --variable vo --start-datetime 2018-10-07T00:00:00 --end-datetime 2018-10-08T23:00:00 --minimum-longitude 9.0 --maximum-longitude 9.8 --minimum-latitude 42.8 --maximum-latitude 43.6 --minimum-depth 0.4 --maximum-depth 0.6 --output-filename cmems_med_currents_corsica_20181007_20181008.nc --output-directory backend/data/historical_cases/corsica_2018/environmental/raw/",
+    "required_credentials": [
+      "COPERNICUS_MARINE_USERNAME",
+      "COPERNICUS_MARINE_PASSWORD"
+    ],
+    "account_registration_url": "https://marine.copernicus.eu/user/register"
+  },
+  "scientific_integrity_attestation": "In strict compliance with AQUILA Batch 3.7 guidelines, zero synthetic or mock current values have been generated. The hydrodynamic forcing remains honestly marked PENDING_CREDENTIALS."
+}

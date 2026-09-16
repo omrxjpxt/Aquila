@@ -1,0 +1,109 @@
+{
+  "investigation_authority": "Bureau d'enquêtes sur les événements de mer (BEA mer)",
+  "participating_administrations": [
+    "Department of Merchant Shipping (Cyprus)",
+    "Direzione Generale per le Investigazioni Ferroviarie e Marittime (DIGIFEMA, Italy)",
+    "Ministère du Transport / Direction Générale des Transports Maritimes (Tunisia)"
+  ],
+  "report_title": "Rapport d'enquête technique: Abordage survenu le 7 octobre 2018 entre le roulier Ulysse et le porte-conteneurs CSL Virginia",
+  "publication_date": "2019-07",
+  "incident_classification": "Very Serious Marine Casualty (Pollution & Severe Structural Damage)",
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "BEA_MER",
+    "license": "Licence Ouverte v2.0"
+  },
+  "incident_event": {
+    "collision_timestamp_utc": "2018-10-07T05:02:46Z",
+    "collision_timestamp_local": "2018-10-07T07:02:46+02:00",
+    "coordinates": {
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "dms": "43° 14.9' N, 009° 28.7' E"
+    },
+    "location": "International waters, approximately 15 nautical miles north of Cap Corse, Corsica, France",
+    "water_depth_meters": 120.0
+  },
+  "meteorological_conditions_at_impact": {
+    "visibility": "Excellent (> 10 nautical miles)",
+    "wind_force": "Beaufort 2 to 3 (gentle breeze)",
+    "wind_speed_knots": 8.0,
+    "wind_speed_ms": 4.1,
+    "wind_direction": "East-Northeast (070° to 080°)",
+    "sea_state": "Slight (Douglas state 2, wave height 0.5 to 1.25 m)",
+    "current": "Liguro-Provençal (Northern) surface current flowing west-southwest (~0.2 to 0.4 knots)",
+    "daylight_condition": "Dawn / Twilight before sunrise"
+  },
+  "striking_vessel": {
+    "name": "ULYSSE",
+    "mmsi": "672248000",
+    "imo": "9142459",
+    "call_sign": "TSUL",
+    "flag": "Tunisia",
+    "port_of_registry": "Tunis",
+    "shipowner_operator": "Compagnie Tunisienne de Navigation (COTUNAV)",
+    "vessel_type": "Ro-Ro Cargo / Passenger Ship",
+    "year_built": 1997,
+    "length_overall_meters": 162.0,
+    "breadth_meters": 26.0,
+    "gross_tonnage": 17907,
+    "voyage": {
+      "departure_port": "Genoa, Italy (2018-10-06 20:00 UTC)",
+      "destination_port": "Radès, Tunisia",
+      "cargo": "Trailers, containers, passenger vehicles"
+    },
+    "navigation_data_at_collision": {
+      "speed_knots": 19.0,
+      "course_true_degrees": 172.0,
+      "navigational_status": "UNDERWAY_USING_ENGINE",
+      "radar_status": "S-band radar operating; target CSL Virginia acquired automatically at 04:53 UTC with CPA=0",
+      "bridge_manning": "Single officer of watch on bridge, inattentive due to personal telephone call behind chart table curtains"
+    }
+  },
+  "struck_vessel": {
+    "name": "CSL VIRGINIA",
+    "mmsi": "212416000",
+    "imo": "9289568",
+    "call_sign": "5BLT2",
+    "flag": "Cyprus",
+    "port_of_registry": "Limassol",
+    "shipowner_operator": "Cyprus Sea Lines Co. Ltd.",
+    "vessel_type": "Cellular Container Ship",
+    "year_built": 2005,
+    "length_overall_meters": 294.1,
+    "breadth_meters": 32.2,
+    "gross_tonnage": 54592,
+    "navigation_data_at_collision": {
+      "navigational_status": "AT_ANCHOR",
+      "anchor_drop_time": "2018-10-04T12:00:00Z",
+      "speed_knots": 0.0,
+      "gyro_heading_degrees": 262.0,
+      "anchor_coordinates": "43° 14.9' N, 009° 28.7' E",
+      "bridge_watch": "Anchor watch maintained on bridge; radar operating but inattention to closing collision risk"
+    }
+  },
+  "impact_and_damage": {
+    "geometry": "Perpendicular impact into starboard side of CSL Virginia between cargo bays 22 and 26",
+    "penetration_depth_meters": 8.0,
+    "hull_breach": "Rupture of CSL Virginia starboard fuel bunker Tank #3 (capacity 1,376 m³)",
+    "structural_consequence": "Vessels locked tightly together for 4 days until separation on 2018-10-11"
+  },
+  "pollution_ground_truth": {
+    "pollutant_type": "IFO 380 (Intermediate Fuel Oil / Heavy Bunker Fuel)",
+    "estimated_released_volume_m3": 520.0,
+    "released_volume_range_m3": "520 to 600 m³",
+    "released_mass_tons": 530.0,
+    "observed_slick_characteristics": {
+      "initial_length_km": 25.0,
+      "initial_width_km": 0.5,
+      "drift_direction": "West-Southwest (245°)",
+      "satellite_radar_detection": "Sentinel-1A SAR pass on 2018-10-08 05:28:07 UTC clearly imaged continuous plume emanating from the entangled vessels.",
+      "coastal_impact": "Oil patties beached along the French Var coast (Pampelonne, Saint-Tropez, Sainte-Maxime, Ramatuelle) between October 16 and 18, 2018."
+    }
+  },
+  "investigation_conclusions": {
+    "primary_cause": "Critical lack of proper lookout on board ULYSSE under Rule 5 of COLREGs due to personal mobile phone distraction by officer of watch.",
+    "secondary_cause": "Imprudent anchoring location of CSL VIRGINIA in high-density merchant transit approach to Corsica Channel TSS, combined with ineffective anchor-watch collision risk assessment.",
+    "mechanical_failures": "None. All propulsion, steering, radar, and navigation systems on both vessels were operational."
+  }
+}

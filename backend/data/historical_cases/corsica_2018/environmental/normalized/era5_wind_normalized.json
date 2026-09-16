@@ -1,0 +1,428 @@
+{
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "ECMWF_ERA5",
+    "provider": "Open-Meteo Historical Weather API",
+    "api_endpoint": "https://archive-api.open-meteo.com/v1/era5",
+    "dataset": "ECMWF ERA5 Reanalysis",
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "retrieval_timestamp_utc": "2026-09-16T18:59:55.943704+00:00",
+    "disclaimer": "Authoritative atmospheric reanalysis data. Not synthetic or mocked."
+  },
+  "grid": {
+    "requested_latitude": 43.25,
+    "requested_longitude": 9.48,
+    "returned_latitude": 43.26889,
+    "returned_longitude": 9.41704,
+    "elevation_meters": 0.0,
+    "spatial_resolution": "0.25 degrees (~31 km)",
+    "temporal_resolution": "1 hour"
+  },
+  "summary": {
+    "start_timestamp_utc": "2018-10-07T00:00:00Z",
+    "end_timestamp_utc": "2018-10-08T23:00:00Z",
+    "total_hourly_steps": 48,
+    "collision_hour_observation": {
+      "timestamp_utc": "2018-10-07T05:00:00Z",
+      "wind_speed_ms": 5.9,
+      "wind_direction_deg": 317,
+      "wind_u_ms": 4.0,
+      "wind_v_ms": -4.3,
+      "surface_pressure_hpa": 1012.9
+    },
+    "satellite_pass_observation": {
+      "timestamp_utc": "2018-10-08T05:00:00Z",
+      "wind_speed_ms": 21.7,
+      "wind_direction_deg": 85,
+      "wind_u_ms": -21.6,
+      "wind_v_ms": -1.8,
+      "surface_pressure_hpa": 1015.9
+    }
+  },
+  "hourly_observations": [
+    {
+      "timestamp_utc": "2018-10-07T00:00:00Z",
+      "wind_speed_ms": 8.7,
+      "wind_direction_deg": 5,
+      "wind_u_ms": -0.7,
+      "wind_v_ms": -8.6,
+      "surface_pressure_hpa": 1013.3
+    },
+    {
+      "timestamp_utc": "2018-10-07T01:00:00Z",
+      "wind_speed_ms": 7.7,
+      "wind_direction_deg": 349,
+      "wind_u_ms": 1.4,
+      "wind_v_ms": -7.6,
+      "surface_pressure_hpa": 1013.3
+    },
+    {
+      "timestamp_utc": "2018-10-07T02:00:00Z",
+      "wind_speed_ms": 8.4,
+      "wind_direction_deg": 335,
+      "wind_u_ms": 3.6,
+      "wind_v_ms": -7.6,
+      "surface_pressure_hpa": 1013.4
+    },
+    {
+      "timestamp_utc": "2018-10-07T03:00:00Z",
+      "wind_speed_ms": 8.9,
+      "wind_direction_deg": 320,
+      "wind_u_ms": 5.8,
+      "wind_v_ms": -6.8,
+      "surface_pressure_hpa": 1013.2
+    },
+    {
+      "timestamp_utc": "2018-10-07T04:00:00Z",
+      "wind_speed_ms": 8.4,
+      "wind_direction_deg": 320,
+      "wind_u_ms": 5.4,
+      "wind_v_ms": -6.5,
+      "surface_pressure_hpa": 1012.9
+    },
+    {
+      "timestamp_utc": "2018-10-07T05:00:00Z",
+      "wind_speed_ms": 5.9,
+      "wind_direction_deg": 317,
+      "wind_u_ms": 4.0,
+      "wind_v_ms": -4.3,
+      "surface_pressure_hpa": 1012.9
+    },
+    {
+      "timestamp_utc": "2018-10-07T06:00:00Z",
+      "wind_speed_ms": 3.7,
+      "wind_direction_deg": 299,
+      "wind_u_ms": 3.2,
+      "wind_v_ms": -1.8,
+      "surface_pressure_hpa": 1013.3
+    },
+    {
+      "timestamp_utc": "2018-10-07T07:00:00Z",
+      "wind_speed_ms": 3.3,
+      "wind_direction_deg": 264,
+      "wind_u_ms": 3.2,
+      "wind_v_ms": 0.4,
+      "surface_pressure_hpa": 1013.7
+    },
+    {
+      "timestamp_utc": "2018-10-07T08:00:00Z",
+      "wind_speed_ms": 6.5,
+      "wind_direction_deg": 251,
+      "wind_u_ms": 6.1,
+      "wind_v_ms": 2.2,
+      "surface_pressure_hpa": 1014.2
+    },
+    {
+      "timestamp_utc": "2018-10-07T09:00:00Z",
+      "wind_speed_ms": 6.6,
+      "wind_direction_deg": 248,
+      "wind_u_ms": 6.1,
+      "wind_v_ms": 2.5,
+      "surface_pressure_hpa": 1014.4
+    },
+    {
+      "timestamp_utc": "2018-10-07T10:00:00Z",
+      "wind_speed_ms": 4.8,
+      "wind_direction_deg": 243,
+      "wind_u_ms": 4.3,
+      "wind_v_ms": 2.2,
+      "surface_pressure_hpa": 1014.3
+    },
+    {
+      "timestamp_utc": "2018-10-07T11:00:00Z",
+      "wind_speed_ms": 1.5,
+      "wind_direction_deg": 194,
+      "wind_u_ms": 0.4,
+      "wind_v_ms": 1.4,
+      "surface_pressure_hpa": 1014.0
+    },
+    {
+      "timestamp_utc": "2018-10-07T12:00:00Z",
+      "wind_speed_ms": 4.4,
+      "wind_direction_deg": 55,
+      "wind_u_ms": -3.6,
+      "wind_v_ms": -2.5,
+      "surface_pressure_hpa": 1014.3
+    },
+    {
+      "timestamp_utc": "2018-10-07T13:00:00Z",
+      "wind_speed_ms": 4.2,
+      "wind_direction_deg": 59,
+      "wind_u_ms": -3.6,
+      "wind_v_ms": -2.2,
+      "surface_pressure_hpa": 1014.1
+    },
+    {
+      "timestamp_utc": "2018-10-07T14:00:00Z",
+      "wind_speed_ms": 4.9,
+      "wind_direction_deg": 107,
+      "wind_u_ms": -4.7,
+      "wind_v_ms": 1.4,
+      "surface_pressure_hpa": 1014.1
+    },
+    {
+      "timestamp_utc": "2018-10-07T15:00:00Z",
+      "wind_speed_ms": 8.6,
+      "wind_direction_deg": 68,
+      "wind_u_ms": -7.9,
+      "wind_v_ms": -3.2,
+      "surface_pressure_hpa": 1013.9
+    },
+    {
+      "timestamp_utc": "2018-10-07T16:00:00Z",
+      "wind_speed_ms": 6.6,
+      "wind_direction_deg": 81,
+      "wind_u_ms": -6.5,
+      "wind_v_ms": -1.1,
+      "surface_pressure_hpa": 1014.1
+    },
+    {
+      "timestamp_utc": "2018-10-07T17:00:00Z",
+      "wind_speed_ms": 5.9,
+      "wind_direction_deg": 79,
+      "wind_u_ms": -5.8,
+      "wind_v_ms": -1.1,
+      "surface_pressure_hpa": 1014.6
+    },
+    {
+      "timestamp_utc": "2018-10-07T18:00:00Z",
+      "wind_speed_ms": 7.6,
+      "wind_direction_deg": 82,
+      "wind_u_ms": -7.6,
+      "wind_v_ms": -1.1,
+      "surface_pressure_hpa": 1015.0
+    },
+    {
+      "timestamp_utc": "2018-10-07T19:00:00Z",
+      "wind_speed_ms": 10.1,
+      "wind_direction_deg": 90,
+      "wind_u_ms": -10.1,
+      "wind_v_ms": 0.0,
+      "surface_pressure_hpa": 1015.5
+    },
+    {
+      "timestamp_utc": "2018-10-07T20:00:00Z",
+      "wind_speed_ms": 12.8,
+      "wind_direction_deg": 80,
+      "wind_u_ms": -12.6,
+      "wind_v_ms": -2.2,
+      "surface_pressure_hpa": 1016.0
+    },
+    {
+      "timestamp_utc": "2018-10-07T21:00:00Z",
+      "wind_speed_ms": 14.3,
+      "wind_direction_deg": 80,
+      "wind_u_ms": -14.0,
+      "wind_v_ms": -2.5,
+      "surface_pressure_hpa": 1016.3
+    },
+    {
+      "timestamp_utc": "2018-10-07T22:00:00Z",
+      "wind_speed_ms": 16.2,
+      "wind_direction_deg": 73,
+      "wind_u_ms": -15.5,
+      "wind_v_ms": -4.7,
+      "surface_pressure_hpa": 1016.0
+    },
+    {
+      "timestamp_utc": "2018-10-07T23:00:00Z",
+      "wind_speed_ms": 15.2,
+      "wind_direction_deg": 76,
+      "wind_u_ms": -14.8,
+      "wind_v_ms": -3.6,
+      "surface_pressure_hpa": 1015.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T00:00:00Z",
+      "wind_speed_ms": 19.1,
+      "wind_direction_deg": 68,
+      "wind_u_ms": -17.6,
+      "wind_v_ms": -7.2,
+      "surface_pressure_hpa": 1016.4
+    },
+    {
+      "timestamp_utc": "2018-10-08T01:00:00Z",
+      "wind_speed_ms": 21.4,
+      "wind_direction_deg": 77,
+      "wind_u_ms": -20.9,
+      "wind_v_ms": -4.7,
+      "surface_pressure_hpa": 1016.2
+    },
+    {
+      "timestamp_utc": "2018-10-08T02:00:00Z",
+      "wind_speed_ms": 20.0,
+      "wind_direction_deg": 76,
+      "wind_u_ms": -19.4,
+      "wind_v_ms": -4.7,
+      "surface_pressure_hpa": 1016.0
+    },
+    {
+      "timestamp_utc": "2018-10-08T03:00:00Z",
+      "wind_speed_ms": 20.8,
+      "wind_direction_deg": 72,
+      "wind_u_ms": -19.8,
+      "wind_v_ms": -6.5,
+      "surface_pressure_hpa": 1016.0
+    },
+    {
+      "timestamp_utc": "2018-10-08T04:00:00Z",
+      "wind_speed_ms": 21.4,
+      "wind_direction_deg": 73,
+      "wind_u_ms": -20.5,
+      "wind_v_ms": -6.1,
+      "surface_pressure_hpa": 1016.1
+    },
+    {
+      "timestamp_utc": "2018-10-08T05:00:00Z",
+      "wind_speed_ms": 21.7,
+      "wind_direction_deg": 85,
+      "wind_u_ms": -21.6,
+      "wind_v_ms": -1.8,
+      "surface_pressure_hpa": 1015.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T06:00:00Z",
+      "wind_speed_ms": 23.4,
+      "wind_direction_deg": 92,
+      "wind_u_ms": -23.4,
+      "wind_v_ms": 0.7,
+      "surface_pressure_hpa": 1015.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T07:00:00Z",
+      "wind_speed_ms": 21.3,
+      "wind_direction_deg": 101,
+      "wind_u_ms": -20.9,
+      "wind_v_ms": 4.0,
+      "surface_pressure_hpa": 1016.6
+    },
+    {
+      "timestamp_utc": "2018-10-08T08:00:00Z",
+      "wind_speed_ms": 19.1,
+      "wind_direction_deg": 110,
+      "wind_u_ms": -18.0,
+      "wind_v_ms": 6.5,
+      "surface_pressure_hpa": 1017.4
+    },
+    {
+      "timestamp_utc": "2018-10-08T09:00:00Z",
+      "wind_speed_ms": 18.0,
+      "wind_direction_deg": 119,
+      "wind_u_ms": -15.8,
+      "wind_v_ms": 8.6,
+      "surface_pressure_hpa": 1017.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T10:00:00Z",
+      "wind_speed_ms": 17.0,
+      "wind_direction_deg": 103,
+      "wind_u_ms": -16.6,
+      "wind_v_ms": 4.0,
+      "surface_pressure_hpa": 1018.1
+    },
+    {
+      "timestamp_utc": "2018-10-08T11:00:00Z",
+      "wind_speed_ms": 15.8,
+      "wind_direction_deg": 107,
+      "wind_u_ms": -15.1,
+      "wind_v_ms": 4.7,
+      "surface_pressure_hpa": 1018.4
+    },
+    {
+      "timestamp_utc": "2018-10-08T12:00:00Z",
+      "wind_speed_ms": 15.8,
+      "wind_direction_deg": 102,
+      "wind_u_ms": -15.5,
+      "wind_v_ms": 3.2,
+      "surface_pressure_hpa": 1018.1
+    },
+    {
+      "timestamp_utc": "2018-10-08T13:00:00Z",
+      "wind_speed_ms": 14.1,
+      "wind_direction_deg": 105,
+      "wind_u_ms": -13.7,
+      "wind_v_ms": 3.6,
+      "surface_pressure_hpa": 1018.0
+    },
+    {
+      "timestamp_utc": "2018-10-08T14:00:00Z",
+      "wind_speed_ms": 13.3,
+      "wind_direction_deg": 90,
+      "wind_u_ms": -13.3,
+      "wind_v_ms": 0.0,
+      "surface_pressure_hpa": 1017.7
+    },
+    {
+      "timestamp_utc": "2018-10-08T15:00:00Z",
+      "wind_speed_ms": 10.8,
+      "wind_direction_deg": 88,
+      "wind_u_ms": -10.8,
+      "wind_v_ms": -0.4,
+      "surface_pressure_hpa": 1017.7
+    },
+    {
+      "timestamp_utc": "2018-10-08T16:00:00Z",
+      "wind_speed_ms": 9.7,
+      "wind_direction_deg": 90,
+      "wind_u_ms": -9.7,
+      "wind_v_ms": 0.0,
+      "surface_pressure_hpa": 1017.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T17:00:00Z",
+      "wind_speed_ms": 11.4,
+      "wind_direction_deg": 79,
+      "wind_u_ms": -11.2,
+      "wind_v_ms": -2.2,
+      "surface_pressure_hpa": 1017.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T18:00:00Z",
+      "wind_speed_ms": 16.1,
+      "wind_direction_deg": 56,
+      "wind_u_ms": -13.3,
+      "wind_v_ms": -9.0,
+      "surface_pressure_hpa": 1018.3
+    },
+    {
+      "timestamp_utc": "2018-10-08T19:00:00Z",
+      "wind_speed_ms": 15.6,
+      "wind_direction_deg": 71,
+      "wind_u_ms": -14.8,
+      "wind_v_ms": -5.0,
+      "surface_pressure_hpa": 1018.5
+    },
+    {
+      "timestamp_utc": "2018-10-08T20:00:00Z",
+      "wind_speed_ms": 13.0,
+      "wind_direction_deg": 88,
+      "wind_u_ms": -13.0,
+      "wind_v_ms": -0.4,
+      "surface_pressure_hpa": 1018.7
+    },
+    {
+      "timestamp_utc": "2018-10-08T21:00:00Z",
+      "wind_speed_ms": 10.8,
+      "wind_direction_deg": 94,
+      "wind_u_ms": -10.8,
+      "wind_v_ms": 0.7,
+      "surface_pressure_hpa": 1019.0
+    },
+    {
+      "timestamp_utc": "2018-10-08T22:00:00Z",
+      "wind_speed_ms": 11.8,
+      "wind_direction_deg": 78,
+      "wind_u_ms": -11.5,
+      "wind_v_ms": -2.5,
+      "surface_pressure_hpa": 1018.9
+    },
+    {
+      "timestamp_utc": "2018-10-08T23:00:00Z",
+      "wind_speed_ms": 15.0,
+      "wind_direction_deg": 63,
+      "wind_u_ms": -13.3,
+      "wind_v_ms": -6.8,
+      "surface_pressure_hpa": 1018.8
+    }
+  ]
+}

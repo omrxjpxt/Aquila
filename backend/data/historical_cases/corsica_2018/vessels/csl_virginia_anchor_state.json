@@ -1,0 +1,73 @@
+{
+  "vessel_name": "CSL VIRGINIA",
+  "mmsi": "212416000",
+  "imo": "9289568",
+  "call_sign": "5BLT2",
+  "flag": "Cyprus",
+  "vessel_type": "Cellular Container Ship",
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "BEA_MER",
+    "source_document": "BEA Mer Rapport d'enquête technique: Abordage survenu le 7 octobre 2018 entre le roulier Ulysse et le porte-conteneurs CSL Virginia (2019)",
+    "source_devices": ["Ship Logbook", "Voyage Data Recorder (VDR)", "CROSS La Garde AIS/Radar Monitoring"],
+    "disclaimer": "All anchor state records represent verified historical evidence from the official BEA Mer casualty investigation report. Vessel was stationary at anchor awaiting charter instructions."
+  },
+  "anchor_state": {
+    "navigational_status": "AT_ANCHOR",
+    "anchor_dropped_timestamp_utc": "2018-10-04T12:00:00Z",
+    "anchor_position": {
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "dms": "43° 14.9' N, 009° 28.7' E"
+    },
+    "anchorage_location_description": "International waters, 15 nautical miles north of Cap Corse, northern approaches to Corsica Channel",
+    "water_depth_meters": 120.0,
+    "anchor_gear_deployed": "Starboard anchor, 10 shackles in water (~275 meters of chain)",
+    "speed_knots": 0.0,
+    "gyro_heading_degrees": 262.0,
+    "bridge_state": "Anchor watch manned by 2nd Officer and Able Seaman lookout; X-band and S-band radars active",
+    "observation_type": "DOCUMENTED"
+  },
+  "documented_timeline": [
+    {
+      "timestamp_utc": "2018-10-04T12:00:00Z",
+      "event": "Anchor dropped north of Cap Corse awaiting employment orders from charterer",
+      "speed_knots": 0.0,
+      "heading_degrees": 262.0,
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.4"
+    },
+    {
+      "timestamp_utc": "2018-10-07T04:00:00Z",
+      "event": "Stationary at anchor; radar monitoring active; light breeze from ENE; heading 262°",
+      "speed_knots": 0.0,
+      "heading_degrees": 262.0,
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.4"
+    },
+    {
+      "timestamp_utc": "2018-10-07T05:00:00Z",
+      "event": "Watch officer observes Ulysse closing on starboard beam; attempts VHF contact and sound signals without response",
+      "speed_knots": 0.0,
+      "heading_degrees": 262.0,
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.5.4"
+    },
+    {
+      "timestamp_utc": "2018-10-07T05:02:46Z",
+      "event": "Perpendicular collision impact by Ulysse bow into starboard side between bays 22 and 26. Starboard fuel tank #3 breached.",
+      "speed_knots": 0.0,
+      "heading_degrees": 262.0,
+      "latitude": 43.248333,
+      "longitude": 9.478333,
+      "observation_type": "DOCUMENTED",
+      "source_reference": "BEA Mer Report §1.5.4, §1.6"
+    }
+  ]
+}

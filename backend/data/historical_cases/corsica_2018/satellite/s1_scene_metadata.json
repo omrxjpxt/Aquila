@@ -1,0 +1,63 @@
+{
+  "product_id": "S1A_IW_GRDH_1SDV_20181008T052807_20181008T052832_024040_02A081_BDCA_COG.SAFE",
+  "adjacent_frame_id": "S1A_IW_GRDH_1SDV_20181008T052742_20181008T052807_024040_02A081_2C11_COG.SAFE",
+  "satellite_platform": "Sentinel-1A",
+  "sensor": "C-SAR (Synthetic Aperture Radar)",
+  "sensor_mode": "IW",
+  "sensor_mode_description": "Interferometric Wide Swath",
+  "polarization": "VV+VH",
+  "selected_band": "VV",
+  "processing_level": "Level-1 GRDH (Ground Range Detected High-Resolution)",
+  "format": "COG.SAFE",
+  "acquisition_timestamp_utc": "2018-10-08T05:28:07.481Z",
+  "orbit": {
+    "absolute_orbit": 24040,
+    "relative_orbit": 81,
+    "pass_direction": "DESCENDING"
+  },
+  "provenance": {
+    "source_mode": "HISTORICAL_CASE_FIXTURE",
+    "authority": "ESA_COPERNICUS_CDSE",
+    "provider": "Copernicus Data Space Ecosystem (CDSE)",
+    "catalog_odata_url": "https://catalogue.dataspace.copernicus.eu/odata/v1/Products",
+    "process_api_url": "https://sh.dataspace.copernicus.eu/api/v1/process",
+    "license": "Copernicus Legal Notice / Open Access"
+  },
+  "full_scene_footprint": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [10.906812, 41.328514],
+        [7.834205, 41.731037],
+        [8.154154, 43.230865],
+        [11.300623, 42.829113],
+        [10.906812, 41.328514]
+      ]
+    ]
+  },
+  "crop_file": {
+    "relative_path": "s1_aoi_crop_vv.tif",
+    "is_full_scene": false,
+    "crop_description": "256x256 float32 GeoTIFF sub-window covering the immediate collision coordinates (43.248333°N, 9.478333°E) and initial WSW plume formation.",
+    "bounding_box": {
+      "min_lon": 9.40,
+      "min_lat": 43.20,
+      "max_lon": 9.55,
+      "max_lat": 43.30
+    },
+    "crs": "EPSG:4326",
+    "pixel_dimensions": {
+      "width": 256,
+      "height": 256
+    },
+    "sample_type": "FLOAT32",
+    "band": "VV_LINEAR_AMPLITUDE",
+    "retrieval_method": "CDSE Sentinel Hub Process API using evalscript returning VV linear backscatter float32"
+  },
+  "slick_detection_context": {
+    "collision_hours_prior": 24.42,
+    "observed_slick_length_km": 25.0,
+    "observed_drift_bearing_degrees": 245.0,
+    "source_investigation_reference": "BEA Mer Technical Casualty Report, Section 1.8 (Lutte contre la pollution)"
+  }
+}
