@@ -109,8 +109,8 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
           ? JSON.parse((investigation as any).anomaly_geometry_json) 
           : (investigation as any).anomaly_geometry_json) 
       : investigation.anomaly_geometry || null,
-    area_km2: 1.25,
-    perimeter_km: 4.8
+    area_km2: (investigation as any).area_km2 ?? null,
+    perimeter_km: (investigation as any).perimeter_km ?? null
   } : null);
 
   const scenarioId = `hindcast-${id}-24h`;
@@ -213,7 +213,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <FileText className="w-4 h-4" /> 1. Investigation Overview
             </h3>
-            <ProvenanceBadge prov={(investigation as any)?.provenance || (investigation?.creation_mode === 'DEMO_MOCK' ? 'DEMO_MOCK' : (scene as any)?.provenance) || (isIncomplete ? "UNAVAILABLE" : "LOCAL_DERIVED_FROM_REAL_DATA")} />
+            <ProvenanceBadge prov={(investigation as any)?.provenance || (isDemoInvestigation ? 'DEMO_MOCK' : (scene as any)?.provenance) || "UNAVAILABLE"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -288,7 +288,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Activity className="w-4 h-4" /> 3. Slick Assessment
             </h3>
-            <ProvenanceBadge prov={candidate && assessment ? ((assessment as any)?.provenance || "REAL_DATA_TRAINED") : "UNAVAILABLE"} />
+            <ProvenanceBadge prov={candidate && assessment ? ((assessment as any)?.provenance || (isDemoInvestigation ? "DEMO_MOCK" : (assessment.evaluation_status?.includes("TRAINED") ? "REAL_DATA_TRAINED" : "UNAVAILABLE"))) : "UNAVAILABLE"} />
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono mb-3">
             <div className="bg-surface-container-lowest p-3 rounded border border-outline-variant">
@@ -589,7 +589,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
             <h3 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
               <Layers className="w-4 h-4" /> 8. Counterfactual Simulation
             </h3>
-            <ProvenanceBadge prov={(sim as any)?.provenance?.mode || (sim as any)?.provenance || (sim ? "LIVE" : "UNAVAILABLE")} />
+            <ProvenanceBadge prov={(sim as any)?.provenance?.mode || (sim as any)?.provenance || (isDemoInvestigation ? "DEMO_MOCK" : "UNAVAILABLE")} />
           </div>
           <div className="bg-surface-container-lowest p-4 rounded border border-outline-variant">
             {sim ? (
@@ -733,7 +733,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                   <td className="p-2 border border-outline-variant">
                     {scene ? "Local Processed Granule" : "SAR Scene Search"}
                   </td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(scene as any)?.provenance || (scene ? "LOCAL_DERIVED_FROM_REAL_DATA" : "UNAVAILABLE")} /></td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(scene as any)?.provenance || (isDemoInvestigation ? "DEMO_MOCK" : "UNAVAILABLE")} /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {scene ? "Real calibrated radar backscatter data from cropped sample granule" : "No usable SAR scene acquired for AOI"}
                   </td>
@@ -742,7 +742,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Slick Classification</td>
                   <td className="p-2 border border-outline-variant">HOG + RBF Support Vector Machine</td>
                   <td className="p-2 border border-outline-variant">Model lookalike_svm_real_v1</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={candidate && assessment ? "REAL_DATA_TRAINED" : "UNAVAILABLE"} /></td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={isDemoInvestigation ? "DEMO_MOCK" : (candidate && assessment ? ((assessment as any)?.provenance || (assessment.evaluation_status?.includes("TRAINED") ? "REAL_DATA_TRAINED" : "UNAVAILABLE")) : "UNAVAILABLE")} /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {candidate && assessment ? "Trained on verified historical SAR spills & lookalikes" : "No candidate slick available for classification"}
                   </td>
@@ -751,7 +751,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Marine Metocean</td>
                   <td className="p-2 border border-outline-variant">Open-Meteo Marine API</td>
                   <td className="p-2 border border-outline-variant">{envData ? "Open-Meteo ECMWF Model Data" : "ECMWF Model Ingestion"}</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={envData ? ((envData as any)?.provenance || "LIVE") : "UNAVAILABLE"} /></td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={isDemoInvestigation ? "DEMO_MOCK" : (envData ? ((envData as any)?.provenance || "LIVE") : "UNAVAILABLE")} /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {envData ? "Model-derived wind and surface ocean current forcing" : "Environmental forcing unavailable"}
                   </td>
@@ -760,7 +760,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Drift Reconstruction</td>
                   <td className="p-2 border border-outline-variant">{(drift as any)?.forcing_provider ? `OpenDrift Engine (${(drift as any).forcing_provider})` : 'OpenDrift Engine'}</td>
                   <td className="p-2 border border-outline-variant">{drift ? ((drift as any)?.provenance?.mode === 'LIVE' ? 'Live OpenDrift Reverse Hindcast' : 'Analytical Advection Hindcast') : 'Hindcast Trajectory Advection'}</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(drift as any)?.provenance?.mode || (drift as any)?.provenance || (drift ? 'LIVE' : 'UNAVAILABLE')} /></td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={isDemoInvestigation ? "DEMO_MOCK" : ((drift as any)?.provenance?.mode || (drift as any)?.provenance || "UNAVAILABLE")} /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {drift ? "Real OpenDrift trajectory advection using Open-Meteo forcing" : "Drift hindcast unavailable"}
                   </td>
@@ -774,7 +774,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                     {evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'Live GFW AIS Presence & Events' : 'AIS Presence Search'}
                   </td>
                   <td className="p-2 border border-outline-variant">
-                    <ProvenanceBadge prov={evidenceList?.find(e => e.event_type === 'AIS_PRESENCE')?.status === 'UNAVAILABLE' ? 'UNAVAILABLE' : (ais && Array.isArray(ais) && ais.length > 0) ? (evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'LIVE' : (ais[0]?.provenance?.mode || 'LIVE')) : 'UNAVAILABLE'} />
+                    <ProvenanceBadge prov={isAisUnavailable ? 'UNAVAILABLE' : isDemoInvestigation ? 'DEMO_MOCK' : (evidenceList?.find(e => e.event_type === 'AIS_PRESENCE')?.status === 'UNAVAILABLE' ? 'UNAVAILABLE' : (ais && Array.isArray(ais) && ais.length > 0) ? (evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'LIVE' : (ais[0]?.provenance?.mode || 'LIVE')) : 'UNAVAILABLE')} />
                   </td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {evidenceList?.some(e => e.source === 'Global Fishing Watch') ? 'Real Global Fishing Watch spatiotemporal query' : (ais && Array.isArray(ais) && ais.length > 0) ? 'Spatiotemporal candidate search' : 'AIS query unavailable'}
@@ -785,7 +785,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                   <td className="p-2 border border-outline-variant">Six-Factor Evidence-Weighted Heuristic</td>
                   <td className="p-2 border border-outline-variant">Ordinal Multi-Criteria Evaluation</td>
                   <td className="p-2 border border-outline-variant">
-                    <ProvenanceBadge prov={evidenceList?.find(e => e.event_type === 'ATTRIBUTION_EVALUATION')?.status === 'UNAVAILABLE' || isAttributionUnavailable ? 'UNAVAILABLE' : topCandidate ? (isDemoInvestigation ? 'DEMO_MOCK' : 'LIVE') : 'UNAVAILABLE'} />
+                    <ProvenanceBadge prov={evidenceList?.find(e => e.event_type === 'ATTRIBUTION_EVALUATION')?.status === 'UNAVAILABLE' || isAttributionUnavailable ? 'UNAVAILABLE' : isDemoInvestigation ? 'DEMO_MOCK' : topCandidate ? 'LIVE' : 'UNAVAILABLE'} />
                   </td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {topCandidate ? "Evaluated on candidate trajectories and drift envelope" : "Attribution scoring unavailable"}
@@ -795,7 +795,7 @@ export default function InvestigationReportPage({ params }: { params: Promise<{ 
                   <td className="p-2 border border-outline-variant font-bold text-on-surface">Counterfactual Validation</td>
                   <td className="p-2 border border-outline-variant">{(sim as any)?.provenance?.engine || 'OpenDrift Forward Simulation'}</td>
                   <td className="p-2 border border-outline-variant">{sim ? ((sim as any)?.provenance?.mode === 'LIVE' ? 'Live OpenDrift Forward Advection' : 'Geometric Jaccard Overlap') : 'Forward Simulation Engine'}</td>
-                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={(sim as any)?.provenance?.mode || (sim as any)?.provenance || (sim ? 'LIVE' : 'UNAVAILABLE')} /></td>
+                  <td className="p-2 border border-outline-variant"><ProvenanceBadge prov={isDemoInvestigation ? "DEMO_MOCK" : ((sim as any)?.provenance?.mode || (sim as any)?.provenance || "UNAVAILABLE")} /></td>
                   <td className="p-2 border border-outline-variant text-[10px] text-on-surface-variant">
                     {sim ? "Demonstrates spatial agreement without proving causation" : "Counterfactual simulation unavailable"}
                   </td>

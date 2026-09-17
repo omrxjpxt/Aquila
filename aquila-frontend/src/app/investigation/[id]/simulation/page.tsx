@@ -109,10 +109,36 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
     }
   }, [selectedCandidate, releaseLon, releaseLat]);
 
-  const result = (selectedMmsi ? counterfactualResults[selectedMmsi] : null) || Object.values(counterfactualResults)[0] || null;
+  const rawResult = (selectedMmsi ? counterfactualResults[selectedMmsi] : null) || Object.values(counterfactualResults)[0] || null;
+
+  type SimulationStatus = "AVAILABLE" | "FAILED" | "NO_USABLE_RESULTS" | "UNAVAILABLE";
+
+  const simulationStatus: SimulationStatus = useMemo(() => {
+    if (!rawResult) {
+      return "UNAVAILABLE";
+    }
+    const resStatus = (rawResult as any).status;
+    if (resStatus === "FAILED" || resStatus === "ERROR") {
+      return "FAILED";
+    }
+    if (resStatus === "UNAVAILABLE") {
+      return "UNAVAILABLE";
+    }
+    const hasGeometry = Boolean(rawResult.simulated_slick_geometry || (rawResult as any).simulated_geometry);
+    const hasComparison = Boolean(rawResult.comparison || (rawResult as any).overlap_iou !== undefined);
+    if (hasGeometry || hasComparison) {
+      return "AVAILABLE";
+    }
+    return "NO_USABLE_RESULTS";
+  }, [rawResult]);
+
+  const isAvailable = simulationStatus === "AVAILABLE";
 
   const handleRunSimulation = () => {
-    if (!selectedCandidate || !selectedSlick) return;
+    if (!selectedCandidate || !selectedSlick || !releaseLon || !releaseLat) return;
+    const lon = parseFloat(releaseLon);
+    const lat = parseFloat(releaseLat);
+    if (isNaN(lon) || isNaN(lat)) return;
     
     // ISO string for 24h ago mock
     const hypothesizedTime = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
@@ -121,15 +147,15 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
       investigation_id: id as string,
       candidate_vessel_id: selectedCandidate.identity.mmsi,
       hypothesized_release_time: hypothesizedTime,
-      hypothesized_release_location: [parseFloat(releaseLon), parseFloat(releaseLat)],
+      hypothesized_release_location: [lon, lat],
       drift_duration_hours: duration,
       observed_slick_geometry: selectedSlick.geometry as unknown as GeoJSON.Geometry,
     });
   };
 
-  const mapCenter: [number, number] = selectedSlick?.centroid 
+  const mapCenter: [number, number] | null = selectedSlick?.centroid 
     ? selectedSlick.centroid 
-    : (selectedSlick?.geometry?.coordinates?.[0]?.[0] as [number, number]) || [58.025, 24.474];
+    : (selectedSlick?.geometry?.coordinates?.[0]?.[0] as [number, number]) || null;
 
   return (
     <div className="flex w-full h-full relative overflow-hidden bg-surface-lowest p-2">
@@ -139,10 +165,16 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
         
         {/* Left Map: Observed Slick */}
         <div className="relative flex-1 bg-[#eef4f8] border border-outline-variant rounded-lg overflow-hidden group shadow-sm">
-          {selectedSlick && (
+          {mapCenter ? (
             <MapLibreCanvas center={mapCenter} zoom={10} bearing={0} pitch={0}>
               <SlickLayer center={mapCenter} visible={true} />
             </MapLibreCanvas>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center font-mono text-xs text-on-surface-variant">
+              <Satellite className="w-8 h-8 text-on-surface-variant/50 mb-2" />
+              <span>GEOMETRY UNAVAILABLE</span>
+              <span className="text-[10px] mt-1">No spatial coordinates recorded for this candidate slick.</span>
+            </div>
           )}
           
           <div className="absolute top-4 left-4 z-10 bg-surface/90 backdrop-blur border border-outline-variant p-3 rounded shadow-sm pointer-events-none">
@@ -156,24 +188,50 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
         
         {/* Right Map: Predicted Slick & Difference */}
         <div className="relative flex-1 bg-[#eef4f8] border border-outline-variant rounded-lg overflow-hidden group shadow-sm">
-           <MapLibreCanvas center={mapCenter} zoom={10} bearing={0} pitch={0}>
-            {result && (
-              <>
-                <SimulatedSlickLayer data={result.simulated_slick_geometry || (result as any).simulated_geometry} />
-                
-                {/* Difference Geometries */}
-                {result?.difference_geometry?.overlap_polygon && (
-                   <DifferenceLayer data={result.difference_geometry.overlap_polygon} type="overlap" color="#22c55e" /> // Green
-                )}
-                {result?.difference_geometry?.observed_only_polygon && (
-                   <DifferenceLayer data={result.difference_geometry.observed_only_polygon} type="obs-only" color="#3b82f6" /> // Blue
-                )}
-                {result?.difference_geometry?.simulated_only_polygon && (
-                   <DifferenceLayer data={result.difference_geometry.simulated_only_polygon} type="sim-only" color="#8b5cf6" /> // Purple
-                )}
-              </>
-            )}
-          </MapLibreCanvas>
+          {mapCenter ? (
+            <MapLibreCanvas center={mapCenter} zoom={10} bearing={0} pitch={0}>
+              {isAvailable && rawResult && (
+                <>
+                  <SimulatedSlickLayer data={rawResult.simulated_slick_geometry || (rawResult as any).simulated_geometry} />
+                  
+                  {/* Difference Geometries */}
+                  {rawResult?.difference_geometry?.overlap_polygon && (
+                     <DifferenceLayer data={rawResult.difference_geometry.overlap_polygon} type="overlap" color="#22c55e" /> // Green
+                  )}
+                  {rawResult?.difference_geometry?.observed_only_polygon && (
+                     <DifferenceLayer data={rawResult.difference_geometry.observed_only_polygon} type="obs-only" color="#3b82f6" /> // Blue
+                  )}
+                  {rawResult?.difference_geometry?.simulated_only_polygon && (
+                     <DifferenceLayer data={rawResult.difference_geometry.simulated_only_polygon} type="sim-only" color="#8b5cf6" /> // Purple
+                  )}
+                </>
+              )}
+            </MapLibreCanvas>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center font-mono text-xs text-on-surface-variant">
+              <LineChart className="w-8 h-8 text-on-surface-variant/50 mb-2" />
+              <span>MAP UNAVAILABLE</span>
+              <span className="text-[10px] mt-1">No spatial coordinates available.</span>
+            </div>
+          )}
+
+          {!isAvailable && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-surface-lowest/80 backdrop-blur-xs text-center z-20 pointer-events-none">
+              <AlertTriangle className="w-8 h-8 text-amber-500 mb-2" />
+              <div className="text-xs font-mono font-bold text-on-surface uppercase tracking-wider">
+                {simulationStatus === "FAILED" 
+                  ? "SIMULATION: FAILED — Forward trajectory reconstruction failed" 
+                  : simulationStatus === "NO_USABLE_RESULTS"
+                  ? "SIMULATION: NO USABLE RESULTS — Trajectory produced no valid surface footprint"
+                  : "SIMULATION: UNAVAILABLE — No valid simulation result is available for this investigation."}
+              </div>
+              <p className="text-[11px] font-mono text-on-surface-variant max-w-sm mt-1">
+                {candidates.length > 0 
+                  ? "Select a candidate vessel and configure release parameters to run a counterfactual forward simulation."
+                  : "No vessel candidate tracks or drift origin estimate available to run a forward simulation."}
+              </p>
+            </div>
+          )}
           
           <div className="absolute top-4 right-4 z-10 bg-surface/90 backdrop-blur border border-outline-variant p-3 rounded shadow-sm text-right flex flex-col items-end pointer-events-none">
             <div className="flex items-center gap-2 mb-1 flex-row-reverse">
@@ -181,10 +239,10 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
               <h2 className="text-sm font-bold text-secondary uppercase tracking-wider">SIMULATED SLICK</h2>
             </div>
             <p className="text-[11px] text-on-surface-variant font-medium">Counterfactual Forward Simulation</p>
-            {result && (
+            {isAvailable && rawResult && (
               <div className="mt-2 flex items-center gap-1.5 bg-secondary/10 border border-secondary/20 px-2 py-1 rounded w-fit">
                 <span className="font-mono text-[9px] font-bold text-secondary uppercase">
-                  {result.provenance?.mode || (typeof result.provenance === 'string' ? result.provenance : "LIVE")}
+                  {rawResult.provenance?.mode || (typeof rawResult.provenance === 'string' ? rawResult.provenance : "LIVE")}
                 </span>
               </div>
             )}
@@ -197,14 +255,14 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
         </div>
         
         {/* Primary Metric Overlay */}
-        {result && (
+        {isAvailable && rawResult && (
           <div className="absolute top-8 left-1/2 -translate-x-1/2 z-40 bg-surface/95 backdrop-blur border border-outline-variant px-6 py-4 rounded shadow-md flex flex-col items-center pointer-events-none text-center">
             <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-1">SPATIAL AGREEMENT (IoU)</span>
             <span className="text-3xl text-primary font-bold tracking-wider">
-              {(((result.comparison?.spatial_agreement_iou ?? (result as any).overlap_iou ?? 0)) * 100).toFixed(1)}%
+              {(((rawResult.comparison?.spatial_agreement_iou ?? (rawResult as any).overlap_iou ?? 0)) * 100).toFixed(1)}%
             </span>
             <span className="text-[10px] font-bold text-on-surface mt-1">
-              {(result.comparison?.spatial_interpretation || (result as any).interpretation_band || 'MODERATE_OVERLAP').replace(/_/g, ' ')}
+              {(rawResult.comparison?.spatial_interpretation || (rawResult as any).interpretation_band || 'MODERATE_OVERLAP').replace(/_/g, ' ')}
             </span>
           </div>
         )}
@@ -266,11 +324,11 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
             <h3 className="text-[10px] font-bold tracking-widest text-on-surface-variant uppercase">Counterfactual Validity Analysis</h3>
           </div>
           
-          {result ? (
+          {isAvailable && rawResult ? (
             <div className="p-4 flex flex-col gap-4 bg-surface-container-lowest flex-1">
               <div className="bg-surface border border-outline-variant p-3 rounded">
                  <p className="text-sm font-medium text-on-surface">
-                   {result.comparison?.human_readable_interpretation || (result as any).interpretation || "Simulation completed."}
+                   {rawResult.comparison?.human_readable_interpretation || (rawResult as any).interpretation || "Simulation completed."}
                  </p>
               </div>
               
@@ -278,29 +336,29 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
                  <div>
                     <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-1 block">IoU (GEOMETRIC SIMILARITY)</span>
                     <span className="font-mono text-sm font-bold text-primary">
-                      {((result.comparison?.spatial_agreement_iou ?? (result as any).overlap_iou ?? 0) * 100).toFixed(1)}%
+                      {((rawResult.comparison?.spatial_agreement_iou ?? (rawResult as any).overlap_iou ?? 0) * 100).toFixed(1)}%
                     </span>
                  </div>
                  <div>
                     <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-1 block">CENTROID DISTANCE</span>
                     <span className="font-mono text-sm font-bold">
-                      {result.comparison?.centroid_distance_meters !== undefined 
-                        ? (result.comparison.centroid_distance_meters / 1000).toFixed(1) 
-                        : typeof (result as any).centroid_distance_km === 'number'
-                        ? (result as any).centroid_distance_km.toFixed(1)
+                      {rawResult.comparison?.centroid_distance_meters !== undefined 
+                        ? (rawResult.comparison.centroid_distance_meters / 1000).toFixed(1) 
+                        : typeof (rawResult as any).centroid_distance_km === 'number'
+                        ? (rawResult as any).centroid_distance_km.toFixed(1)
                         : "0.0"} km
                     </span>
                  </div>
                  <div>
                     <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-1 block">SIMULATED AREA</span>
                     <span className="font-mono text-sm font-bold">
-                      {result.comparison?.simulated_area_km2 !== undefined ? result.comparison.simulated_area_km2.toFixed(1) : "—"} km²
+                      {rawResult.comparison?.simulated_area_km2 !== undefined ? rawResult.comparison.simulated_area_km2.toFixed(1) : "—"} km²
                     </span>
                  </div>
                  <div>
                     <span className="text-[9px] font-bold tracking-widest text-on-surface-variant uppercase mb-1 block">MODEL PROVENANCE</span>
                     <span className="font-mono text-[9px] bg-tertiary/10 px-1.5 py-0.5 rounded border border-tertiary/30 font-bold text-tertiary">
-                       {result.provenance?.model_status ? result.provenance.model_status.replace(/_/g, ' ') : "DEMO MOCK"}
+                       {rawResult.provenance?.model_status ? rawResult.provenance.model_status.replace(/_/g, ' ') : "DEMO MOCK"}
                     </span>
                  </div>
               </div>
@@ -308,13 +366,25 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
               <div className="mt-auto pt-3 border-t border-outline-variant flex items-start gap-2">
                  <AlertTriangle className="w-4 h-4 text-[#eab308] shrink-0 mt-0.5" />
                  <span className="text-[10px] text-on-surface-variant leading-tight">
-                    {result.provenance?.limitations || "IoU is a geometric similarity metric between observed and theoretical slick extents. It does not establish legal causation or operational responsibility."}
+                    {rawResult.provenance?.limitations || "IoU is a geometric similarity metric between observed and theoretical slick extents. It does not establish legal causation or operational responsibility."}
                  </span>
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center bg-surface-container-lowest p-8 text-center text-on-surface-variant">
-               Configure a hypothesis scenario and run the simulation to compare theoretical drift against the observed slick.
+            <div className="flex-1 flex flex-col items-center justify-center bg-surface-container-lowest p-8 text-center text-on-surface-variant gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500 mb-1" />
+              <span className="text-xs font-mono font-bold text-on-surface uppercase tracking-wide">
+                {simulationStatus === "FAILED"
+                  ? "SIMULATION: FAILED — Numerical forward advection simulation failed."
+                  : simulationStatus === "NO_USABLE_RESULTS"
+                  ? "SIMULATION: NO USABLE RESULTS — Simulation produced no measurable spatial footprint."
+                  : "SIMULATION: UNAVAILABLE — No valid simulation result is available for this investigation."}
+              </span>
+              <p className="text-[11px] font-mono text-on-surface-variant max-w-md mt-1">
+                {candidates.length > 0 
+                  ? "Select a candidate hypothesis above and click 'Run Counterfactual' to execute forward numerical advection."
+                  : "No candidate vessel positions or drift origin available. Simulation cannot be performed without valid AIS and drift evidence."}
+              </p>
             </div>
           )}
         </div>

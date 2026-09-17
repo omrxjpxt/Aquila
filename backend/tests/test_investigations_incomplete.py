@@ -383,3 +383,61 @@ async def test_automated_investigation_with_gfw_unavailable_resolves_incomplete(
 
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_investigation_evidence_api_and_provenance_truth():
+    """
+    Regression Test (Phase 2): Evidence API endpoint returns truthful evidence list
+    without fabrication; empty investigations return empty lists; unavailable stages
+    are marked with status='UNAVAILABLE'.
+    """
+    import uuid
+    from app.schemas.investigation import InvestigationCreate
+    from app.schemas.evidence import EvidenceEvent
+    from app.api.deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: {"uid": "test_operator", "email": "operator@aquila.system"}
+
+    try:
+        inv_repo = get_investigation_repository()
+        
+        # 1. New investigation with no evidence yet
+        inv = inv_repo.create_investigation(InvestigationCreate(
+            title="Empty Evidence Test",
+            status="OPEN",
+            priority="NORMAL",
+            creation_mode="MANUAL",
+            owner_uid="test_operator"
+        ))
+
+        resp_empty = client.get(f"/api/v1/investigations/{inv.id}/evidence", headers={"Authorization": "Bearer test"})
+        assert resp_empty.status_code == 200
+        ev_list = resp_empty.json()
+        assert isinstance(ev_list, list)
+        assert len(ev_list) == 0, "New investigation must have empty evidence list, not fabricated events"
+
+        # 2. Add an explicit UNAVAILABLE evidence event
+        ev_unavail = EvidenceEvent(
+            id=f"EV-{uuid.uuid4().hex[:8]}",
+            investigation_id=inv.id,
+            owner_uid="test_operator",
+            event_type="DRIFT_HINDCAST",
+            source="OpenDrift",
+            status="UNAVAILABLE",
+            description="Drift hindcast unavailable: numerical trajectory reconstruction failed.",
+            event_time=datetime.utcnow(),
+            metadata={"status": "UNAVAILABLE", "reason": "No forcing data"}
+        )
+        inv_repo.add_evidence(ev_unavail)
+
+        resp_with_ev = client.get(f"/api/v1/investigations/{inv.id}/evidence", headers={"Authorization": "Bearer test"})
+        assert resp_with_ev.status_code == 200
+        evs = resp_with_ev.json()
+        assert len(evs) == 1
+        assert evs[0]["status"] == "UNAVAILABLE"
+        assert evs[0]["source"] == "OpenDrift"
+        assert evs[0]["event_type"] == "DRIFT_HINDCAST"
+
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+

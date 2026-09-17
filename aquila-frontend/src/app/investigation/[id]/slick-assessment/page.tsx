@@ -61,32 +61,47 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
     return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load assessment: {error}</div>;
   }
 
+  const mapCenter: [number, number] | null = scene?.bbox && Array.isArray(scene.bbox) && scene.bbox.length >= 4 ? [
+    (scene.bbox[0] + scene.bbox[2]) / 2, 
+    (scene.bbox[1] + scene.bbox[3]) / 2
+  ] : (selectedCandidate?.centroid ? [selectedCandidate.centroid[0], selectedCandidate.centroid[1]] : null);
+
+  const isAssessmentLoading = isLoading && !assessment;
+  const isAssessmentFailed = Boolean(assessment && (assessment.evaluation_status === 'FAILED' || (assessment as any).status === 'FAILED' || (assessment as any).predicted_class === 'FAILED'));
+  const isAssessmentUnavailable = !assessment && !isLoading && (!scene || !selectedCandidate || candidates.length === 0 || investigation?.status === 'INCOMPLETE' || investigation?.status === 'ACQUISITION_UNAVAILABLE');
+  const isAssessmentAvailable = Boolean(assessment && !isAssessmentFailed && assessment.evaluation_status !== 'UNAVAILABLE' && (assessment as any).predicted_class !== 'UNAVAILABLE');
+
   return (
     <div className="flex w-full h-full relative overflow-hidden bg-surface-lowest p-4 gap-4">
       {/* Left: SAR Scene Layer */}
       <div className="flex-1 relative rounded-lg border border-outline-variant overflow-hidden shadow-sm bg-[#eef4f8]">
         
-        <MapLibreCanvas center={scene?.bbox && Array.isArray(scene.bbox) && scene.bbox.length >= 4 ? [
-          (scene.bbox[0] + scene.bbox[2]) / 2, 
-          (scene.bbox[1] + scene.bbox[3]) / 2
-        ] : (selectedCandidate?.centroid ? [selectedCandidate.centroid[0], selectedCandidate.centroid[1]] : [58.025, 24.474])} zoom={9}>
-          {selectedCandidate && selectedCandidate.geometry && (
-            <GeoJSONLayer 
-              id={`slick-focus-${selectedCandidate.id}`}
-              data={{
-                type: "Feature",
-                geometry: selectedCandidate.geometry,
-                properties: {}
-              } as unknown as GeoJSON.Feature}
-              type="fill"
-              paint={{
-                "fill-color": "#ba1a1a",
-                "fill-opacity": 0.6,
-                "fill-outline-color": "#ffffff"
-              }}
-            />
-          )}
-        </MapLibreCanvas>
+        {mapCenter ? (
+          <MapLibreCanvas center={mapCenter} zoom={9}>
+            {selectedCandidate && selectedCandidate.geometry && (
+              <GeoJSONLayer 
+                id={`slick-focus-${selectedCandidate.id}`}
+                data={{
+                  type: "Feature",
+                  geometry: selectedCandidate.geometry,
+                  properties: {}
+                } as unknown as GeoJSON.Feature}
+                type="fill"
+                paint={{
+                  "fill-color": "#ba1a1a",
+                  "fill-opacity": 0.6,
+                  "fill-outline-color": "#ffffff"
+                }}
+              />
+            )}
+          </MapLibreCanvas>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center font-mono text-xs text-on-surface-variant">
+            <Activity className="w-8 h-8 text-on-surface-variant/50 mb-2" />
+            <span>MAP UNAVAILABLE</span>
+            <span className="text-[10px] mt-1">No spatial coordinates recorded for this SAR scene or candidate slick.</span>
+          </div>
+        )}
 
         {/* HUD Elements */}
         <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
@@ -113,8 +128,12 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
           {selectedCandidate ? (
             <>
               <span className="font-mono text-xs text-on-surface-variant font-medium">ID: {selectedCandidate.id.split('-')[0]}...</span>
-              <span className="font-mono text-xs text-on-surface-variant font-medium">LAT: {(selectedCandidate.centroid?.[1] ?? 24.4744).toFixed(4)}° N</span>
-              <span className="font-mono text-xs text-on-surface-variant font-medium">LON: {(selectedCandidate.centroid?.[0] ?? 58.0257).toFixed(4)}° E</span>
+              <span className="font-mono text-xs text-on-surface-variant font-medium">
+                LAT: {selectedCandidate.centroid ? `${selectedCandidate.centroid[1].toFixed(4)}° N` : 'UNAVAILABLE'}
+              </span>
+              <span className="font-mono text-xs text-on-surface-variant font-medium">
+                LON: {selectedCandidate.centroid ? `${selectedCandidate.centroid[0].toFixed(4)}° E` : 'UNAVAILABLE'}
+              </span>
             </>
           ) : (
             <span className="font-mono text-xs text-on-surface-variant font-medium">No candidate selected</span>
@@ -155,8 +174,12 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
               <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant block mb-2">MODEL CLASSIFICATION</span>
               
               <div className="flex items-baseline gap-2 mb-2">
-                {isLoading && !assessment ? (
+                {isAssessmentLoading ? (
                   <span className="text-xl font-bold text-on-surface-variant animate-pulse">EVALUATING...</span>
+                ) : isAssessmentFailed ? (
+                  <span className="text-xl font-bold text-error">FAILED</span>
+                ) : isAssessmentUnavailable ? (
+                  <span className="text-xl font-bold text-on-surface-variant">UNAVAILABLE</span>
                 ) : (
                   <span className={`text-2xl font-bold ${
                     assessment?.predicted_class === 'OIL_LIKE' ? 'text-error' : assessment?.predicted_class === 'LOOKALIKE' ? 'text-success' : 'text-tertiary'
@@ -165,8 +188,20 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
                   </span>
                 )}
               </div>
+
+              {isAssessmentUnavailable && (
+                <div className="text-xs font-mono text-on-surface-variant mt-2">
+                  Classification unavailable — requires candidate slick anomaly and SAR scene data.
+                </div>
+              )}
+
+              {isAssessmentFailed && (
+                <div className="text-xs font-mono text-error mt-2">
+                  Look-alike classification evaluation failed during processing.
+                </div>
+              )}
               
-              {assessment && (
+              {isAssessmentAvailable && assessment && (
                 <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-outline-variant/50">
                   <div className="flex justify-between items-center text-xs font-mono">
                     <span className="text-on-surface-variant">MODEL VERSION:</span>
@@ -204,6 +239,14 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
             {isLoading && !fusion && (
               <div className="text-xs text-on-surface-variant p-4 border border-outline-variant rounded bg-surface-container-lowest animate-pulse text-center">
                 Fetching environmental context and fusing evidence...
+              </div>
+            )}
+
+            {!fusion && !isLoading && (
+              <div className="text-xs font-mono text-on-surface-variant p-4 border border-dashed border-outline-variant rounded bg-surface-container-lowest text-center">
+                {isAssessmentUnavailable || investigation?.status === 'INCOMPLETE'
+                  ? 'Evidence fusion unavailable — requires candidate slick detection and environmental forcing.'
+                  : 'Evidence fusion pending execution...'}
               </div>
             )}
 

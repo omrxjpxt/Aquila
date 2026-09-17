@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
 import { Satellite, Droplet, Flag, Activity, CheckCircle, MapPin, AlertTriangle } from "lucide-react";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 
@@ -21,11 +21,37 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
     return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load timeline: {error}</div>;
   }
 
+  const [events, setEvents] = useState<any[] | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState<boolean>(true);
+  const [timelineError, setTimelineError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+    setTimelineLoading(true);
+    setTimelineError(null);
+    setEvents(null);
+
+    import("@/lib/api/investigations")
+      .then(({ investigationsApi }) => investigationsApi.getEvidence(id))
+      .then((data) => {
+        if (!isCurrent) return;
+        setEvents(Array.isArray(data) ? data : []);
+        setTimelineLoading(false);
+      })
+      .catch((err) => {
+        if (!isCurrent) return;
+        setTimelineError(err instanceof Error ? err.message : "Failed to load timeline events");
+        setEvents(null);
+        setTimelineLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [id]);
+
   const candidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
-  const assessment = candidate ? assessments[candidate.id] : null;
-  const fusion = candidate ? fusionResults[candidate.id] : null;
   const scenarioId = `hindcast-${id}-24h`;
-  const drift = driftResults[scenarioId] || Object.values(driftResults)[0] || null;
   const ais = vesselCandidates[scenarioId] || Object.values(vesselCandidates)[0] || null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const attribution = attributionResults[scenarioId] || Object.values(attributionResults).find(a => (a as any).investigation_id === id) || null;
@@ -49,138 +75,48 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
     : null;
     
   const displayId = id;
-  const targetName = topVessel?.identity?.name || topCandidate?.vessel_identity?.name || 'UNATTRIBUTED';
+  const targetName = topVessel?.identity?.name || topCandidate?.vessel_identity?.name || (investigation?.status === 'INCOMPLETE' ? 'UNATTRIBUTED / INCOMPLETE' : 'UNATTRIBUTED');
   const timeframe = scene?.acquisition_time ? new Date(scene.acquisition_time).toISOString().split('T')[0] : 'UNAVAILABLE';
 
-  interface TimelineEvent {
-    id: string;
-    title: string;
-    source: string;
-    description: string;
-    timeLabel: string;
-    icon: React.ElementType;
-    colorClass: string;
-    criticality: string | null;
-  }
-
-  const events: TimelineEvent[] = [];
-
-  // 1. Scene Ingestion / Detection
-  if (scene && candidate) {
-    events.push({
-      id: "detection",
-      title: "Initial SAR Detection",
-      source: "Candidate Slick Detected",
-      description: `Sentinel-1 observation detects presence of surface anomaly spanning ${candidate.area_km2 !== undefined && candidate.area_km2 !== null ? Number(candidate.area_km2).toFixed(2) : '1.25'} km².`,
-      timeLabel: "T-0h",
-      icon: Satellite,
-      colorClass: "primary",
-      criticality: null
-    });
-  } else if (scene && !candidate) {
-    events.push({
-      id: "detection",
-      title: "SAR Observation Acquired",
-      source: "No Slick Candidate",
-      description: "Sentinel-1 observation acquired for AOI; no anomalous surface slick candidates identified.",
-      timeLabel: "T-0h",
-      icon: Satellite,
-      colorClass: "on-surface-variant",
-      criticality: null
-    });
-  } else if (!scene) {
-    events.push({
-      id: "detection",
-      title: "SAR Acquisition Unavailable",
-      source: "Sentinel-1 Ingestion",
-      description: "No usable Sentinel-1 SAR observation was available for the AOI.",
-      timeLabel: "T-0h",
-      icon: AlertTriangle,
-      colorClass: "on-surface-variant",
-      criticality: null
-    });
-  }
-
-  // 2. Model Assessment
-  if (assessment) {
-    events.push({
-      id: "assessment",
-      title: "Model Assessment Completed",
-      source: "HOG+SVM",
-      description: `Classifier output raw decision score of ${assessment.raw_score?.toFixed(2)} for ${candidate?.classification || 'OIL_LIKE'} anomaly.`,
-      timeLabel: "T+1h",
-      icon: Activity,
-      colorClass: "primary",
-      criticality: null
-    });
-  }
-
-  // 3. Evidence Fusion
-  if (fusion) {
-    events.push({
-      id: "fusion",
-      title: "Evidence Fusion Completed",
-      source: "Environmental Data",
-      description: `Multi-modal evidence fusion confirms physical environmental conditions ${fusion.overall_assessment_state} the hypothesis.`,
-      timeLabel: "T+2h",
-      icon: CheckCircle,
-      colorClass: "primary",
-      criticality: null
-    });
-  }
-
-  // 4. Drift Scenario
-  if (drift) {
-    events.push({
-      id: "drift",
-      title: "Estimated release window begins",
-      source: "Drift Engine",
-      description: `Backward simulation from detection time indicates release likely commenced within this window.`,
-      timeLabel: "T-24h",
-      icon: Droplet,
-      colorClass: "on-surface-variant",
-      criticality: null
-    });
-  }
-
-  // 5. AIS Discovery
-  if (ais && ais.length > 0) {
-    events.push({
-      id: "ais",
-      title: "Targets enter candidate region",
-      source: "AIS",
-      description: `Targets crossed the established geofence boundary corresponding to the primary search matrix.`,
-      timeLabel: "T-48h",
-      icon: MapPin,
-      colorClass: "on-surface-variant",
-      criticality: null
-    });
-  }
-
-  // 6. Attribution Evaluated
-  if (attribution && topCandidate) {
-    events.push({
-      id: "attribution",
-      title: "AIS anomaly/gap detected",
-      source: "Criticality: HIGH",
-      description: `Highest-ranked candidate evaluated with score ${topCandidate?.evidence_ranking_score}.`,
-      timeLabel: "T-36h",
-      icon: AlertTriangle,
-      colorClass: "error",
-      criticality: "HIGH"
-    });
-  }
-
-  // Sort events chronologically (simulated logic based on timeLabel)
-  const orderMap: Record<string, number> = {
-    "T-48h": 1,
-    "T-36h": 2,
-    "T-24h": 3,
-    "T-0h": 4,
-    "T+1h": 5,
-    "T+2h": 6,
+  const getEventIcon = (eventType: string) => {
+    switch (eventType) {
+      case "SATELLITE_DETECTION":
+      case "SATELLITE_ACQUISITION":
+        return Satellite;
+      case "SATELLITE_CLASSIFICATION":
+        return Activity;
+      case "ENVIRONMENTAL_OBSERVATION":
+        return CheckCircle;
+      case "DRIFT_HINDCAST":
+        return Droplet;
+      case "AIS_PRESENCE":
+        return MapPin;
+      case "ATTRIBUTION_EVALUATION":
+        return Flag;
+      case "COUNTERFACTUAL_SIMULATION":
+        return Activity;
+      default:
+        return Activity;
+    }
   };
-  events.sort((a, b) => orderMap[a.timeLabel] - orderMap[b.timeLabel]);
+
+  const getEventColor = (ev: any) => {
+    if (ev.status === "UNAVAILABLE") return "on-surface-variant";
+    if (ev.status === "FAILED" || ev.status === "ERROR") return "error";
+    if (ev.event_type === "ATTRIBUTION_EVALUATION") return "primary";
+    return "primary";
+  };
+
+  const formatEventTime = (timeStr?: string) => {
+    if (!timeStr) return "TIME: UNAVAILABLE";
+    try {
+      const d = new Date(timeStr);
+      if (isNaN(d.getTime())) return timeStr;
+      return d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+    } catch {
+      return timeStr;
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full relative bg-[#eef4f8] overflow-hidden">
@@ -219,63 +155,81 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
           <div className="relative pl-2 md:pl-8">
             
             {/* Vertical Line (Spine) */}
-            <div className="absolute top-4 bottom-4 left-[96px] md:left-[120px] w-px bg-outline-variant hidden sm:block"></div>
+            {events && events.length > 0 && (
+              <div className="absolute top-4 bottom-4 left-[96px] md:left-[170px] w-px bg-outline-variant hidden sm:block"></div>
+            )}
 
-            {events.length === 0 && (
-              <div className="text-center text-sm text-on-surface-variant py-8 border border-dashed border-outline-variant rounded">
-                {investigation?.status === 'INCOMPLETE' || investigation?.status === 'ACQUISITION_UNAVAILABLE'
-                  ? 'Investigation incomplete — no usable SAR candidate was available for downstream forensic analysis.'
-                  : 'No events recorded yet.'}
+            {timelineLoading && (
+              <div className="text-center text-sm font-mono text-on-surface-variant py-12 border border-dashed border-outline-variant rounded bg-surface">
+                Loading evidence timeline...
               </div>
             )}
 
-            {events.map((evt) => (
-              <div key={evt.id} className={`flex flex-col sm:flex-row items-start gap-4 md:gap-6 mb-8 relative ${evt.colorClass === 'error' || evt.colorClass === 'primary' ? 'group' : ''}`}>
-                
-                {evt.colorClass === 'error' && <div className="absolute inset-0 bg-gradient-to-r from-error/5 to-transparent rounded-lg -z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-                {evt.colorClass === 'primary' && <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent rounded-lg -z-10 opacity-0 group-hover:opacity-100 transition-opacity"></div>}
-
-                <div className="sm:w-[80px] md:w-[100px] flex-shrink-0 pt-3">
-                  <span className={`font-mono text-${evt.colorClass} block sm:text-right font-bold text-xs`}>{evt.timeLabel}</span>
-                </div>
-                
-                <div className={`hidden sm:flex flex-shrink-0 w-8 h-8 rounded-full items-center justify-center z-10 mt-2 shadow-sm ${
-                  evt.colorClass === 'on-surface-variant' 
-                    ? 'bg-surface-container-low border border-outline-variant text-on-surface-variant' 
-                    : `bg-surface border-2 border-${evt.colorClass} text-${evt.colorClass}`
-                }`}>
-                  <evt.icon className="w-4 h-4" />
-                </div>
-                
-                <div className={`flex-grow bg-surface rounded p-4 relative overflow-hidden shadow-sm hover:border-outline transition-colors ${
-                  evt.colorClass === 'on-surface-variant'
-                    ? 'border border-outline-variant'
-                    : `border border-${evt.colorClass}/30`
-                }`}>
-                  {evt.colorClass !== 'on-surface-variant' && (
-                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                      evt.colorClass === 'error' 
-                        ? 'bg-[repeating-linear-gradient(45deg,transparent,transparent_4px,var(--color-error)_4px,var(--color-error)_8px)] opacity-30'
-                        : 'bg-primary'
-                    }`}></div>
-                  )}
-                  
-                  <div className="flex justify-between items-start mb-2 pl-3">
-                    <h3 className={`text-sm font-bold text-${evt.colorClass === 'on-surface-variant' ? 'on-surface' : evt.colorClass}`}>{evt.title}</h3>
-                    <div className="flex gap-2">
-                      <span className={`text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded border flex items-center gap-1 ${
-                        evt.colorClass === 'on-surface-variant'
-                          ? 'bg-surface-container-high text-on-surface-variant border-outline-variant'
-                          : `bg-${evt.colorClass}/10 text-${evt.colorClass} border-${evt.colorClass}/20`
-                      }`}>
-                        {evt.source}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-on-surface-variant pl-3 leading-relaxed font-medium">{evt.description}</p>
-                </div>
+            {timelineError && !timelineLoading && (
+              <div className="text-center text-sm font-mono text-error py-12 border border-dashed border-error/30 rounded bg-error/5 flex flex-col items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-error" />
+                <span>TIMELINE: UNAVAILABLE — {timelineError}</span>
               </div>
-            ))}
+            )}
+
+            {!timelineLoading && !timelineError && (!events || events.length === 0) && (
+              <div className="text-center text-sm font-mono text-on-surface-variant py-12 border border-dashed border-outline-variant rounded bg-surface">
+                No timeline events available for this investigation.
+              </div>
+            )}
+
+            {!timelineLoading && !timelineError && events && events.map((evt: any) => {
+              const EventIcon = getEventIcon(evt.event_type);
+              const colorClass = getEventColor(evt);
+              const timeLabel = formatEventTime(evt.event_time);
+
+              return (
+                <div key={evt.id} className="flex flex-col sm:flex-row items-start gap-4 md:gap-6 mb-8 relative group">
+                  <div className="sm:w-[130px] md:w-[150px] flex-shrink-0 pt-2">
+                    <span className="font-mono text-on-surface-variant block sm:text-right font-medium text-[11px] leading-tight">
+                      {timeLabel}
+                    </span>
+                  </div>
+                  
+                  <div className={`hidden sm:flex flex-shrink-0 w-8 h-8 rounded-full items-center justify-center z-10 mt-1 shadow-sm ${
+                    colorClass === 'on-surface-variant' 
+                      ? 'bg-surface-container-low border border-outline-variant text-on-surface-variant' 
+                      : `bg-surface border-2 border-${colorClass} text-${colorClass}`
+                  }`}>
+                    <EventIcon className="w-4 h-4" />
+                  </div>
+                  
+                  <div className={`flex-grow bg-surface rounded p-4 relative overflow-hidden shadow-sm hover:border-outline transition-colors ${
+                    colorClass === 'on-surface-variant'
+                      ? 'border border-outline-variant'
+                      : `border border-${colorClass}/30`
+                  }`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="text-sm font-bold text-on-surface">
+                          {evt.event_type ? evt.event_type.replace(/_/g, ' ') : 'EVENT'}
+                        </h3>
+                        <span className="text-[10px] font-mono text-on-surface-variant">
+                          Source: {evt.source || 'Unknown'}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <span className={`text-[9px] font-bold tracking-widest uppercase px-2 py-1 rounded border flex items-center gap-1 ${
+                          evt.status === 'UNAVAILABLE'
+                            ? 'bg-surface-container-high text-on-surface-variant border-outline-variant'
+                            : evt.status === 'FAILED' || evt.status === 'ERROR'
+                            ? 'bg-error/10 text-error border-error/20'
+                            : 'bg-primary/10 text-primary border-primary/20'
+                        }`}>
+                          {evt.status || 'RECORDED'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-on-surface leading-relaxed font-normal mt-1">{evt.description}</p>
+                  </div>
+                </div>
+              );
+            })}
 
           </div>
         </div>
