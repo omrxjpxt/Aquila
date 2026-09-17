@@ -1,4 +1,12 @@
 import os
+import sys
+
+_backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if os.getcwd() != _backend_dir:
+    os.chdir(_backend_dir)
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+
 os.environ["AQUILA_DB_PATH"] = "data/test_aquila.db"
 
 import pytest
