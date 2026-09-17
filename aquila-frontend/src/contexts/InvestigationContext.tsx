@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { SatelliteScene, Slick, LookAlikeAssessment, EvidenceFusionResult, DriftResult, ForecastResult, DriftScenario, VesselCandidate, OriginEstimate, AttributionResult, CounterfactualScenario, CounterfactualResult, Investigation } from "@/lib/api/types";
 import { satelliteApi } from "@/lib/api/satellite";
 import { analysisApi } from "@/lib/api/analysis";
@@ -29,7 +29,7 @@ interface InvestigationState {
   
   setSelectedCandidateId: (id: string | null) => void;
   
-  loadInvestigation: (id: string) => Promise<void>;
+  loadInvestigation: (id: string, force?: boolean) => Promise<void>;
   assessCandidate: (slickId: string) => Promise<void>;
   fuseEvidence: (slickId: string) => Promise<void>;
   runHindcast: (scenario: DriftScenario) => Promise<void>;
@@ -59,11 +59,16 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadInvestigation = async (invId: string) => {
-    if (investigation?.id === invId) return;
+  const activeIdRef = useRef<string | null>(null);
+
+  const loadInvestigation = useCallback(async (invId: string, force: boolean = false) => {
+    if (!invId) return;
+    if (!force && activeIdRef.current === invId) return;
+    activeIdRef.current = invId;
     
     setIsLoading(true);
     setError(null);
+    setInvestigation(null);
     setScene(null);
     setCandidates([]);
     setSelectedCandidateId(null);
@@ -78,15 +83,18 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
     setEvidenceList([]);
     try {
       const inv = await investigationsApi.getInvestigation(invId);
+      if (activeIdRef.current !== invId) return;
       setInvestigation(inv);
 
       if (inv.source_product_id) {
         try {
           const fetchedScene = await satelliteApi.getScene(inv.source_product_id);
+          if (activeIdRef.current !== invId) return;
           setScene(fetchedScene);
           
           if (fetchedScene.is_processed) {
             const fetchedCandidates = await satelliteApi.getCandidates(fetchedScene.id);
+            if (activeIdRef.current !== invId) return;
             const enrichedCandidates = fetchedCandidates.map(c => {
               let centroid = c.centroid;
               if (!centroid && (c.geometry as any)?.coordinates?.[0]?.length > 0) {
@@ -97,9 +105,9 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
               }
               return {
                 ...c,
-                centroid: centroid || [58.025, 24.474],
-                area_km2: c.area_km2 ?? (c as any).area_sq_km ?? 1.25,
-                contrast_ratio: c.contrast_ratio ?? 2.4
+                centroid: centroid || null,
+                area_km2: c.area_km2 ?? (c as any).area_sq_km ?? null,
+                contrast_ratio: c.contrast_ratio ?? null
               };
             });
             setCandidates(enrichedCandidates);
@@ -114,6 +122,8 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
         }
       }
 
+      if (activeIdRef.current !== invId) return;
+
       // Fallback: Populate candidate slick from persisted investigation anomaly record
       if (inv.anomaly_id) {
         const geom = (inv as any).anomaly_geometry_json 
@@ -122,18 +132,25 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
               : (inv as any).anomaly_geometry_json)
           : inv.anomaly_geometry || null;
         if (geom) {
+          let geomCentroid: [number, number] | null = null;
+          if (geom.coordinates?.[0]?.length > 0) {
+            const coords = geom.coordinates[0];
+            const avgLon = coords.reduce((sum: number, pt: number[]) => sum + pt[0], 0) / coords.length;
+            const avgLat = coords.reduce((sum: number, pt: number[]) => sum + pt[1], 0) / coords.length;
+            geomCentroid = [avgLon, avgLat];
+          }
           setCandidates(prev => {
             if (prev.length > 0) return prev;
             return [{
               id: inv.anomaly_id!,
               scene_id: inv.source_product_id || '',
               geometry: geom,
-              area_km2: 1.25,
-              perimeter_km: 4.8,
-              mean_backscatter_db: -21.4,
-              aspect_ratio: 3.2,
+              area_km2: (inv as any).area_km2 ?? null,
+              perimeter_km: (inv as any).perimeter_km ?? null,
+              mean_backscatter_db: null,
+              aspect_ratio: null,
               classification: 'CANDIDATE_SLICK',
-              centroid: [58.025, 24.474],
+              centroid: geomCentroid as any,
               is_verified: false,
               created_at: inv.created_at
             }];
@@ -142,9 +159,12 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
         }
       }
 
+      if (activeIdRef.current !== invId) return;
+
       // Authoritative hydration: Load persisted evidence events from SQLite backend
       try {
         const evidence = await investigationsApi.getEvidence(invId);
+        if (activeIdRef.current !== invId) return;
         setEvidenceList(evidence);
         
         const scenarioId = `hindcast-${invId}-24h`;
@@ -178,11 +198,14 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
         console.warn("Could not load persisted evidence for investigation:", e);
       }
     } catch (err: unknown) {
+      if (activeIdRef.current !== invId) return;
       setError(err instanceof Error ? err.message : "Failed to load investigation state");
     } finally {
-      setIsLoading(false);
+      if (activeIdRef.current === invId) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
   const assessCandidate = async (slickId: string) => {
     if (!scene) return;

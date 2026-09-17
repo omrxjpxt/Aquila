@@ -486,7 +486,18 @@ async def create_manual_investigation(
         inv_repo.add_evidence(ev_attr)
 
     # 10. Persist Final Status
-    final_status = "REPORT_READY" if target_slick else "INCOMPLETE"
+    is_ready = bool(
+        target_slick and
+        wind and
+        current and
+        drift_result and
+        getattr(drift_result, 'origin_estimate', None) and
+        ev_ais and
+        ev_ais.status != "UNAVAILABLE" and
+        ev_attr and
+        ev_attr.status != "UNAVAILABLE"
+    )
+    final_status = "REPORT_READY" if is_ready else "INCOMPLETE"
     updated_inv = inv_repo.update_investigation_status(inv.id, final_status, anomaly_geom)
     return updated_inv or inv
 

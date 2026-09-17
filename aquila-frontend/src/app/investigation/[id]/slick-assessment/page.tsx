@@ -92,10 +92,10 @@ export default function SlickAssessmentPage({ params }: { params: Promise<{ id: 
         <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10">
           <div className="bg-surface/90 backdrop-blur border border-outline-variant px-3 py-1.5 rounded flex items-center gap-2 shadow-sm">
             <span className="text-[9px] font-bold tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 uppercase">
-              {scene?.provenance === 'LIVE' ? 'LIVE / CDSE' : 'LOCAL SAMPLE / REAL DATA'}
+              {!scene ? 'UNAVAILABLE' : scene.provenance === 'LIVE' ? 'LIVE / CDSE' : scene.provenance === 'DEMO_MOCK' ? 'DEMO_MOCK' : 'LOCAL SAMPLE / REAL DATA'}
             </span>
             <span className="font-mono text-on-surface text-xs font-medium border-l border-outline-variant pl-2">
-              Sensor: {scene?.provider || 'UNKNOWN'}
+              Sensor: {scene ? (scene.provider || 'Copernicus Sentinel-1') : 'UNAVAILABLE'}
             </span>
           </div>
           <div className="bg-surface/90 backdrop-blur border border-outline-variant px-3 py-1.5 rounded flex items-center gap-2 shadow-sm">

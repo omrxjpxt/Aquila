@@ -452,6 +452,17 @@ class OrchestrationService:
                 logger.warning(f"Environment unavailable for {slick.id}: {e}")
                 if "ENV:UNAVAILABLE" not in job.provenance_references:
                     job.provenance_references.append("ENV:UNAVAILABLE")
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="ENVIRONMENTAL_OBSERVATION",
+                    source="OpenMeteo",
+                    status="UNAVAILABLE",
+                    description=f"Environmental observations unavailable: {type(e).__name__}",
+                    event_time=slick.detected_at,
+                    metadata={"status": "UNAVAILABLE", "error": str(e)}
+                )
+                self.investigation_repository.add_evidence(ev)
                 
         job.status = JobStatus.DRIFT
 
@@ -495,6 +506,17 @@ class OrchestrationService:
                 logger.error(f"Drift unavailable for {slick.id}: {e}", exc_info=True)
                 if "DRIFT:FAILED" not in job.provenance_references:
                     job.provenance_references.append("DRIFT:FAILED")
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="DRIFT_HINDCAST",
+                    source="OpenDrift",
+                    status="UNAVAILABLE",
+                    description="Drift hindcast unavailable: numerical trajectory reconstruction failed.",
+                    event_time=slick.detected_at,
+                    metadata={"status": "UNAVAILABLE", "error": str(e)}
+                )
+                self.investigation_repository.add_evidence(ev)
                 
         job.status = JobStatus.VESSEL_EVIDENCE
 
@@ -655,18 +677,49 @@ class OrchestrationService:
                     metadata=att_meta
                 )
                 self.investigation_repository.add_evidence(ev)
+            else:
+                ev = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=target['investigation_id'],
+                    event_type="ATTRIBUTION_EVALUATION",
+                    source="AttributionService",
+                    status="UNAVAILABLE",
+                    description="Attribution evaluation unavailable: requires valid drift trajectory and origin estimate.",
+                    event_time=datetime.utcnow(),
+                    metadata={"status": "UNAVAILABLE", "reason": "Missing drift hindcast or origin estimate."}
+                )
+                self.investigation_repository.add_evidence(ev)
 
-            # Update associated investigation status to REPORT_READY upon successful pipeline completion
+            # Evaluate pipeline completeness for investigation status
             inv_id = target.get('investigation_id')
             slick = target.get('slick')
             if inv_id and slick:
                 anomaly_geom = slick.geometry if (hasattr(slick, 'geometry') and slick.geometry) else None
+
+                has_env = "ENV:UNAVAILABLE" not in job.provenance_references and (target.get('wind') is not None if ('wind' in target or 'current' in target) else True)
+                has_drift = (
+                    drift_result is not None and 
+                    getattr(drift_result, 'origin_estimate', None) is not None and 
+                    "DRIFT:FAILED" not in job.provenance_references
+                )
+                ais_available = not is_gfw_unavailable
+                attribution_complete = (
+                    has_drift and 
+                    ais_available and 
+                    (target.get('attribution_result') is not None or len(candidates) == 0)
+                )
+
+                if has_env and has_drift and ais_available and attribution_complete:
+                    inv_status = "REPORT_READY"
+                else:
+                    inv_status = "INCOMPLETE"
+
                 self.investigation_repository.update_investigation_status(
                     inv_id=inv_id,
-                    status="REPORT_READY",
+                    status=inv_status,
                     anomaly_geometry=anomaly_geom
                 )
-                logger.info(f"Updated automated investigation {inv_id} status to REPORT_READY")
+                logger.info(f"Updated automated investigation {inv_id} status to {inv_status}")
                 
         job.status = JobStatus.REPORT_READY
 

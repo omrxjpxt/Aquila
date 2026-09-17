@@ -213,3 +213,173 @@ async def test_automated_incomplete_no_candidate_does_not_become_report_ready():
 
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_automated_investigation_with_drift_failure_resolves_incomplete():
+    """
+    Regression Test (BUG-02): When an automated monitoring job has a slick candidate
+    but drift hindcast reconstruction fails (no origin estimate), the investigation
+    MUST resolve to INCOMPLETE, not REPORT_READY.
+    """
+    import uuid
+    from app.schemas.orchestration import MonitoringJob, JobStatus
+    from app.schemas.investigation import InvestigationCreate
+    from app.schemas.slick import Slick
+    from app.services.orchestrator import orchestrator
+    from app.api.deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: {"uid": "test_operator", "email": "operator@aquila.system"}
+
+    try:
+        inv_repo = get_investigation_repository()
+        job_repo = orchestrator.job_repository
+
+        test_prod_id = f"test-drift-fail-{uuid.uuid4().hex[:6]}"
+        test_slick_id = f"cand-{uuid.uuid4().hex[:6]}"
+        
+        inv_create = InvestigationCreate(
+            title="Drift Failure Test Pipeline",
+            status="OPEN",
+            priority="HIGH",
+            creation_mode="AUTOMATIC_MONITORING",
+            owner_uid="SYSTEM",
+            source_product_id=test_prod_id,
+            monitoring_zone_id="zone-gulf-of-oman",
+            anomaly_id=f"{test_prod_id}_{test_slick_id}",
+            anomaly_geometry={"type": "Polygon", "coordinates": [[[58.0, 24.0], [58.1, 24.0], [58.1, 24.1], [58.0, 24.1], [58.0, 24.0]]]}
+        )
+        inv = inv_repo.create_investigation(inv_create)
+
+        job = MonitoringJob(
+            product_id=test_prod_id,
+            product_name="S1A_DRIFT_FAIL_SCENE",
+            monitoring_zone_id="zone-gulf-of-oman",
+            owner_uid="SYSTEM",
+            status=JobStatus.ATTRIBUTION,
+            investigation_ids=[inv.id],
+            provenance_references=["DRIFT:FAILED"]
+        )
+        job = job_repo.create_job(job)
+
+        dummy_slick = Slick(
+            id=test_slick_id,
+            source_scene_id=test_prod_id,
+            detected_at=datetime.utcnow(),
+            geometry={"type": "Polygon", "coordinates": [[[58.0, 24.0], [58.1, 24.0], [58.1, 24.1], [58.0, 24.1], [58.0, 24.0]]]},
+            area_sq_km=1.5
+        )
+
+        ctx = orchestrator._get_context(job.job_id)
+        ctx['investigation_targets'] = [{
+            'investigation_id': inv.id,
+            'slick': dummy_slick,
+            'drift_result': None,
+            'gfw_identities': []
+        }]
+
+        await orchestrator._handle_attribution(job)
+
+        updated_inv = inv_repo.get_investigation(inv.id)
+        assert updated_inv is not None
+        assert updated_inv.status == "INCOMPLETE", f"Expected INCOMPLETE on drift failure, got {updated_inv.status}"
+
+        # Verify investigation does NOT appear in /reports
+        rep_resp = client.get("/api/v1/reports")
+        assert rep_resp.status_code == 200
+        reports = rep_resp.json()
+        matching_reports = [r for r in reports if r["investigation_id"] == inv.id]
+        assert len(matching_reports) == 0
+
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_automated_investigation_with_gfw_unavailable_resolves_incomplete():
+    """
+    Regression Test (BUG-02): When an automated monitoring job has a slick and successful drift,
+    but GFW AIS is unavailable/unconfigured, the investigation MUST resolve to INCOMPLETE,
+    not REPORT_READY.
+    """
+    import uuid
+    from app.schemas.orchestration import MonitoringJob, JobStatus
+    from app.schemas.investigation import InvestigationCreate
+    from app.schemas.slick import Slick
+    from app.schemas.drift import DriftResult, OriginEstimate, DriftProvenance
+    from app.services.orchestrator import orchestrator
+    from app.api.deps import get_current_user
+
+    app.dependency_overrides[get_current_user] = lambda: {"uid": "test_operator", "email": "operator@aquila.system"}
+
+    try:
+        inv_repo = get_investigation_repository()
+        job_repo = orchestrator.job_repository
+
+        test_prod_id = f"test-gfw-unavail-{uuid.uuid4().hex[:6]}"
+        test_slick_id = f"cand-{uuid.uuid4().hex[:6]}"
+        
+        inv_create = InvestigationCreate(
+            title="GFW Unavailable Pipeline",
+            status="OPEN",
+            priority="HIGH",
+            creation_mode="AUTOMATIC_MONITORING",
+            owner_uid="SYSTEM",
+            source_product_id=test_prod_id,
+            monitoring_zone_id="zone-gulf-of-oman",
+            anomaly_id=f"{test_prod_id}_{test_slick_id}",
+            anomaly_geometry={"type": "Polygon", "coordinates": [[[58.0, 24.0], [58.1, 24.0], [58.1, 24.1], [58.0, 24.1], [58.0, 24.0]]]}
+        )
+        inv = inv_repo.create_investigation(inv_create)
+
+        job = MonitoringJob(
+            product_id=test_prod_id,
+            product_name="S1A_GFW_UNAVAIL_SCENE",
+            monitoring_zone_id="zone-gulf-of-oman",
+            owner_uid="SYSTEM",
+            status=JobStatus.ATTRIBUTION,
+            investigation_ids=[inv.id],
+            provenance_references=["GFW:UNAVAILABLE"]
+        )
+        job = job_repo.create_job(job)
+
+        dummy_slick = Slick(
+            id=test_slick_id,
+            source_scene_id=test_prod_id,
+            detected_at=datetime.utcnow(),
+            geometry={"type": "Polygon", "coordinates": [[[58.0, 24.0], [58.1, 24.0], [58.1, 24.1], [58.0, 24.1], [58.0, 24.0]]]},
+            area_sq_km=1.5
+        )
+
+        dummy_drift = DriftResult(
+            id=f"drift-{uuid.uuid4().hex[:6]}",
+            scenario_id=f"scen-{uuid.uuid4().hex[:6]}",
+            slick_id=test_slick_id,
+            run_time=datetime.utcnow(),
+            trajectories=[],
+            origin_estimate=OriginEstimate(
+                id=f"orig-{uuid.uuid4().hex[:6]}",
+                slick_id=test_slick_id,
+                scenario_id="scen-1",
+                estimated_time=datetime.utcnow(),
+                geometry={"type": "Polygon", "coordinates": [[[58.0, 24.0], [58.1, 24.0], [58.1, 24.1], [58.0, 24.1], [58.0, 24.0]]]}
+            ),
+            provenance=DriftProvenance(engine="OpenDrift", mode="LIVE")
+        )
+
+        ctx = orchestrator._get_context(job.job_id)
+        ctx['investigation_targets'] = [{
+            'investigation_id': inv.id,
+            'slick': dummy_slick,
+            'drift_result': dummy_drift,
+            'gfw_identities': []
+        }]
+
+        await orchestrator._handle_attribution(job)
+
+        updated_inv = inv_repo.get_investigation(inv.id)
+        assert updated_inv is not None
+        assert updated_inv.status == "INCOMPLETE", f"Expected INCOMPLETE on GFW unavailable, got {updated_inv.status}"
+
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
