@@ -60,13 +60,20 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
 
   const candidates = isDemoInvestigation || aisMode === "DEMO_MOCK" 
     ? rawCandidates 
-    : rawCandidates.filter(c => !isMockVessel(c.identity?.mmsi, c.identity?.name));
+    : (Array.isArray(rawCandidates) ? rawCandidates.filter(c => !isMockVessel(c?.identity?.mmsi, c?.identity?.name)) : []);
 
   const attributionResult = isDemoInvestigation || aisMode === "DEMO_MOCK"
     ? rawAttribution
-    : (rawAttribution && rawAttribution.candidates?.some(c => isMockVessel(c.vessel_identity?.mmsi, c.vessel_identity?.name)))
+    : (rawAttribution && Array.isArray(rawAttribution.candidates) && rawAttribution.candidates.some(c => isMockVessel(c?.vessel_identity?.mmsi, c?.vessel_identity?.name)))
       ? null
       : rawAttribution;
+
+  const hasEvaluatedAttribution = Boolean(
+    attributionResult &&
+    (attributionResult as any).status !== "UNAVAILABLE" &&
+    Array.isArray(attributionResult.candidates) &&
+    attributionResult.candidates.length > 0
+  );
 
   const handleDiscover = async () => {
     setAisError(null);
@@ -112,28 +119,30 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
     }
   };
 
-  // If attribution has run, the selected candidate is from attributionResult.candidates
+  // If attribution has run with candidates, the selected candidate is from attributionResult.candidates
   // Otherwise it's from candidates.
-  const displayCandidates = attributionResult ? attributionResult.candidates : candidates.map(c => ({
-    vessel_identity: c.identity,
-    factors: [],
-    supporting_count: 0,
-    contradicting_count: 0,
-    neutral_count: 0,
-    unavailable_count: 0,
-    evidence_coverage: "0/0",
-    evidence_ranking_score: 0,
-    // Add raw track for map if needed
-    _rawTrack: c
-  }));
+  const displayCandidates = (hasEvaluatedAttribution && attributionResult?.candidates)
+    ? attributionResult.candidates
+    : (Array.isArray(candidates) ? candidates.map(c => ({
+        vessel_identity: c?.identity || { mmsi: "UNKNOWN", name: "UNKNOWN", vessel_type: "UNKNOWN", flag: "UNKNOWN" },
+        factors: [],
+        supporting_count: 0,
+        contradicting_count: 0,
+        neutral_count: 0,
+        unavailable_count: 0,
+        evidence_coverage: "0/0",
+        evidence_ranking_score: 0,
+        // Add raw track for map if needed
+        _rawTrack: c
+      })) : []);
 
-  const selectedCandidate = displayCandidates.find(c => c.vessel_identity.mmsi === selectedMmsi) || displayCandidates[0];
+  const selectedCandidate = Array.isArray(displayCandidates) && displayCandidates.length > 0
+    ? (displayCandidates.find(c => c?.vessel_identity?.mmsi === selectedMmsi) || displayCandidates[0] || null)
+    : null;
 
-  const mapCenter: [number, number] = driftResult && driftResult.origin_estimate
-    ? [
-        driftResult.origin_estimate.geometry.coordinates[0][0][0], 
-        driftResult.origin_estimate.geometry.coordinates[0][0][1]
-      ]
+  const originCoords = driftResult?.origin_estimate?.geometry?.coordinates;
+  const mapCenter: [number, number] = (Array.isArray(originCoords) && Array.isArray(originCoords[0]) && Array.isArray(originCoords[0][0]) && typeof originCoords[0][0][0] === 'number' && typeof originCoords[0][0][1] === 'number')
+    ? [originCoords[0][0][0], originCoords[0][0][1]]
     : [0, 0];
 
   const getStatusIcon = (status: EvidenceStatus) => {
@@ -278,17 +287,17 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
 
                 <button 
                   onClick={handleDiscover}
-                  disabled={!driftResult || isLoading}
+                  disabled={!driftResult?.origin_estimate || isLoading}
                   className="w-full bg-primary hover:bg-primary-hover text-on-primary font-bold text-xs uppercase tracking-wider py-2 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   <Search className="w-4 h-4" />
                   {isLoading ? "Querying AIS..." : "Discover Vessels"}
                 </button>
               </div>
-            ) : !attributionResult ? (
+            ) : !hasEvaluatedAttribution ? (
               <button 
                 onClick={handleEvaluate}
-                disabled={isLoading}
+                disabled={isLoading || !driftResult?.origin_estimate}
                 className="w-full bg-[#00647C] hover:bg-[#005063] text-white font-bold text-xs uppercase tracking-wider py-2 rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <ShieldCheck className="w-4 h-4" />
@@ -297,7 +306,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
             ) : (
               <div className="bg-surface-container border border-outline-variant rounded p-2">
                 <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">Ranking Methodology</span>
-                <span className="text-[9px] text-on-surface block leading-tight">{attributionResult.ranking_methodology}</span>
+                <span className="text-[9px] text-on-surface block leading-tight">{attributionResult?.ranking_methodology || "Six-Factor Evidence-Weighted Heuristic"}</span>
               </div>
             )}
           </div>
@@ -310,33 +319,33 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                   <span>Vessel Attribution Unavailable</span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  {aisError || "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider."}
+                  {aisError || ((attributionResult as any)?.reason) || "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider."}
                 </p>
               </div>
             ) : (
               displayCandidates.map((cand, idx) => {
-              const isSelected = selectedMmsi === cand.vessel_identity.mmsi;
+              const isSelected = selectedMmsi === cand?.vessel_identity?.mmsi;
               return (
                 <div 
-                  key={cand.vessel_identity.mmsi} 
-                  onClick={() => setSelectedMmsi(cand.vessel_identity.mmsi)} 
+                  key={cand?.vessel_identity?.mmsi || idx} 
+                  onClick={() => setSelectedMmsi(cand?.vessel_identity?.mmsi)} 
                   className={`cursor-pointer p-3 border rounded transition-colors ${isSelected ? 'border-primary bg-primary/5' : 'border-outline-variant bg-surface'}`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-sm text-on-surface">{cand.vessel_identity.name || "UNKNOWN VESSEL"}</span>
-                    {attributionResult && idx === 0 && (
+                    <span className="font-bold text-sm text-on-surface">{cand?.vessel_identity?.name || "UNKNOWN VESSEL"}</span>
+                    {hasEvaluatedAttribution && idx === 0 && (
                       <span className="text-[9px] bg-[#eab308]/20 text-[#8c6b22] border border-[#eab308]/50 px-1.5 py-0.5 rounded font-bold uppercase">Highest Ranked</span>
                     )}
                   </div>
                   <div className="flex justify-between items-end mt-2">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[9px] w-fit bg-surface-container border border-outline px-1.5 py-0.5 rounded text-on-surface-variant font-mono">MMSI: {cand.vessel_identity.mmsi}</span>
+                      <span className="text-[9px] w-fit bg-surface-container border border-outline px-1.5 py-0.5 rounded text-on-surface-variant font-mono">MMSI: {cand?.vessel_identity?.mmsi}</span>
                       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                       {(cand as any)._rawTrack?.provenance?.mode === "USER_PROVIDED_AIS" && (
                         <span className="text-[8px] w-fit font-bold uppercase tracking-widest bg-[#00647C]/20 text-[#00647C] px-1 py-0.5 rounded">USER PROVIDED AIS</span>
                       )}
                     </div>
-                    {attributionResult && (
+                    {hasEvaluatedAttribution && (
                       <div className="flex items-center gap-1">
                         <span className="text-[9px] font-bold uppercase text-on-surface-variant">Compatibility Score</span>
                         <span className="text-sm font-bold text-[#00647C]">{cand.evidence_ranking_score}</span>
@@ -354,7 +363,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
         </div>
 
         {/* RIGHT COLUMN: Detailed Profile */}
-        {selectedCandidate && attributionResult && (
+        {selectedCandidate && hasEvaluatedAttribution && attributionResult && (
           <div className="w-[480px] h-full flex flex-col pointer-events-auto border-l border-outline-variant bg-surface shrink-0 shadow-sm">
             <div className="bg-[#eab308]/10 p-2 text-center border-b border-[#eab308]/30">
               <span className="text-[10px] font-bold tracking-widest uppercase text-[#8c6b22]">Compatibility ranking, not proof of responsibility.</span>
@@ -364,43 +373,43 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
               
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-on-surface mb-1">{selectedCandidate.vessel_identity.name || "UNKNOWN"}</h3>
-                  <span className="font-mono text-[10px] font-medium text-on-surface-variant block uppercase tracking-wider">MMSI {selectedCandidate.vessel_identity.mmsi} • FLAG {selectedCandidate.vessel_identity.flag || "N/A"}</span>
+                  <h3 className="text-xl font-bold text-on-surface mb-1">{selectedCandidate?.vessel_identity?.name || "UNKNOWN"}</h3>
+                  <span className="font-mono text-[10px] font-medium text-on-surface-variant block uppercase tracking-wider">MMSI {selectedCandidate?.vessel_identity?.mmsi} • FLAG {selectedCandidate?.vessel_identity?.flag || "N/A"}</span>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-[9px] font-bold tracking-widest uppercase text-on-surface-variant mb-1">Compatibility Score</span>
-                  <span className="text-3xl font-bold text-[#00647C] leading-none">{selectedCandidate.evidence_ranking_score}</span>
+                  <span className="text-3xl font-bold text-[#00647C] leading-none">{selectedCandidate?.evidence_ranking_score ?? 0}</span>
                 </div>
               </div>
               
               <div className="flex gap-4 p-3 bg-surface border border-outline-variant rounded text-center items-center justify-between">
                 <div>
-                  <span className="block text-lg font-bold text-[#00647C]">{selectedCandidate.supporting_count}</span>
+                  <span className="block text-lg font-bold text-[#00647C]">{selectedCandidate?.supporting_count ?? 0}</span>
                   <span className="text-[9px] font-bold uppercase text-on-surface-variant tracking-wider">Supporting</span>
                 </div>
                 <div>
-                  <span className="block text-lg font-bold text-on-surface-variant">{selectedCandidate.neutral_count}</span>
+                  <span className="block text-lg font-bold text-on-surface-variant">{selectedCandidate?.neutral_count ?? 0}</span>
                   <span className="text-[9px] font-bold uppercase text-on-surface-variant tracking-wider">Neutral</span>
                 </div>
                 <div>
-                  <span className="block text-lg font-bold text-error">{selectedCandidate.contradicting_count}</span>
+                  <span className="block text-lg font-bold text-error">{selectedCandidate?.contradicting_count ?? 0}</span>
                   <span className="text-[9px] font-bold uppercase text-on-surface-variant tracking-wider">Contradict</span>
                 </div>
                 <div>
-                  <span className="block text-lg font-bold text-on-surface-variant/50">{selectedCandidate.unavailable_count}</span>
+                  <span className="block text-lg font-bold text-on-surface-variant/50">{selectedCandidate?.unavailable_count ?? 0}</span>
                   <span className="text-[9px] font-bold uppercase text-on-surface-variant tracking-wider">Unavailable</span>
                 </div>
               </div>
               
               <div className="mt-3 flex justify-between items-center text-[10px] font-mono text-on-surface-variant">
-                <span>Evidence Coverage: <span className="font-bold text-on-surface">{selectedCandidate.evidence_coverage}</span></span>
+                <span>Evidence Coverage: <span className="font-bold text-on-surface">{selectedCandidate?.evidence_coverage || "0/0"}</span></span>
               </div>
             </div>
 
-            <div key={selectedCandidate.vessel_identity.mmsi} className="flex-1 min-h-0 overflow-y-auto bg-surface-container-lowest px-4 py-3 flex flex-col gap-2">
+            <div key={selectedCandidate?.vessel_identity?.mmsi} className="flex-1 min-h-0 overflow-y-auto bg-surface-container-lowest px-4 py-3 flex flex-col gap-2">
               <span className="text-[10px] font-bold tracking-widest uppercase text-on-surface-variant block mb-0.5">Six-Factor Breakdown</span>
               
-              {selectedCandidate.factors.map(factor => {
+              {(selectedCandidate?.factors || []).map(factor => {
                 const isExpanded = !!expandedFactors[factor.factor_name];
                 return (
                   <div key={factor.factor_name} className={`flex flex-col border border-outline-variant rounded-lg bg-surface overflow-hidden border-l-[3px] ${getStatusAccent(factor.status)} transition-shadow ${isExpanded ? 'shadow-md' : 'shadow-sm'}`}>

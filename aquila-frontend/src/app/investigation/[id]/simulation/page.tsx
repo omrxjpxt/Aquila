@@ -89,17 +89,19 @@ export default function CounterfactualSimulationPage({ params }: { params: Promi
   useEffect(() => {
     if (candidates.length > 0 && !selectedMmsi) {
        // eslint-disable-next-line react-hooks/set-state-in-effect
-       setSelectedMmsi(candidates[0].identity.mmsi);
+       if (candidates[0]?.identity?.mmsi) {
+         setSelectedMmsi(candidates[0].identity.mmsi);
+       }
     }
   }, [candidates, selectedMmsi]);
 
-  const selectedCandidate = candidates.find((c: VesselCandidate) => c.identity.mmsi === selectedMmsi);
+  const selectedCandidate = candidates.find((c: VesselCandidate) => c?.identity?.mmsi === selectedMmsi);
 
   // Technical reason: We need to default the form inputs to the candidate's coordinates once they are selected.
   useEffect(() => {
     if (selectedCandidate && (!releaseLon || !releaseLat)) {
        // Default to their latest position or origin region intersection (simplification: track end)
-       const coords = selectedCandidate.track.positions;
+       const coords = selectedCandidate?.track?.positions;
        if (coords && coords.length > 0) {
            // eslint-disable-next-line react-hooks/set-state-in-effect
            setReleaseLon(coords[0].lon.toFixed(4));
