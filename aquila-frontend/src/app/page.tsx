@@ -249,7 +249,7 @@ function AOIMapSynchronizer({ bbox }: { bbox?: [number, number, number, number] 
 }
 
 export default function CommandCenterPage() {
-  const { user, loading: authLoading, login, loginWithGoogle } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [jobs, setJobs] = useState<MonitoringJob[]>([]);
   const [zones, setZones] = useState<MonitoringZone[]>([]);
@@ -389,18 +389,6 @@ export default function CommandCenterPage() {
       }
     };
 
-    const handleGoogle = async () => {
-      setIsSubmitting(true);
-      setAuthError(null);
-      try {
-        await loginWithGoogle();
-      } catch (err: unknown) {
-        setAuthError(err instanceof Error ? err.message : "Failed to sign in with Google");
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
-
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-[#F6FAFD] p-4">
         <div className="bg-white rounded-xl shadow-lg border border-outline-variant/40 max-w-md w-full p-8">
@@ -460,24 +448,6 @@ export default function CommandCenterPage() {
               )}
             </button>
           </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-outline-variant/50" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-outline">or</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={isSubmitting}
-            className="w-full py-2.5 border border-outline-variant bg-surface hover:bg-surface-container-high text-[#001f28] rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <span>Sign In with Google</span>
-          </button>
         </div>
       </div>
     );
