@@ -14,6 +14,7 @@ import {
   Play
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GeoJSONLayer } from "@/components/map/layers";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,7 +40,8 @@ const PIPELINE_STAGES: { key: JobStatus; label: string; short: string }[] = [
 ];
 
 export default function MonitoringPage() {
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<MonitoringStatus | null>(null);
   const [zones, setZones] = useState<MonitoringZone[]>([]);
   const [jobs, setJobs] = useState<MonitoringJob[]>([]);
@@ -51,6 +53,12 @@ export default function MonitoringPage() {
   const [isAreaModalOpen, setIsAreaModalOpen] = useState(false);
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/");
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -172,6 +180,14 @@ export default function MonitoringPage() {
   };
 
   const formattedPollTime = formatUtcTimestamp(status?.last_poll_time);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex-1 h-full flex items-center justify-center bg-surface-lowest">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 h-full relative overflow-hidden bg-surface-lowest flex">

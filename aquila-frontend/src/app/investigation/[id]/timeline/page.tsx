@@ -9,32 +9,22 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
   
   const { investigation, scene, candidates, selectedCandidateId, assessments, fusionResults, driftResults, vesselCandidates, attributionResults, loadInvestigation, isLoading, error } = useInvestigation();
   
-  useEffect(() => {
-    loadInvestigation(id);
-  }, [id, loadInvestigation]);
-
-  if (isLoading && !investigation) {
-    return <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">Loading timeline...</div>;
-  }
-
-  if (error && !investigation) {
-    return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load timeline: {error}</div>;
-  }
-
   const [events, setEvents] = useState<any[] | null>(null);
   const [timelineLoading, setTimelineLoading] = useState<boolean>(true);
   const [timelineError, setTimelineError] = useState<string | null>(null);
 
   useEffect(() => {
+    loadInvestigation(id);
+  }, [id, loadInvestigation]);
+
+  useEffect(() => {
     let isCurrent = true;
-    setTimelineLoading(true);
-    setTimelineError(null);
-    setEvents(null);
 
     import("@/lib/api/investigations")
       .then(({ investigationsApi }) => investigationsApi.getEvidence(id))
       .then((data) => {
         if (!isCurrent) return;
+        setTimelineError(null);
         setEvents(Array.isArray(data) ? data : []);
         setTimelineLoading(false);
       })
@@ -49,6 +39,14 @@ export default function EvidenceTimelinePage({ params }: { params: Promise<{ id:
       isCurrent = false;
     };
   }, [id]);
+
+  if (isLoading && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">Loading timeline...</div>;
+  }
+
+  if (error && !investigation) {
+    return <div className="flex w-full h-full items-center justify-center bg-surface text-error">Failed to load timeline: {error}</div>;
+  }
 
   const candidate = candidates.find(c => c.id === selectedCandidateId) || candidates[0];
   const scenarioId = `hindcast-${id}-24h`;

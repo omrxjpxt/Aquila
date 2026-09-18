@@ -2,12 +2,22 @@
 
 import { Bell, Clock, UserCircle2 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function TopAppBar() {
+  const router = useRouter();
   const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Failed to sign out:", err);
+    }
+    router.push("/");
+  };
   return (
     <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 h-14 bg-surface border-b border-outline-variant">
       <div className="flex items-center gap-6 h-full">
@@ -54,7 +64,7 @@ export function TopAppBar() {
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span className="font-medium text-on-surface-variant max-w-[160px] truncate">{user.email || 'Authenticated'}</span>
             <button 
-              onClick={() => logout()}
+              onClick={handleSignOut}
               className="ml-1 text-red-500 hover:underline font-semibold"
             >
               Sign Out

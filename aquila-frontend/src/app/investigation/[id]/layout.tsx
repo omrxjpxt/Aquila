@@ -2,6 +2,7 @@
 
 import { use, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { InvestigationSubNav } from "@/components/investigation/InvestigationSubNav";
 import { useInvestigation } from "@/contexts/InvestigationContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,15 +11,30 @@ export default function InvestigationLayout(props: {
   children: React.ReactNode;
   params: Promise<{ id: string }>;
 }) {
+  const router = useRouter();
   const { id } = use(props.params);
   const { loadInvestigation, isLoading, error, investigation } = useInvestigation();
   const { user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/");
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     if (id && !authLoading && user && investigation?.id !== id) {
       loadInvestigation(id);
     }
   }, [id, authLoading, user, investigation?.id, loadInvestigation]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full w-full bg-surface-container-lowest">

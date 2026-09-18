@@ -10,7 +10,6 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   ShieldCheck, 
-  Compass,
   ArrowRight,
   Info
 } from "lucide-react";
@@ -40,6 +39,12 @@ export default function NewInvestigationPage() {
   const [progressStage, setProgressStage] = useState<string | null>(null);
   const [result, setResult] = useState<ManualInvestigationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/");
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     if (!user) return;
@@ -134,7 +139,7 @@ export default function NewInvestigationPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || !user) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-surface">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
