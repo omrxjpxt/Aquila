@@ -71,12 +71,12 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
     (driftResult.origin_estimate || (driftResult.trajectories && driftResult.trajectories.length > 0))
   );
 
-  // If we have a cached scene and candidate but no drift result yet, run it
+  // If we have a candidate but no drift result yet, run it
   useEffect(() => {
-    if (scene && selectedCandidate && !driftResult && !isLoading) {
+    if ((scene || investigation?.source_product_id) && selectedCandidate && !driftResult && !isLoading) {
       runHindcast({ ...scenarioParams, slick_id: selectedCandidate.id });
     }
-  }, [scene, selectedCandidate, driftResult, isLoading, runHindcast, scenarioParams]);
+  }, [scene, investigation, selectedCandidate, driftResult, isLoading, runHindcast, scenarioParams]);
 
   if (isLoading && !investigation) {
     return (
@@ -96,7 +96,9 @@ export default function DriftReconstructionPage({ params }: { params: Promise<{ 
 
   const center: [number, number] = (selectedCandidate?.centroid && Array.isArray(selectedCandidate.centroid) && selectedCandidate.centroid.length >= 2)
     ? (selectedCandidate.centroid as [number, number])
-    : ((selectedCandidate?.geometry as unknown as GeoJSON.Polygon)?.coordinates?.[0]?.[0] as [number, number]) || [58.0257, 24.4744];
+    : ((selectedCandidate?.geometry as unknown as GeoJSON.Polygon)?.coordinates?.[0]?.[0] as [number, number])
+    || ((driftResult?.origin_estimate?.geometry as unknown as GeoJSON.Polygon)?.coordinates?.[0]?.[0] as [number, number])
+    || [58.0257, 24.4744];
 
   // Derived geometries
   const slickGeometry = selectedCandidate?.geometry;

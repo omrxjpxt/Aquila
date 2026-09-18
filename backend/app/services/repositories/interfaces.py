@@ -42,7 +42,14 @@ class InvestigationRepository:
     def get_evidence(self, investigation_id: str) -> List[EvidenceEvent]:
         raise NotImplementedError
 
-    def update_investigation_status(self, inv_id: str, status: str, anomaly_geometry: Optional[Dict[str, Any]] = None) -> Optional[Investigation]:
+    def update_investigation_status(
+        self, 
+        inv_id: str, 
+        status: str, 
+        anomaly_geometry: Optional[Dict[str, Any]] = None,
+        source_product_id: Optional[str] = None,
+        anomaly_id: Optional[str] = None
+    ) -> Optional[Investigation]:
         raise NotImplementedError
 
 

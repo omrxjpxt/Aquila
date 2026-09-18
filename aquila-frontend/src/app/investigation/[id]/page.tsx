@@ -15,7 +15,7 @@ export default function InvestigationWorkspacePage({ params }: { params: Promise
     loadInvestigation(id);
   }, [id, loadInvestigation]);
 
-  const fusion = selectedCandidateId ? fusionResults[selectedCandidateId] : null;
+  const fusion = (selectedCandidateId ? fusionResults[selectedCandidateId] : null) || fusionResults['default'] || Object.values(fusionResults)[0] || null;
 
   if (isLoading && !investigation) {
     return <div className="flex w-full h-full items-center justify-center bg-surface text-on-surface-variant">Loading investigation...</div>;

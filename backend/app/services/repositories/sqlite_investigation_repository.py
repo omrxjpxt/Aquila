@@ -124,19 +124,25 @@ class SqliteInvestigationRepository(InvestigationRepository):
         self, 
         inv_id: str, 
         status: str,
-        anomaly_geometry: Optional[dict] = None
+        anomaly_geometry: Optional[dict] = None,
+        source_product_id: Optional[str] = None,
+        anomaly_id: Optional[str] = None
     ) -> Optional[Investigation]:
         with get_db_connection() as conn:
-            if anomaly_geometry:
-                conn.execute(
-                    "UPDATE investigations SET status = ?, anomaly_geometry_json = ?, updated_at = ? WHERE id = ?",
-                    (status, json.dumps(anomaly_geometry), datetime.utcnow(), inv_id)
-                )
-            else:
-                conn.execute(
-                    "UPDATE investigations SET status = ?, updated_at = ? WHERE id = ?",
-                    (status, datetime.utcnow(), inv_id)
-                )
+            fields = ["status = ?", "updated_at = ?"]
+            params = [status, datetime.utcnow()]
+            if anomaly_geometry is not None:
+                fields.append("anomaly_geometry_json = ?")
+                params.append(json.dumps(anomaly_geometry))
+            if source_product_id is not None:
+                fields.append("source_product_id = ?")
+                params.append(source_product_id)
+            if anomaly_id is not None:
+                fields.append("anomaly_id = ?")
+                params.append(anomaly_id)
+            params.append(inv_id)
+            query = f"UPDATE investigations SET {', '.join(fields)} WHERE id = ?"
+            conn.execute(query, tuple(params))
             cursor = conn.execute("SELECT * FROM investigations WHERE id = ?", (inv_id,))
             row = cursor.fetchone()
             return self._row_to_investigation(row) if row else None

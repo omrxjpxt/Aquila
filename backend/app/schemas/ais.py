@@ -102,6 +102,7 @@ class GFWEvent(BaseModel):
 
 class GFWAISProvenance(AISProvenance):
     source: str = "GFW"
+    mode: str = "LIVE"
     dataset: str = "public-global-presence:latest"
     api_version: str = "v3"
     api_endpoint: str = ""

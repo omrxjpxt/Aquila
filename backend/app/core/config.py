@@ -27,7 +27,10 @@ class Settings(BaseSettings):
     CDSE_ODATA_CATALOG_URL: str = "https://catalogue.dataspace.copernicus.eu/odata/v1"
 
     # Look-Alike Classifier Configuration
-    LOOKALIKE_MODEL_PATH: str = "data/models/lookalike_svm_real_v1.joblib"
+    LOOKALIKE_MODEL_PATH: str = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "data", "models", "lookalike_svm_real_v1.joblib"
+    )
 
     # Phase 17/18: Persistence and Cloud Storage
     PERSISTENCE_BACKEND: str = "sqlite"  # "sqlite" or "firestore"

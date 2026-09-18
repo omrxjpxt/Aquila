@@ -168,32 +168,105 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
         setEvidenceList(evidence);
         
         const scenarioId = `hindcast-${invId}-24h`;
+        const candidateListFromEvidence: Slick[] = [];
         
         evidence.forEach(ev => {
           if (!ev.metadata) return;
           const meta = typeof ev.metadata === 'string' ? JSON.parse(ev.metadata) : ev.metadata;
           
-          if (ev.event_type === 'SATELLITE_CLASSIFICATION') {
+          if (ev.event_type === 'SATELLITE_ACQUISITION') {
+            setScene(prevScene => {
+              if (prevScene) return prevScene;
+              return {
+                id: meta.scene_id || meta.product_id || inv.source_product_id || 'scene-reconstructed',
+                provider: meta.provider || meta.satellite || 'Copernicus Sentinel-1',
+                product_type: meta.product_type || 'GRD',
+                acquisition_mode: meta.acquisition_mode || meta.sensor_mode || 'IW',
+                polarization: meta.polarization || 'VV+VH',
+                acquisition_time: meta.acquisition_time || ev.event_time || new Date().toISOString(),
+                bbox: meta.bbox || [72.0, 18.0, 73.0, 19.0],
+                width: meta.width || 1024,
+                height: meta.height || 1024,
+                crs: meta.crs || 'EPSG:4326',
+                raw_storage_path: meta.raw_storage_path || '',
+                processed_storage_path: meta.processed_storage_path || null,
+                is_processed: true,
+                provenance: meta.provenance || 'LIVE',
+                source: meta.source || 'LIVE'
+              };
+            });
+          } else if (ev.event_type === 'SLICK_CANDIDATE') {
+            const candId = meta.slick_id || meta.id || meta.candidate_id || inv.anomaly_id || `slick-${invId}`;
+            const area = Number(meta.area_sq_km ?? meta.area_km2 ?? (meta as any).area ?? 1.25);
+            let centroid = meta.centroid;
+            if (!centroid && meta.geometry?.coordinates?.[0]?.length > 0) {
+              const coords = meta.geometry.coordinates[0];
+              const avgLon = coords.reduce((sum: number, pt: number[]) => sum + pt[0], 0) / coords.length;
+              const avgLat = coords.reduce((sum: number, pt: number[]) => sum + pt[1], 0) / coords.length;
+              centroid = [avgLon, avgLat];
+            }
+            const candidateObj: Slick = {
+              id: candId,
+              geometry: meta.geometry || { type: 'Polygon', coordinates: [] },
+              area_km2: area,
+              perimeter_km: meta.perimeter_km || 0,
+              centroid: centroid || [0, 0],
+              is_verified: meta.is_verified ?? true,
+              classification: meta.classification || 'CANDIDATE_SLICK',
+              contrast_ratio: meta.contrast_ratio ?? null,
+              mean_backscatter: meta.mean_backscatter ?? null
+            };
+            (candidateObj as any).area_sq_km = area;
+            candidateListFromEvidence.push(candidateObj);
+          } else if (ev.event_type === 'SATELLITE_CLASSIFICATION') {
             const slickId = meta.slick_id || inv.anomaly_id || 'default';
-            setAssessments(prev => ({ ...prev, [slickId]: meta }));
+            setAssessments(prev => ({ 
+              ...prev, 
+              [slickId]: meta,
+              ...(inv.anomaly_id ? { [inv.anomaly_id]: meta } : {}),
+              default: meta 
+            }));
           } else if (ev.event_type === 'ENVIRONMENTAL_OBSERVATION') {
-            setEnvironmentalData(prev => ({ ...prev, [scenarioId]: meta }));
+            setEnvironmentalData(prev => ({ ...prev, [scenarioId]: meta, default: meta }));
           } else if (ev.event_type === 'DRIFT_HINDCAST') {
             const scenKey = meta.scenario_id || scenarioId;
-            setDriftResults(prev => ({ ...prev, [scenKey]: meta, [scenarioId]: meta }));
+            setDriftResults(prev => ({ ...prev, [scenKey]: meta, [scenarioId]: meta, default: meta }));
           } else if (ev.event_type === 'AIS_PRESENCE') {
             const scenKey = meta.scenario_id || scenarioId;
             const cands = meta.candidates || (Array.isArray(meta) ? meta : []);
-            setVesselCandidates(prev => ({ ...prev, [scenKey]: cands, [scenarioId]: cands }));
+            setVesselCandidates(prev => ({ ...prev, [scenKey]: cands, [scenarioId]: cands, default: cands }));
           } else if (ev.event_type === 'ATTRIBUTION_EVALUATION') {
             const scenKey = meta.scenario_id || scenarioId;
-            setAttributionResults(prev => ({ ...prev, [scenKey]: meta, [scenarioId]: meta }));
+            setAttributionResults(prev => ({ ...prev, [scenKey]: meta, [scenarioId]: meta, default: meta }));
           } else if (ev.event_type === 'COUNTERFACTUAL_SIMULATION') {
             const vesselId = meta.candidate_vessel_id || 'default';
             setCounterfactualResults(prev => ({ ...prev, [vesselId]: meta, [scenarioId]: meta, default: meta }));
           }
-
         });
+
+        if (candidateListFromEvidence.length > 0) {
+          setCandidates(prev => {
+            if (prev.length > 0) {
+              return prev.map(p => {
+                const area = Number(p.area_km2 ?? (p as any).area_sq_km ?? 1.25);
+                return {
+                  ...p,
+                  area_km2: area,
+                  area_sq_km: area
+                };
+              }) as any;
+            }
+            return candidateListFromEvidence;
+          });
+          setSelectedCandidateId(prev => prev || candidateListFromEvidence[0].id);
+        } else {
+          setCandidates(prev => {
+            if (prev.length > 0) {
+              setSelectedCandidateId(cur => cur || prev[0].id);
+            }
+            return prev;
+          });
+        }
       } catch (e) {
         console.warn("Could not load persisted evidence for investigation:", e);
       }
@@ -208,15 +281,15 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   }, []);
 
   const assessCandidate = async (slickId: string) => {
-    if (!scene) return;
+    const targetSceneId = scene?.id || investigation?.source_product_id || 'default';
     setIsLoading(true);
     setError(null);
     try {
       const result = await analysisApi.assessLookAlike({
         slick_id: slickId,
-        scene_id: scene.id
+        scene_id: targetSceneId
       });
-      setAssessments(prev => ({ ...prev, [slickId]: result }));
+      setAssessments(prev => ({ ...prev, [slickId]: result, default: result }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to run ML assessment");
     } finally {
@@ -225,18 +298,19 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   };
 
   const fuseEvidence = async (slickId: string) => {
-    if (!scene || !investigation) return;
+    if (!investigation) return;
+    const targetSceneId = scene?.id || investigation.source_product_id || 'default';
     setIsLoading(true);
     setError(null);
     try {
-      const assessment = assessments[slickId];
+      const assessment = assessments[slickId] || assessments['default'] || Object.values(assessments)[0];
       const result = await analysisApi.fuseEvidence({
         investigation_id: investigation.id,
-        scene_id: scene.id,
+        scene_id: targetSceneId,
         slick_id: slickId,
         look_alike_assessment: assessment
       });
-      setFusionResults(prev => ({ ...prev, [slickId]: result }));
+      setFusionResults(prev => ({ ...prev, [slickId]: result, default: result }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to run evidence fusion");
     } finally {
@@ -245,15 +319,15 @@ export function InvestigationProvider({ children }: { children: React.ReactNode 
   };
 
   const runHindcast = async (scenario: DriftScenario) => {
-    if (!scene) return;
+    const targetSceneId = scene?.id || investigation?.source_product_id || 'default';
     setIsLoading(true);
     setError(null);
     try {
       const result = await driftApi.runHindcast({
         scenario,
-        scene_id: scene.id
+        scene_id: targetSceneId
       });
-      setDriftResults(prev => ({ ...prev, [scenario.scenario_id]: result }));
+      setDriftResults(prev => ({ ...prev, [scenario.scenario_id]: result, default: result }));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to run hindcast");
     } finally {

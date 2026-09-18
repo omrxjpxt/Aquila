@@ -17,6 +17,7 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
     findVesselCandidates,
     attributionResults,
     evaluateAttribution,
+    evidenceList,
     isLoading
   } = useInvestigation();
   
@@ -52,9 +53,16 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
 
   const scenarioId = `hindcast-${id}-24h`;
   const driftResult = driftResults[scenarioId] || Object.values(driftResults)[0];
-  const rawCandidates = vesselCandidates[scenarioId] || [];
+  const rawCandidates = vesselCandidates[scenarioId] || Object.values(vesselCandidates)[0] || [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawAttribution = attributionResults[scenarioId] || (Object.values(attributionResults).find(a => (a as any).investigation_id === id)) || null;
+  const rawAttribution = attributionResults[scenarioId] || (Object.values(attributionResults).find(a => (a as any).investigation_id === id)) || Object.values(attributionResults)[0] || null;
+
+  const aisEvidence = evidenceList?.find(e => e.event_type === 'AIS_PRESENCE');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const aisMeta = aisEvidence?.metadata ? (typeof aisEvidence.metadata === 'string' ? JSON.parse(aisEvidence.metadata as any) : aisEvidence.metadata as any) : null;
+  const isTemporalCoverageUnavailable = aisMeta?.temporal_coverage_available === false || Boolean(aisEvidence && aisEvidence.description?.includes("temporal coverage"));
+  const isAisProviderUnavailable = aisEvidence?.status === "UNAVAILABLE" || aisMeta?.status === "UNAVAILABLE";
+  const isNoCandidatesFound = aisEvidence?.status === "NO_CANDIDATES" || aisMeta?.status === "NO_CANDIDATES";
 
   const isMockVessel = (mmsi?: string | null, name?: string | null) => mmsi === "111111111" || name === "OCEANIC EXPLORER";
 
@@ -208,9 +216,14 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
                 <h2 className="text-sm font-bold uppercase tracking-wider">Vessel Candidates</h2>
               </div>
               <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded border uppercase tracking-wider bg-tertiary/10 text-tertiary border-tertiary/30">
-                AIS: {aisMode === "BYOD" ? "BYOD" : (aisMode === "DEMO_MOCK" ? "DEMO_MOCK" : "LIVE")}
+                AIS: {aisMode === "BYOD" ? "BYOD" : (aisMode === "DEMO_MOCK" ? "DEMO_MOCK" : (aisMeta?.provider ? `LIVE (${aisMeta.provider})` : "LIVE"))}
               </span>
             </div>
+            {aisMode === "LIVE" && aisMeta?.temporal_coverage_boundary && (
+              <div className="text-[9px] font-mono text-on-surface-variant bg-surface-container px-2 py-1 rounded border border-outline-variant">
+                GFW Public Presence Coverage: Through {aisMeta.temporal_coverage_boundary}
+              </div>
+            )}
             
             {(!candidates || candidates.length === 0) ? (
               <div className="flex flex-col gap-3">
@@ -316,11 +329,28 @@ export default function VesselAttributionPage({ params }: { params: Promise<{ id
               <div className="p-4 text-xs font-mono text-on-surface-variant bg-surface rounded border border-outline-variant space-y-2">
                 <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
-                  <span>Vessel Attribution Unavailable</span>
+                  <span>
+                    {isTemporalCoverageUnavailable
+                      ? "AIS Temporal Coverage Exceeded"
+                      : isNoCandidatesFound
+                      ? "Search Completed: 0 Candidates Found"
+                      : isAisProviderUnavailable
+                      ? "AIS Provider Unavailable"
+                      : "Vessel Candidates Unavailable"}
+                  </span>
                 </div>
                 <p className="text-[11px] leading-relaxed">
-                  {aisError || ((attributionResult as any)?.reason) || "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider."}
+                  {isTemporalCoverageUnavailable
+                    ? (aisMeta?.limitations || "Incident date falls outside Global Fishing Watch temporal coverage (boundary: 2026-09-13). NO_CANDIDATES does NOT imply that no vessel existed in the area.")
+                    : isNoCandidatesFound
+                    ? "Live AIS query returned 0 vessel candidates within the 12-hour window and drift origin bounds. This does NOT imply no vessel existed (vessels may operate without active AIS or non-reporting transmitters)."
+                    : (aisError || ((attributionResult as any)?.reason) || "Vessel attribution unavailable — no usable AIS vessel evidence was available from the configured provider.")}
                 </p>
+                {isTemporalCoverageUnavailable && (
+                  <div className="mt-2 text-[10px] text-on-surface-variant bg-surface-container p-2 rounded border border-outline-variant leading-normal">
+                    Tip: Switch mode to <strong>DEMO_MOCK</strong> to test the six-factor attribution engine, or upload historical AIS with <strong>BYOD AIS</strong>.
+                  </div>
+                )}
               </div>
             ) : (
               displayCandidates.map((cand, idx) => {

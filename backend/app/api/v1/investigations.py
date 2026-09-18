@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import os
 import uuid
 import logging
 
@@ -14,8 +15,10 @@ from app.services.repositories.factory import (
 from app.schemas.investigation import Investigation, InvestigationCreate
 from app.schemas.evidence import EvidenceEvent
 from app.schemas.drift import DriftScenario
+from app.schemas.satellite import SceneIngestRequest, SatelliteScene
 from app.schemas.ais import VesselCandidate, AISTrack, AISProvenance, VesselIdentity
 from app.services.cdse_service import CDSEService
+from app.services.satellite_service import SatelliteService
 from app.services.slick_detection_service import SlickDetectionService
 from app.services.look_alike_service import LookAlikeService
 from app.services.open_meteo_service import OpenMeteoEnvironmentalService
@@ -84,14 +87,24 @@ async def create_manual_investigation(
     )
     inv = inv_repo.create_investigation(inv_create)
 
-    # 3. Sentinel-1 SAR Acquisition Resolution (Live CDSE search first)
+    # 3. Sentinel-1 SAR Acquisition Resolution
     selected_scene = None
     target_slick = None
     anomaly_geom = None
+    sat_service = SatelliteService()
 
     if payload.scene_id:
         selected_scene = scene_repo.get_scene(payload.scene_id)
         if selected_scene:
+            if not selected_scene.is_processed or not selected_scene.processed_storage_path:
+                try:
+                    proc_res = await sat_service.preprocess_scene(selected_scene)
+                    selected_scene.is_processed = True
+                    selected_scene.processed_storage_path = proc_res.processed_path
+                    scene_repo.save_scene(selected_scene)
+                except Exception as pe:
+                    logger.warning("Preprocessing scene %s failed: %s", selected_scene.id, pe)
+
             ev_sat = EvidenceEvent(
                 id=f"EV-{uuid.uuid4().hex[:8]}",
                 investigation_id=inv.id,
@@ -100,63 +113,95 @@ async def create_manual_investigation(
                 description=f"Sentinel-1 SAR scene {selected_scene.id} loaded.",
                 event_time=selected_scene.acquisition_time,
                 provenance=selected_scene.provenance or "LOCAL_DERIVED_FROM_REAL_DATA",
-                metadata={"scene_id": selected_scene.id, "bbox": list(selected_scene.bbox)}
+                metadata={"scene_id": selected_scene.id, "bbox": list(selected_scene.bbox), **selected_scene.model_dump(mode='json')}
             )
             inv_repo.add_evidence(ev_sat)
     else:
-        # Query real CDSE catalog
-        cdse = CDSEService()
-        now = datetime.utcnow()
-        try:
-            cdse_results = await cdse.search_scenes(
-                bbox=bbox,
-                start_datetime=now - timedelta(days=14),
-                end_datetime=now,
-                limit=1
+        # Check if an existing processed scene in scene_repo matches the requested AOI
+        existing_scenes = scene_repo.list_scenes(limit=20)
+        matching_scene = None
+        for s in existing_scenes:
+            if s.bbox and len(s.bbox) == 4:
+                if max(bbox[0], s.bbox[0]) <= min(bbox[2], s.bbox[2]) and max(bbox[1], s.bbox[1]) <= min(bbox[3], s.bbox[3]):
+                    matching_scene = s
+                    break
+
+        if matching_scene:
+            selected_scene = matching_scene
+            if not selected_scene.is_processed or not selected_scene.processed_storage_path:
+                try:
+                    proc_res = await sat_service.preprocess_scene(selected_scene)
+                    selected_scene.is_processed = True
+                    selected_scene.processed_storage_path = proc_res.processed_path
+                    scene_repo.save_scene(selected_scene)
+                except Exception as pe:
+                    logger.warning("Preprocessing matching scene %s failed: %s", selected_scene.id, pe)
+
+            ev_sat = EvidenceEvent(
+                id=f"EV-{uuid.uuid4().hex[:8]}",
+                investigation_id=inv.id,
+                event_type="SATELLITE_ACQUISITION",
+                source="Sentinel-1 SAR",
+                description=f"Sentinel-1 SAR scene {selected_scene.id} loaded from repository.",
+                event_time=selected_scene.acquisition_time,
+                provenance=selected_scene.provenance or "LOCAL_DERIVED_FROM_REAL_DATA",
+                metadata={"scene_id": selected_scene.id, "bbox": list(selected_scene.bbox), **selected_scene.model_dump(mode='json')}
             )
-            if cdse_results:
-                cdse_product = cdse_results[0]
-                ev_sat = EvidenceEvent(
-                    id=f"EV-{uuid.uuid4().hex[:8]}",
-                    investigation_id=inv.id,
-                    event_type="SATELLITE_ACQUISITION",
-                    source="Copernicus Data Space Ecosystem",
-                    description=f"Sentinel-1 acquisition {cdse_product.id} identified intersecting AOI.",
-                    event_time=cdse_product.acquisition_time,
-                    provenance="LIVE_CDSE",
-                    metadata=cdse_product.model_dump()
+            inv_repo.add_evidence(ev_sat)
+        else:
+            # Query real CDSE catalog
+            cdse = CDSEService()
+            now = datetime.utcnow()
+            try:
+                cdse_results = await cdse.search_scenes(
+                    bbox=bbox,
+                    start_datetime=now - timedelta(days=14),
+                    end_datetime=now,
+                    limit=1
                 )
-                inv_repo.add_evidence(ev_sat)
-            else:
+                if cdse_results:
+                    cdse_product = cdse_results[0]
+                    ev_sat = EvidenceEvent(
+                        id=f"EV-{uuid.uuid4().hex[:8]}",
+                        investigation_id=inv.id,
+                        event_type="SATELLITE_ACQUISITION",
+                        source="Copernicus Data Space Ecosystem",
+                        description=f"Sentinel-1 acquisition {cdse_product.id} identified intersecting AOI.",
+                        event_time=cdse_product.acquisition_time,
+                        provenance="LIVE_CDSE",
+                        metadata=cdse_product.model_dump(mode='json')
+                    )
+                    inv_repo.add_evidence(ev_sat)
+                else:
+                    ev_sat = EvidenceEvent(
+                        id=f"EV-{uuid.uuid4().hex[:8]}",
+                        investigation_id=inv.id,
+                        event_type="SATELLITE_ACQUISITION",
+                        source="Copernicus Data Space Ecosystem",
+                        status="UNAVAILABLE",
+                        description="No intersecting Sentinel-1 SAR acquisition found in CDSE catalog for requested AOI.",
+                        event_time=datetime.utcnow(),
+                        provenance="CDSE_CATALOG_SEARCH",
+                        metadata={"status": "UNAVAILABLE", "bbox": list(bbox)}
+                    )
+                    inv_repo.add_evidence(ev_sat)
+            except Exception as e:
+                logger.warning("CDSE search failed during manual investigation: %s", e)
                 ev_sat = EvidenceEvent(
                     id=f"EV-{uuid.uuid4().hex[:8]}",
                     investigation_id=inv.id,
                     event_type="SATELLITE_ACQUISITION",
                     source="Copernicus Data Space Ecosystem",
                     status="UNAVAILABLE",
-                    description="No intersecting Sentinel-1 SAR acquisition found in CDSE catalog for requested AOI.",
+                    description=f"CDSE catalog search error: {type(e).__name__}",
                     event_time=datetime.utcnow(),
                     provenance="CDSE_CATALOG_SEARCH",
-                    metadata={"status": "UNAVAILABLE", "bbox": list(bbox)}
+                    metadata={"status": "ERROR"}
                 )
                 inv_repo.add_evidence(ev_sat)
-        except Exception as e:
-            logger.warning("CDSE search failed during manual investigation: %s", e)
-            ev_sat = EvidenceEvent(
-                id=f"EV-{uuid.uuid4().hex[:8]}",
-                investigation_id=inv.id,
-                event_type="SATELLITE_ACQUISITION",
-                source="Copernicus Data Space Ecosystem",
-                status="UNAVAILABLE",
-                description=f"CDSE catalog search error: {type(e).__name__}",
-                event_time=datetime.utcnow(),
-                provenance="CDSE_CATALOG_SEARCH",
-                metadata={"status": "ERROR"}
-            )
-            inv_repo.add_evidence(ev_sat)
 
     # 4. Slick Candidate Detection
-    if selected_scene and selected_scene.processed_storage_path:
+    if selected_scene and selected_scene.processed_storage_path and os.path.exists(selected_scene.processed_storage_path):
         try:
             detect_svc = SlickDetectionService()
             slicks = await detect_svc.detect_slicks(selected_scene)
@@ -168,9 +213,14 @@ async def create_manual_investigation(
                     investigation_id=inv.id,
                     event_type="SLICK_CANDIDATE",
                     source="SlickDetectionService",
-                    description=f"Detected anomaly candidate ({target_slick.area_km2:.2f} km²).",
+                    status="ATTACHED",
+                    description=f"Detected anomaly candidate ({target_slick.area_sq_km:.2f} km²).",
                     event_time=target_slick.detected_at,
-                    metadata=target_slick.model_dump()
+                    metadata={
+                        **target_slick.model_dump(mode='json'),
+                        "area_km2": target_slick.area_sq_km,
+                        "area_sq_km": target_slick.area_sq_km
+                    }
                 )
                 inv_repo.add_evidence(ev_slick)
             else:
@@ -188,6 +238,18 @@ async def create_manual_investigation(
                 inv_repo.add_evidence(ev_slick)
         except Exception as e:
             logger.warning("Slick detection failed: %s", e)
+            ev_slick = EvidenceEvent(
+                id=f"EV-{uuid.uuid4().hex[:8]}",
+                investigation_id=inv.id,
+                event_type="SLICK_CANDIDATE",
+                source="SlickDetectionService",
+                status="UNAVAILABLE",
+                description=f"Slick detection error: {type(e).__name__}",
+                event_time=datetime.utcnow(),
+                provenance="UNAVAILABLE",
+                metadata={"status": "ERROR"}
+            )
+            inv_repo.add_evidence(ev_slick)
     else:
         ev_slick = EvidenceEvent(
             id=f"EV-{uuid.uuid4().hex[:8]}",
@@ -203,7 +265,7 @@ async def create_manual_investigation(
         inv_repo.add_evidence(ev_slick)
 
     # 5. Look-Alike ML Classification
-    if target_slick and selected_scene and selected_scene.processed_storage_path:
+    if target_slick and selected_scene and selected_scene.processed_storage_path and os.path.exists(selected_scene.processed_storage_path):
         try:
             la_svc = LookAlikeService()
             assessment = await la_svc.assess_candidate(target_slick, selected_scene.processed_storage_path)
@@ -212,18 +274,33 @@ async def create_manual_investigation(
                 investigation_id=inv.id,
                 event_type="SATELLITE_CLASSIFICATION",
                 source="LookAlikeService",
+                status="ATTACHED",
                 description=f"Classified as {assessment.predicted_class.value} (score: {assessment.raw_score:.3f}).",
                 event_time=selected_scene.acquisition_time,
                 metadata={
+                    "slick_id": target_slick.id,
                     "predicted_class": assessment.predicted_class.value,
                     "raw_score": assessment.raw_score,
                     "model_name": assessment.model_name,
-                    "evaluation_status": assessment.evaluation_status
+                    "model_version": assessment.model_version,
+                    "evaluation_status": assessment.evaluation_status,
+                    "uncertainty_margin": assessment.uncertainty_margin
                 }
             )
             inv_repo.add_evidence(ev_class)
         except Exception as e:
             logger.warning("Look-alike classification failed: %s", e)
+            ev_class = EvidenceEvent(
+                id=f"EV-{uuid.uuid4().hex[:8]}",
+                investigation_id=inv.id,
+                event_type="SATELLITE_CLASSIFICATION",
+                source="LookAlikeService",
+                status="UNAVAILABLE",
+                description=f"Look-alike ML classification error: {type(e).__name__}",
+                event_time=datetime.utcnow(),
+                metadata={"status": "ERROR"}
+            )
+            inv_repo.add_evidence(ev_class)
     else:
         ev_class = EvidenceEvent(
             id=f"EV-{uuid.uuid4().hex[:8]}",
@@ -238,21 +315,41 @@ async def create_manual_investigation(
         inv_repo.add_evidence(ev_class)
 
     # 6. Environmental Conditions (Open-Meteo)
-    center_lon = (bbox[0] + bbox[2]) / 2.0
-    center_lat = (bbox[1] + bbox[3]) / 2.0
-    ref_time = target_slick.detected_at if target_slick else datetime.utcnow()
+    if target_slick and target_slick.geometry:
+        poly_coords = target_slick.geometry.get("coordinates", [[[]]])[0]
+        if poly_coords and len(poly_coords) > 0:
+            center_lon = sum(p[0] for p in poly_coords) / len(poly_coords)
+            center_lat = sum(p[1] for p in poly_coords) / len(poly_coords)
+        else:
+            center_lon = (bbox[0] + bbox[2]) / 2.0
+            center_lat = (bbox[1] + bbox[3]) / 2.0
+        ref_time = target_slick.detected_at
+    elif selected_scene:
+        center_lon = (selected_scene.bbox[0] + selected_scene.bbox[2]) / 2.0
+        center_lat = (selected_scene.bbox[1] + selected_scene.bbox[3]) / 2.0
+        ref_time = selected_scene.acquisition_time
+    else:
+        center_lon = (bbox[0] + bbox[2]) / 2.0
+        center_lat = (bbox[1] + bbox[3]) / 2.0
+        ref_time = datetime.utcnow()
+
     env_svc = OpenMeteoEnvironmentalService()
     wind = None
     current = None
     try:
         wind = await env_svc.get_wind(center_lat, center_lon, ref_time)
         current = await env_svc.get_current(center_lat, center_lon, ref_time)
+        w_spd = f"{wind.speed_m_s:.1f} m/s" if getattr(wind, "speed_m_s", None) is not None else "N/A"
+        w_dir = f"{wind.direction_deg:.0f}°" if getattr(wind, "direction_deg", None) is not None else "N/A"
+        c_spd = f"{current.speed_m_s:.2f} m/s" if getattr(current, "speed_m_s", None) is not None else "N/A"
+        c_dir = f"{current.direction_deg:.0f}°" if getattr(current, "direction_deg", None) is not None else "N/A"
         ev_env = EvidenceEvent(
             id=f"EV-{uuid.uuid4().hex[:8]}",
             investigation_id=inv.id,
             event_type="ENVIRONMENTAL_OBSERVATION",
             source="OpenMeteo",
-            description=f"Wind: {wind.speed_m_s:.1f} m/s @ {wind.direction_deg:.0f}°. Current: {current.speed_m_s:.2f} m/s @ {current.direction_deg:.0f}°.",
+            status="ATTACHED" if (wind.availability_status == "AVAILABLE" and current.availability_status == "AVAILABLE") else "UNAVAILABLE",
+            description=f"Wind: {w_spd} @ {w_dir}. Current: {c_spd} @ {c_dir}.",
             event_time=ref_time,
             metadata={"wind": wind.__dict__, "current": current.__dict__}
         )
@@ -273,15 +370,16 @@ async def create_manual_investigation(
 
     # 7. Drift Hindcast (OpenDrift)
     drift_result = None
-    if target_slick and wind and current:
+    if target_slick and wind and current and wind.availability_status == "AVAILABLE" and current.availability_status == "AVAILABLE":
         scenario = DriftScenario(
-            scenario_id=f"SCEN_{uuid.uuid4().hex[:8]}",
+            scenario_id=f"hindcast-{inv.id}-24h",
             investigation_id=inv.id,
             slick_id=target_slick.id,
             start_time=target_slick.detected_at,
             end_time=target_slick.detected_at - timedelta(hours=24),
             is_backward=True,
-            forcing_sources=["LIVE_OPEN_METEO"]
+            forcing_sources=["LIVE_OPEN_METEO"],
+            parameters={"particle_count": 50}
         )
         try:
             drift_svc = DriftService()
@@ -291,9 +389,17 @@ async def create_manual_investigation(
                 investigation_id=inv.id,
                 event_type="DRIFT_HINDCAST",
                 source="OpenDrift",
-                description="24-hour reverse trajectory reconstruction completed.",
+                status="ATTACHED",
+                description="24-hour reverse trajectory reconstruction completed via OpenDrift.",
                 event_time=drift_result.origin_estimate.estimated_time,
-                metadata={"origin_estimate": drift_result.origin_estimate.model_dump()}
+                metadata={
+                    "scenario_id": scenario.scenario_id,
+                    "slick_id": target_slick.id,
+                    "origin_estimate": drift_result.origin_estimate.model_dump(mode='json'),
+                    "trajectories": [t.model_dump(mode='json') for t in drift_result.trajectories],
+                    "uncertainty": drift_result.uncertainty.model_dump(mode='json') if drift_result.uncertainty else None,
+                    "status": "COMPLETED"
+                }
             )
             inv_repo.add_evidence(ev_drift)
         except Exception as e:
@@ -304,7 +410,7 @@ async def create_manual_investigation(
                 event_type="DRIFT_HINDCAST",
                 source="OpenDrift",
                 status="UNAVAILABLE",
-                description="OpenDrift numerical trajectory reconstruction failed.",
+                description=f"OpenDrift numerical trajectory reconstruction failed: {type(e).__name__}",
                 event_time=ref_time,
                 metadata={"status": "FAILED"}
             )
@@ -364,7 +470,6 @@ async def create_manual_investigation(
             identities = await gfw_provider.get_vessel_identities(vessel_ids)
             
             for ident in identities:
-                # Query real GFW events
                 events = await gfw_provider.get_vessel_events(ident.mmsi, start_window, end_window)
                 cand = VesselCandidate(
                     id=f"cand_{uuid.uuid4().hex[:8]}",
@@ -388,19 +493,39 @@ async def create_manual_investigation(
                 )
                 candidates.append(cand)
 
-            ev_ais = EvidenceEvent(
-                id=f"EV-{uuid.uuid4().hex[:8]}",
-                investigation_id=inv.id,
-                event_type="AIS_PRESENCE",
-                source="Global Fishing Watch",
-                description=f"Identified {len(candidates)} vessels in spatiotemporal window via Global Fishing Watch API v3.",
-                event_time=ref_time,
-                metadata={
-                    "vessel_count": len(candidates),
-                    "vessels": [c.identity.model_dump() for c in candidates],
-                    "status": "LIVE"
-                }
-            )
+            if candidates:
+                ev_ais = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=inv.id,
+                    event_type="AIS_PRESENCE",
+                    source="Global Fishing Watch",
+                    status="ATTACHED",
+                    description=f"Identified {len(candidates)} vessels in spatiotemporal window via Global Fishing Watch API v3.",
+                    event_time=ref_time,
+                    metadata={
+                        "vessel_count": len(candidates),
+                        "candidates": [c.model_dump(mode='json') for c in candidates],
+                        "vessels": [c.identity.model_dump() for c in candidates],
+                        "status": "LIVE"
+                    }
+                )
+            else:
+                ev_ais = EvidenceEvent(
+                    id=f"EV-{uuid.uuid4().hex[:8]}",
+                    investigation_id=inv.id,
+                    event_type="AIS_PRESENCE",
+                    source="Global Fishing Watch",
+                    status="NO_CANDIDATES",
+                    description="No AIS vessels identified in spatiotemporal search window (GFW public dataset boundary is 2026-09-13).",
+                    event_time=ref_time,
+                    metadata={
+                        "vessel_count": 0,
+                        "candidates": [],
+                        "vessels": [],
+                        "status": "NO_CANDIDATES",
+                        "limitations": "GFW public presence dataset boundary is 2026-09-13; no vessel records found for this window."
+                    }
+                )
             inv_repo.add_evidence(ev_ais)
         except Exception as e:
             logger.warning("GFW AIS query failed during manual investigation: %s", e)
@@ -498,7 +623,13 @@ async def create_manual_investigation(
         ev_attr.status != "UNAVAILABLE"
     )
     final_status = "REPORT_READY" if is_ready else "INCOMPLETE"
-    updated_inv = inv_repo.update_investigation_status(inv.id, final_status, anomaly_geom)
+    updated_inv = inv_repo.update_investigation_status(
+        inv_id=inv.id,
+        status=final_status,
+        anomaly_geometry=anomaly_geom,
+        source_product_id=selected_scene.id if selected_scene else None,
+        anomaly_id=target_slick.id if target_slick else None
+    )
     return updated_inv or inv
 
 @router.get("/{id}", response_model=Investigation)

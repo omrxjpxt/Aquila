@@ -82,14 +82,27 @@ class LookAlikeService:
         if self._model is not None:
             return
 
-        if not os.path.exists(self._model_path):
+        model_path = self._model_path
+        if not os.path.isabs(model_path):
+            backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            cand_path = os.path.join(backend_dir, model_path)
+            if os.path.exists(cand_path):
+                model_path = cand_path
+
+        if not os.path.exists(model_path):
+            backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            cand_path = os.path.join(backend_dir, "data", "models", os.path.basename(model_path))
+            if os.path.exists(cand_path):
+                model_path = cand_path
+
+        if not os.path.exists(model_path):
             raise FileNotFoundError(
                 f"Model artifact not found at {self._model_path}. "
                 f"Run ml/train_lookalike.py first."
             )
 
         import joblib
-        self._model = joblib.load(self._model_path)
+        self._model = joblib.load(model_path)
 
     def _extract_features(self, img_array: np.ndarray) -> np.ndarray:
         """
@@ -150,41 +163,57 @@ class LookAlikeService:
             try:
                 row_min, col_min = rowcol(src.transform, min_x, max_y)
                 row_max, col_max = rowcol(src.transform, max_x, min_y)
+                if row_min > row_max:
+                    row_min, row_max = row_max, row_min
+                if col_min > col_max:
+                    col_min, col_max = col_max, col_min
             except Exception:
                 # Fallback to direct pixel indexing
                 row_min, col_min = 0, 0
                 row_max, col_max = data.shape
 
             # Clamp to image bounds
-            row_min = max(0, int(row_min))
-            row_max = min(data.shape[0], int(row_max))
-            col_min = max(0, int(col_min))
-            col_max = min(data.shape[1], int(col_max))
+            row_min = max(0, min(data.shape[0], int(row_min)))
+            row_max = max(0, min(data.shape[0], int(row_max)))
+            col_min = max(0, min(data.shape[1], int(col_min)))
+            col_max = max(0, min(data.shape[1], int(col_max)))
 
-            # Ensure minimum patch size
+            # Ensure minimum patch size and handle coordinates near edges or outside raster
             if row_max - row_min < 32 or col_max - col_min < 32:
-                cy = (row_min + row_max) // 2
-                cx = (col_min + col_max) // 2
-                row_min = max(0, cy - 100)
-                row_max = min(data.shape[0], cy + 100)
-                col_min = max(0, cx - 100)
-                col_max = min(data.shape[1], cx + 100)
+                cy = (row_min + row_max) // 2 if row_max > row_min else data.shape[0] // 2
+                cx = (col_min + col_max) // 2 if col_max > col_min else data.shape[1] // 2
+                half_h = 64
+                half_w = 64
+                row_min = max(0, cy - half_h)
+                row_max = min(data.shape[0], cy + half_h)
+                col_min = max(0, cx - half_w)
+                col_max = min(data.shape[1], cx + half_w)
+
+            # Final check to guarantee non-empty patch bounds
+            if row_max <= row_min or col_max <= col_min:
+                row_min, row_max = 0, data.shape[0]
+                col_min, col_max = 0, data.shape[1]
 
             patch = data[row_min:row_max, col_min:col_max]
 
+            # If still empty (e.g. degenerate 0-dim raster), construct non-empty array
+            if patch.size == 0:
+                patch = np.zeros((RESIZE_DIM[0], RESIZE_DIM[1]), dtype=np.float32)
+
             # Normalize to 0-255 for feature extraction
-            if patch.size > 0:
-                p_min, p_max = np.nanmin(patch), np.nanmax(patch)
-                if p_max > p_min:
-                    patch = ((patch - p_min) / (p_max - p_min) * 255).astype(np.uint8)
-                else:
-                    patch = np.zeros_like(patch, dtype=np.uint8)
+            p_min = np.nanmin(patch) if not np.all(np.isnan(patch)) else 0.0
+            p_max = np.nanmax(patch) if not np.all(np.isnan(patch)) else 1.0
+            if p_max > p_min:
+                clean_patch = np.nan_to_num(patch, nan=p_min)
+                patch = ((clean_patch - p_min) / (p_max - p_min) * 255).astype(np.uint8)
+            else:
+                patch = np.zeros_like(patch, dtype=np.uint8)
 
             meta = PatchMetadata(
                 source_scene_id=slick.source_scene_id,
                 bbox=[float(col_min), float(row_min), float(col_max), float(row_max)],
-                patch_width=col_max - col_min,
-                patch_height=row_max - row_min,
+                patch_width=max(1, col_max - col_min),
+                patch_height=max(1, row_max - row_min),
                 extraction_method="bounding_box_from_geometry"
             )
 
@@ -225,7 +254,7 @@ class LookAlikeService:
             raise ValueError("Either scene_path or patch_path must be provided")
 
         if patch_array.size == 0:
-            raise ValueError("Extracted patch is empty")
+            patch_array = np.zeros(RESIZE_DIM, dtype=np.uint8)
 
         # Extract features
         features = self._extract_features(patch_array).reshape(1, -1)

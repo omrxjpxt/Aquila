@@ -20,7 +20,8 @@ from app.services.repositories.factory import (
     get_job_repository, 
     get_investigation_repository, 
     get_artifact_store,
-    get_scene_event_repository
+    get_scene_event_repository,
+    get_scene_repository
 )
 
 from app.services.failure_policy import classify_failure, FailureClassification
@@ -325,6 +326,9 @@ class OrchestrationService:
         # Let's just append
         job.artifact_references.append(proc_art_ref)
         scene.processed_storage_path = proc_art_ref['path'] # Use artifact store path
+        
+        # Persist scene to authoritative scene repository
+        get_scene_repository().save_scene(scene)
         
         candidates = await self.detect_service.detect_slicks(scene)
         

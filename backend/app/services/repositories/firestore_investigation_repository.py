@@ -102,15 +102,21 @@ class FirestoreInvestigationRepository(InvestigationRepository):
         self, 
         inv_id: str, 
         status: str, 
-        anomaly_geometry: Optional[dict] = None
+        anomaly_geometry: Optional[dict] = None,
+        source_product_id: Optional[str] = None,
+        anomaly_id: Optional[str] = None
     ) -> Optional[Investigation]:
         doc_ref = self.collection.document(inv_id)
         doc = doc_ref.get()
         if not doc.exists:
             return None
         updates = {"status": status, "updated_at": datetime.utcnow()}
-        if anomaly_geometry:
+        if anomaly_geometry is not None:
             updates["anomaly_geometry"] = anomaly_geometry
+        if source_product_id is not None:
+            updates["source_product_id"] = source_product_id
+        if anomaly_id is not None:
+            updates["anomaly_id"] = anomaly_id
         doc_ref.update(updates)
         updated = doc_ref.get()
         return Investigation(**updated.to_dict()) if updated.exists else None
